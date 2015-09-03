@@ -1,8 +1,8 @@
-### EEA Taskman docker setup
+## EEA Taskman docker setup
 
 Taskman is a web application based on Redmine that facilitates Agile project management for EEA and Eionet software projects. It comes with some plugins and specific Eionet redmine theme.
 
-# Table of Contents
+### Table of Contents
 
 - [Introduction](#introduction)
   - [Version](#version)
@@ -15,15 +15,15 @@ Taskman is a web application based on Redmine that facilitates Agile project man
 - [Upgrading](#upgrading)
 - [References](#references)
 
-# Introduction
+### Introduction
 
 Dockerfile to build a [Redmine](http://www.redmine.org/) container image based on [sameersbn/docker-redmine](https://github.com/sameersbn/docker-redmine)
 
-## Version
+#### Version
 
 See (https://github.com/sameersbn/docker-redmine#version)
 
-# Installation
+### Installation
 
 Pull the image from the docker index. This is the recommended method of installation as it is easier to update image in the future. These builds are performed by the Trusted Build service.
 
@@ -39,7 +39,7 @@ cd eea.docker.taskman
 docker build --tag="$USER/redmine" .
 ```
 
-# Quick Start
+### Quick Start
 
 The quickest way to get started is using [docker-compose](https://docs.docker.com/compose/).
 
@@ -78,23 +78,23 @@ You now have the Redmine application up and ready for testing. If you want to us
 
 *The rest of the document will use the docker command line. You can quite simply adapt your configuration into a `docker-compose.yml` file if you wish to do so.*
 
-# Configuration
+### Configuration
 
 See (https://github.com/sameersbn/docker-redmine#configuration)
 
-# Plugins
+### Plugins
 
 See (https://github.com/sameersbn/docker-redmine#plugins)
 
-# Themes
+### Themes
 
 See (https://github.com/sameersbn/docker-redmine#themes)
 
-# Shell Access
+### Shell Access
 
 See (https://github.com/sameersbn/docker-redmine#shell-access)
 
-# Upgrading
+### Upgrading
 
 To upgrade to newer redmine releases, simply follow this 4 step upgrade procedure.
 
@@ -133,7 +133,7 @@ docker run --name=redmine -d [OPTIONS] eeacms/redmine
 ```bash
 docker exec -i mysql-redmine mysql -h localhost redmine_production < redmine.sql
 ```
-## References
+### References
   * http://www.redmine.org/
   * http://www.redmine.org/projects/redmine/wiki/Guide
   * http://www.redmine.org/projects/redmine/wiki/RedmineInstall
