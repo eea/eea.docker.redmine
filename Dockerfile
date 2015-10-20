@@ -1,4 +1,4 @@
-FROM sameersbn/redmine
+FROM quay.io/sameersbn/redmine:3.1.1-2
 
 #default for ENV vars
 ENV DB_NAME=redmine_production
@@ -6,7 +6,7 @@ ENV DB_USER=redmine
 ENV DB_PASS=password
 
 # install dependencies
-RUN apt-get update && apt-get install -y git subversion graphviz
+RUN apt-get update && apt-get install -y --no-install-recommends git subversion graphviz
 RUN ln -s /home/redmine/redmine /var/local/redmine
 
 #install the plugins
@@ -51,4 +51,8 @@ RUN cp -ar ${SETUP_DIR} /tmp/eea_SETUP_DIR
 RUN sed 's/127.0.0.1/0.0.0.0/g' -i /tmp/eea_SETUP_DIR/redmine/config/redmine/unicorn.rb
 ENV SETUP_DIR=/tmp/eea_SETUP_DIR/redmine
 
-ENTRYPOINT /home/redmine/redmine/startup.sh
+# Add supervisord conf
+ADD supervisord_redmine.conf /etc/supervisor/conf.d/
+
+ENTRYPOINT ["/sbin/entrypoint.sh"]
+CMD ["app:start"]
