@@ -51,8 +51,4 @@ RUN cp -ar ${SETUP_DIR} /tmp/eea_SETUP_DIR
 RUN sed 's/127.0.0.1/0.0.0.0/g' -i /tmp/eea_SETUP_DIR/redmine/config/redmine/unicorn.rb
 ENV SETUP_DIR=/tmp/eea_SETUP_DIR/redmine
 
-# Add supervisord conf
-ADD supervisord_redmine.conf /etc/supervisor/conf.d/
-
-ENTRYPOINT ["/sbin/entrypoint.sh"]
-CMD ["app:start"]
+ENTRYPOINT /home/redmine/redmine/startup.sh
