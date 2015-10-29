@@ -14,7 +14,7 @@ RUN git clone https://github.com/tckz/redmine-wiki_graphviz_plugin.git plugins/w
     git clone https://github.com/masamitsu-murase/redmine_add_subversion_links.git plugins/redmine_add_subversion_links && \
     git clone git://github.com/koppen/redmine_github_hook plugins/redmine_github_hook && \
     git clone git://github.com/ekulos/redmine_helpdesk.git plugins/redmine_helpdesk && \
-    git clone git://github.com/ogerman/redmine_responsive.git plugins/redmine_responsive && \
+    git clone git://github.com/ekulos/redmine_responsive.git plugins/redmine_responsive && \
     #workaround to don't have as dependency the codeclimate-test-reporter gem
     echo > plugins/redmine_helpdesk/Gemfile && \
     #install the theme
