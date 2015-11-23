@@ -2,6 +2,6 @@
 */1 * * * * cd /var/local/redmine && ./helpdesk.sh
 */2 * * * * cd /var/local/redmine && ./taskman_email.sh
 # Synchronize users with ldap @ every 60 minutes
-35 * * * *  bundle exec rake -f /var/local/redmine/Rakefile --silent redmine:plugins:ldap_sync:sync_users RAILS_ENV=production 2>&- 1>&-
+35 * * * *  cd /var/local/redmine bundle exec rake -f /var/local/redmine/Rakefile --silent redmine:plugins:ldap_sync:sync_users RAILS_ENV=production 2>&- 1>&-
 # Check reminders at 06:00 every day, send emails by schedule
-0 6 * * * cd /var/local/redmine && bundle exec rake reminder:exec RAILS_ENV="production"
+0 6 * * * cd /var/local/redmine && bundle exec rake reminder:exec RAILS_ENV="production" 2>&- 1>&-
