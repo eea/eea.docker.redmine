@@ -13,10 +13,17 @@ RUN ln -s /home/redmine/redmine /var/local/redmine
 RUN git clone https://github.com/tckz/redmine-wiki_graphviz_plugin.git plugins/wiki_graphviz_plugin && \
     git clone https://github.com/masamitsu-murase/redmine_add_subversion_links.git plugins/redmine_add_subversion_links && \
     git clone git://github.com/koppen/redmine_github_hook plugins/redmine_github_hook && \
+    # "Wiki Backlinks" plugin
+    git clone https://github.com/bluezio/redmine_wiki_backlinks.git plugins/redmine_wiki_backlinks && \
+    # "Issue Reminder" plugin
+    git clone https://github.com/Hopebaytech/redmine_mail_reminder.git plugins/redmine_mail_reminder && \
+    # "LDAP sync" plugin
+    git clone https://github.com/thorin/redmine_ldap_sync.git plugins/redmine_ldap_sync && \
+    git clone git://github.com/koppen/redmine_github_hook plugins/redmine_github_hook && \
     git clone git://github.com/eea/redmine_helpdesk.git plugins/redmine_helpdesk && \
     # removed this when redmine 3.2.0 will be released
     git clone git://github.com/ekulos/redmine_responsive.git plugins/redmine_responsive && \
-    #workaround to don't have as dependency the codeclimate-test-reporter gem
+    # workaround to don't have as dependency the codeclimate-test-reporter gem
     echo > plugins/redmine_helpdesk/Gemfile && \
     #install the theme
     git clone git://github.com/eea/eea.redmine.theme.git public/themes/eea.redmine.theme && \
