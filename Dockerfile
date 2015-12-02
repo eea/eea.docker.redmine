@@ -1,4 +1,4 @@
-FROM quay.io/sameersbn/redmine:3.1.1-2
+FROM quay.io/sameersbn/redmine:3.1.1-3
 
 #default for ENV vars
 ENV DB_NAME=redmine_production
@@ -46,6 +46,9 @@ RUN mkdir -p /var/log/helpdesk && \
 ADD taskman_email.sh /home/redmine/redmine/taskman_email.sh
 RUN chmod +x /home/redmine/redmine/taskman_email.sh && \
     chown redmine:redmine /home/redmine/redmine/taskman_email.sh
+
+#install plugins dependencies
+RUN cd /home/redmine/redmine && su redmine -c "bundle install"
 
 #add cron jobs
 ADD cronjobs /tmp/cronjobs
