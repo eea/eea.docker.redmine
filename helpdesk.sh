@@ -1,7 +1,7 @@
 #!/bin/bash
 
-LOG_DIR=/var/log/helpdesk
 REDMINE_PATH=/var/local/redmine
+LOG_DIR=$REDMINE_PATH/log
 
 source /var/local/environment/vars
 

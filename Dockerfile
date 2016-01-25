@@ -38,14 +38,24 @@ RUN chmod +r /home/redmine/redmine/config/configuration.yml && \
 ADD startup.sh /home/redmine/redmine/startup.sh
 RUN chmod +x /home/redmine/redmine/startup.sh && \
     chown redmine:redmine /home/redmine/redmine/startup.sh
+
 ADD helpdesk.sh /home/redmine/redmine/helpdesk.sh
 RUN mkdir -p /var/log/helpdesk && \
     chown redmine:redmine /var/log/helpdesk && \
     chmod +x /home/redmine/redmine/helpdesk.sh && \
     chown redmine:redmine /home/redmine/redmine/helpdesk.sh
+
 ADD taskman_email.sh /home/redmine/redmine/taskman_email.sh
 RUN chmod +x /home/redmine/redmine/taskman_email.sh && \
     chown redmine:redmine /home/redmine/redmine/taskman_email.sh
+
+ADD redmine_ldapsync.sh /home/redmine/redmine/redmine_ldapsync.sh
+RUN chmod +x /home/redmine/redmine/redmine_ldapsync.sh && \
+    chown redmine:redmine /home/redmine/redmine/redmine_ldapsync.sh
+
+ADD redmine_mailerissues.sh /home/redmine/redmine/redmine_mailerissues.sh
+RUN chmod +x /home/redmine/redmine/redmine_mailerissues.sh && \
+    chown redmine:redmine /home/redmine/redmine/redmine_mailerissues.sh
 
 #install plugins dependencies
 RUN cd /home/redmine/redmine && su redmine -c "bundle install"
