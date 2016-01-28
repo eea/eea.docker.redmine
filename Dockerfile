@@ -32,10 +32,6 @@ RUN apt-get update -q && \
 
 RUN ln -s ${REDMINE_INSTALL_DIR} /var/local/redmine
 
-#add cron jobs
-#ADD cronjobs /tmp/cronjobs
-#RUN crontab -u redmine /tmp/cronjobs && rm -rf /tmp/cronjobs
-
 #install the plugins
 RUN git clone https://github.com/tckz/redmine-wiki_graphviz_plugin.git plugins/wiki_graphviz_plugin && \
     git clone https://github.com/masamitsu-murase/redmine_add_subversion_links.git plugins/redmine_add_subversion_links && \
@@ -48,8 +44,6 @@ RUN git clone https://github.com/tckz/redmine-wiki_graphviz_plugin.git plugins/w
     git clone https://github.com/thorin/redmine_ldap_sync.git plugins/redmine_ldap_sync && \
     # "HelpDesk" plugin
     git clone git://github.com/eea/redmine_helpdesk.git plugins/redmine_helpdesk && \
-    # removed this when redmine 3.2.0 will be released
-    #git clone git://github.com/ekulos/redmine_responsive.git plugins/redmine_responsive && \
     # workaround to don't have as dependency the codeclimate-test-reporter gem
     echo > plugins/redmine_helpdesk/Gemfile && \
     #install the theme
@@ -94,8 +88,4 @@ RUN chown -R redmine /etc/supervisor
 USER redmine
 
 ENTRYPOINT ["/usr/local/bin/chaperone"]
-#CMD ["--user", "redmine"]
 CMD []
-
-#ENTRYPOINT ["/sbin/entrypoint.sh"]
-#CMD ["app:start"]
