@@ -1,4 +1,3 @@
-# adding sync scripts
-svn co https://svn.eionet.europa.eu/repositories/Zope/trunk/www.eea.europa.eu/trunk/tools/redmine /home/redmine/redmine/github
-
-/sbin/entrypoint.sh app:start
+#!/bin/bash
+sudo -HE /sbin/entrypoint.sh app:init
+/usr/local/bin/bundle exec unicorn_rails -E ${RAILS_ENV} -c ${REDMINE_INSTALL_DIR}/config/unicorn.rb
