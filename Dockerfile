@@ -15,6 +15,7 @@ ENV REDMINE_LOG_DIR="${REDMINE_HOME}/log"
 COPY scripts/build/ ${REDMINE_BUILD_DIR}/
 RUN bash ${REDMINE_BUILD_DIR}/install.sh
 COPY scripts/runtime/ ${REDMINE_RUNTIME_DIR}/
+RUN chown -R ${REDMINE_USER} /etc/supervisor
 
 # Change redmine USERMAP
 RUN usermod -u ${REDMINE_USER_UID} ${REDMINE_USER}    
@@ -83,7 +84,6 @@ ADD redmine_githubsync.sh ${REDMINE_INSTALL_DIR}/redmine_githubsync.sh
 RUN chmod +x ${REDMINE_INSTALL_DIR}/redmine_githubsync.sh && \
     chown ${REDMINE_USER}: ${REDMINE_INSTALL_DIR}/redmine_githubsync.sh
 
-RUN chown -R redmine /etc/supervisor
 
 USER redmine
 
