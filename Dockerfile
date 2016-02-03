@@ -39,8 +39,8 @@ RUN git clone https://github.com/tckz/redmine-wiki_graphviz_plugin.git plugins/w
     git clone git://github.com/koppen/redmine_github_hook plugins/redmine_github_hook && \
     # "Wiki Backlinks" plugin
     git clone https://github.com/bluezio/redmine_wiki_backlinks.git plugins/redmine_wiki_backlinks && \
-    # "Issue Reminder" plugin - on ekulos github waiting last pull request is accepted
-    git clone https://github.com/ekulos/redmine_mail_reminder.git plugins/redmine_mail_reminder && \
+    # "Issue Reminder" plugin
+    git clone https://github.com/Hopebaytech/redmine_mail_reminder.git plugins/redmine_mail_reminder && \
     # "LDAP sync" plugin
     git clone https://github.com/thorin/redmine_ldap_sync.git plugins/redmine_ldap_sync && \
     # "HelpDesk" plugin
