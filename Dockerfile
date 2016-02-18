@@ -1,6 +1,6 @@
 FROM docker.io/sameersbn/redmine:3.2.0-3
 
-MAINTAINER Luca Pisani <luca.pisani@abstract.it>
+MAINTAINER "European Environment Agency (EEA): IDM2 A-Team" <eea-edw-a-team-alerts@googlegroups.com>
 
 #default for ENV vars
 ENV DB_NAME=redmine_production \
@@ -26,6 +26,7 @@ RUN usermod -g ${REDMINE_USER_GID} ${REDMINE_USER}
 
 # install dependencies
 RUN apt-get update -q && \
+    apt-get upgrade -y libc6 && \ 
     apt-get install -y --no-install-recommends git subversion graphviz python3-dev python3-pip && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
