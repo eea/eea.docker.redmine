@@ -761,6 +761,7 @@ initialize_datadir() {
 
   # create tmp directory
   mkdir -p ${REDMINE_DATA_DIR}/tmp
+  chcon -t svirt_sandbox_file_t ${REDMINE_DATA_DIR}/tmp
   chmod -R 0755 ${REDMINE_DATA_DIR}/tmp
   chown -R ${REDMINE_USER}: ${REDMINE_DATA_DIR}/tmp
 }
@@ -876,6 +877,7 @@ migrate_database() {
     exec_as_redmine mkdir -p ${REDMINE_DATA_DIR}/tmp
     exec_as_redmine mkdir -p ${REDMINE_DATA_DIR}/tmp/thumbnails
     exec_as_redmine mkdir -p ${REDMINE_DATA_DIR}/tmp/plugin_assets
+    chcon -t svirt_sandbox_file_t ${REDMINE_DATA_DIR}/tmp
     exec_as_redmine chmod -R 0755 ${REDMINE_DATA_DIR}/tmp
 
     echo "Migrating database. Please be patient, this could take a while..."
