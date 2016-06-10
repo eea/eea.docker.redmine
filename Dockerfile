@@ -46,6 +46,8 @@ RUN git clone https://github.com/tckz/redmine-wiki_graphviz_plugin.git plugins/w
     git clone https://github.com/thorin/redmine_ldap_sync.git plugins/redmine_ldap_sync && \
     # "HelpDesk" plugin
     git clone git://github.com/eea/redmine_helpdesk.git plugins/redmine_helpdesk && \
+    # "Agile" plugin
+    git clone git://github.com/RCRM/redmine_agile.git plugins/redmine_agile && \
     # workaround to don't have as dependency the codeclimate-test-reporter gem
     echo > plugins/redmine_helpdesk/Gemfile && \
     #install the theme
