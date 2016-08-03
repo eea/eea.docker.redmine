@@ -1,4 +1,4 @@
-FROM docker.io/sameersbn/redmine:3.2.0-3
+FROM docker.io/sameersbn/redmine:3.3.0-1
 
 MAINTAINER "European Environment Agency (EEA): IDM2 A-Team" <eea-edw-a-team-alerts@googlegroups.com>
 
