@@ -87,8 +87,12 @@ ADD redmine_githubsync.sh ${REDMINE_INSTALL_DIR}/redmine_githubsync.sh
 RUN chmod +x ${REDMINE_INSTALL_DIR}/redmine_githubsync.sh && \
     chown ${REDMINE_USER}: ${REDMINE_INSTALL_DIR}/redmine_githubsync.sh
 
+#add cron jobs
+ADD cronjobs /tmp/cronjobs
+RUN crontab -u ${REDMINE_USER} /tmp/cronjobs && rm -rf /tmp/cronjobs
 
-USER redmine
+USER ${REDMINE_USER}
 
 ENTRYPOINT ["/usr/local/bin/chaperone"]
 CMD []
+
