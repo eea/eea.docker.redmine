@@ -12,12 +12,11 @@ ENV REDMINE_USER_UID=500 \
     
 ENV REDMINE_LOG_DIR="${REDMINE_HOME}/log"
 
-ADD scripts/build/ ${REDMINE_BUILD_DIR}/
-ADD scripts/runtime/ ${REDMINE_RUNTIME_DIR}/
-ADD scripts/entrypoint.sh /sbin/entrypoint.sh
+ADD overrides/build/ ${REDMINE_BUILD_DIR}/
+ADD overrides/runtime/ ${REDMINE_RUNTIME_DIR}/
+ADD overrides/entrypoint.sh /sbin/entrypoint.sh
 ADD chaperone.conf /etc/chaperone.d/chaperone.conf
-ADD startup.sh ${REDMINE_INSTALL_DIR}/startup.sh
-ADD setup_repo.sh ${REDMINE_INSTALL_DIR}/setup_repo.sh
+ADD initialize_redmine.sh ${REDMINE_INSTALL_DIR}/initialize_redmine.sh
 
 # Change redmine USERMAP
 RUN bash ${REDMINE_BUILD_DIR}/install.sh && \
@@ -57,31 +56,15 @@ RUN git clone https://github.com/tckz/redmine-wiki_graphviz_plugin.git plugins/w
     cd ${REDMINE_INSTALL_DIR} && su ${REDMINE_USER} -c "bundle install"
 
 #install eea cron tools and start services
-ADD helpdesk.sh ${REDMINE_INSTALL_DIR}/helpdesk.sh
-ADD taskman_email.sh ${REDMINE_INSTALL_DIR}/taskman_email.sh
-ADD redmine_ldapsync.sh ${REDMINE_INSTALL_DIR}/redmine_ldapsync.sh
-ADD redmine_mailerissues.sh ${REDMINE_INSTALL_DIR}/redmine_mailerissues.sh
-ADD redmine_githubsync.sh ${REDMINE_INSTALL_DIR}/redmine_githubsync.sh
-ADD cronjobs /tmp/cronjobs
+ADD crons/ ${REDMINE_INSTALL_DIR}/crons
 
-RUN chmod +x ${REDMINE_INSTALL_DIR}/startup.sh && \
-    chown ${REDMINE_USER}: ${REDMINE_INSTALL_DIR}/startup.sh && \
-    chmod +x ${REDMINE_INSTALL_DIR}/setup_repo.sh && \
-    chown ${REDMINE_USER}: ${REDMINE_INSTALL_DIR}/setup_repo.sh && \
-    chmod +x ${REDMINE_INSTALL_DIR}/helpdesk.sh && \
-    chown ${REDMINE_USER}: ${REDMINE_INSTALL_DIR}/helpdesk.sh && \
-    chmod +x ${REDMINE_INSTALL_DIR}/taskman_email.sh && \
-    chown ${REDMINE_USER}: ${REDMINE_INSTALL_DIR}/taskman_email.sh && \
-    chmod +x ${REDMINE_INSTALL_DIR}/redmine_ldapsync.sh && \
-    chown ${REDMINE_USER}: ${REDMINE_INSTALL_DIR}/redmine_ldapsync.sh && \
-    chmod +x ${REDMINE_INSTALL_DIR}/redmine_mailerissues.sh && \
-    chown ${REDMINE_USER}: ${REDMINE_INSTALL_DIR}/redmine_mailerissues.sh && \
-    chmod +x ${REDMINE_INSTALL_DIR}/redmine_githubsync.sh && \
-    chown ${REDMINE_USER}: ${REDMINE_INSTALL_DIR}/redmine_githubsync.sh && \
-    crontab -u ${REDMINE_USER} /tmp/cronjobs && rm -rf /tmp/cronjobs
+RUN chmod +x ${REDMINE_INSTALL_DIR}/initialize_redmine.sh && \
+    chown ${REDMINE_USER}: ${REDMINE_INSTALL_DIR}/initialize_redmine.sh && \
+    chmod +x ${REDMINE_INSTALL_DIR}/crons/* && \
+    chown -R ${REDMINE_USER}: ${REDMINE_INSTALL_DIR}/crons && \
+    crontab -u ${REDMINE_USER} ${REDMINE_INSTALL_DIR}/crons/cronjobs && rm -rf ${REDMINE_INSTALL_DIR}/crons/cronjobs
 
 USER ${REDMINE_USER}
 
 ENTRYPOINT ["/usr/local/bin/chaperone"]
 CMD []
-

@@ -13,6 +13,7 @@ case ${1} in
 
     case ${1} in
       app:start)
+        while ! nc -vz -w 3 $MYSQL_PORT_3306_TCP_ADDR $MYSQL_PORT_3306_TCP_PORT; do sleep 1; done
         migrate_database
         install_plugins
         install_themes
