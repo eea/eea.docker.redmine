@@ -3,9 +3,9 @@
 if [ -d "/install_plugins" ]; then
    for i in /install_plugins/*.zip; do
        unzip -d ${REDMINE_INSTALL_DIR}/plugins -o $i
-       #install plugins dependencies
-       /usr/local/bin/bundle install --without development test
    done
+   #install plugins dependencies
+   /usr/local/bin/bundle install --without development test
 fi
 
 # adding sync scripts
