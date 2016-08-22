@@ -48,8 +48,6 @@ RUN git clone https://github.com/tckz/redmine-wiki_graphviz_plugin.git plugins/w
     git clone https://github.com/thorin/redmine_ldap_sync.git plugins/redmine_ldap_sync && \
     # "HelpDesk" plugin
     git clone git://github.com/eea/redmine_helpdesk.git plugins/redmine_helpdesk && \
-    # "webmock" plugin - dependency for "redmine_crm_mailchimp"
-    git clone git://github.com/bblimke/webmock.git plugins/webmock && \
     # workaround to don't have as dependency the codeclimate-test-reporter gem
     echo > plugins/redmine_helpdesk/Gemfile && \
     #install the theme
