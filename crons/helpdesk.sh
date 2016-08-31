@@ -1,11 +1,3 @@
 #!/bin/bash
 
-REDMINE_PATH=/var/local/redmine
-LOG_DIR=$REDMINE_PATH/log
-
-source /var/local/environment/vars
-
-/usr/local/bin/bundle exec rake -f $REDMINE_PATH/Rakefile redmine:email:receive_imap RAILS_ENV="production" \
-host=$H_EMAIL_HOST username=$H_EMAIL_USER password=$H_EMAIL_PASS ssl=$H_EMAIL_SSL port=$H_EMAIL_PORT folder=$H_EMAIL_FOLDER \
-project=it-helpdesk move_on_success=processed move_on_failure=failed tracker=task no_permission_check=1 \
-unknown_user=accept >> $LOG_DIR/helpdesk.log 2>&1
+wget -O - https://taskman.eionet.europa.eu/helpdesk_mailer/get_mail?key=$HELPDESK_EMAIL_KEY
