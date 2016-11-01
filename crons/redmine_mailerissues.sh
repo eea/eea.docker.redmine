@@ -1,6 +1,9 @@
 #! /bin/bash
 
 REDMINE_PATH=/var/local/redmine
-LOG_DIR=$REDMINE_PATH/log
 
-/usr/local/bin/bundle exec rake -f $REDMINE_PATH/Rakefile reminder:exec RAILS_ENV="production" >> $LOG_DIR/mailerissues.log 2>&1
+if [[ -z "${LOG_FILE}" || ! -w "${LOG_FILE}" ]] ; then
+  LOG_FILE=/proc/1/fd/1
+fi
+
+echo "mailerissues - $(/usr/local/bin/bundle exec rake -f $REDMINE_PATH/Rakefile reminder:exec RAILS_ENV="production")" >> $LOG_FILE 2>&1
