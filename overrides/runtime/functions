@@ -9,6 +9,7 @@ REDMINE_CONFIG="${REDMINE_INSTALL_DIR}/config/configuration.yml"
 REDMINE_DATABASE_CONFIG="${REDMINE_INSTALL_DIR}/config/database.yml"
 REDMINE_UNICORN_CONFIG="${REDMINE_INSTALL_DIR}/config/unicorn.rb"
 REDMINE_SECRET_CONFIG="${REDMINE_INSTALL_DIR}/config/initializers/secret_token.rb"
+REDMINE_PRODUCTION_CONFIG="${REDMINE_INSTALL_DIR}/config/environments/production.rb"
 REDMINE_MEMCACHED_CONFIG="${REDMINE_INSTALL_DIR}/config/additional_environment.rb"
 REDMINE_NGINX_CONFIG="/etc/nginx/sites-enabled/redmine"
 
@@ -240,6 +241,11 @@ redmine_finalize_memcached_parameters() {
 
   MEMCACHE_PORT=${MEMCACHE_PORT:-11211}
   MEMCACHE_ENABLED=${MEMCACHE_ENABLED:-false}
+}
+
+redmine_configure_production() {
+    echo "Configuring redmine::production"
+    install_template ${REDMINE_USER}: environments/production.rb ${REDMINE_PRODUCTION_CONFIG} 0644
 }
 
 redmine_configure_memcached() {
@@ -840,6 +846,7 @@ configure_redmine() {
     REDMINE_LOG_DIR
 
   redmine_configure_database
+  redmine_configure_production
   redmine_configure_memcached
   redmine_configure_unicorn
   redmine_configure_secret_token
