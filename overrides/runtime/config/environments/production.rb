@@ -23,6 +23,6 @@ Rails.application.configure do
   # Print deprecation notices to the Rails logger.
   config.active_support.deprecation = :log
 
-  config.logger = Logger.new(STDOUT)
+  config.logger = Logger.new("/proc/1/fd/1")
   config.logger.level = Logger::INFO
 end
