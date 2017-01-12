@@ -60,7 +60,5 @@ RUN chmod +x ${REDMINE_INSTALL_DIR}/initialize_redmine.sh && \
     chown -R ${REDMINE_USER}: ${REDMINE_INSTALL_DIR}/crons && \
     crontab -u ${REDMINE_USER} ${REDMINE_INSTALL_DIR}/crons/cronjobs && rm -rf ${REDMINE_INSTALL_DIR}/crons/cronjobs
 
-USER ${REDMINE_USER}
-
 ENTRYPOINT ["/usr/local/bin/chaperone"]
 CMD []
