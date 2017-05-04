@@ -1,5 +1,4 @@
 */15 9-19 * * 1-5 cd /var/local/redmine/github/ && python redmine.py > /dev/null 2>&1
-*/5 * * * * /var/local/redmine/crons/helpdesk.sh > /dev/null 2>&1
-*/2 * * * * cd /var/local/redmine && ./crons/taskman_email.sh
+*/5 * * * * cd /var/local/redmine && ./crons/taskman_email.sh
 35 * * * * cd /var/local/redmine && ./crons/redmine_ldapsync.sh
 0 6 * * * cd /var/local/redmine && ./crons/redmine_mailerissues.sh
