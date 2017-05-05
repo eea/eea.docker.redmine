@@ -11,6 +11,8 @@ RUN apt-get update -q && \
     rm -rf /var/lib/apt/lists/*
     # ln -s ${WORKDIR} /var/local/redmine
 
+USER redmine
+
 RUN git clone -b RELEASE_0_7_0 https://github.com/tckz/redmine-wiki_graphviz_plugin.git ${REDMINE_PATH}/plugins/wiki_graphviz_plugin && \
     git clone -b Ver_0.3.0 https://github.com/masamitsu-murase/redmine_add_subversion_links.git ${REDMINE_PATH}/plugins/redmine_add_subversion_links && \
     git clone -b v2.2.0 https://github.com/koppen/redmine_github_hook.git ${REDMINE_PATH}/plugins/redmine_github_hook && \
@@ -27,4 +29,15 @@ RUN git clone -b RELEASE_0_7_0 https://github.com/tckz/redmine-wiki_graphviz_plu
     git checkout 66b23e9cc311a1dc8e4a928feaa0c3a6f631764a && \
     cd .. && \
     #install the theme
-    git clone git://github.com/eea/eea.redmine.theme.git ${REDMINE_PATH}/public/themes/eea.redmine.theme
+    git clone https://github.com/eea/eea.redmine.theme.git ${REDMINE_PATH}/public/themes/eea.redmine.theme
+
+    cd ${REDMINE_PATH} && su ${REDMINE_USER} -c "bundle install"
+
+    #install eea cron tools and start services
+    ADD crons/ ${REDMINE_PATH}/crons
+
+    RUN chmod +x ${REDMINE_PATH}/initialize_redmine.sh && \
+        chown ${REDMINE_USER}: ${REDMINE_PATH}/initialize_redmine.sh && \
+        chmod +x ${REDMINE_PATH}/crons/* && \
+        chown -R ${REDMINE_USER}: ${REDMINE_PATH}/crons && \
+        crontab -u ${REDMINE_USER} ${REDMINE_PATH}/crons/cronjobs && rm -rf ${REDMINE_PATH}/crons/cronjobs
