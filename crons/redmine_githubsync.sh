@@ -1,5 +1,5 @@
 #!/bin/bash
 
-REDMINE_PATH=/var/local/redmine
+REDMINE_GITHUB_PATH=/var/local/redmine/github/
 
-cd ${REDMINE_PATH}/github/ && python redmine.py > /dev/null 2>&1
+cd ${REDMINE_GITHUB_PATH}/github/ && python redmine.py > /dev/null 2>&1

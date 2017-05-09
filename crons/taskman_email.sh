@@ -1,6 +1,6 @@
 #!/bin/bash
 
-REDMINE_PATH=/var/local/redmine
+REDMINE_PATH=/usr/src/redmine
 
 source /var/local/environment/vars
 

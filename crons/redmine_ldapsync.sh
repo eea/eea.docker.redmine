@@ -1,6 +1,6 @@
 #!/bin/bash
 
-REDMINE_PATH=/var/local/redmine
+REDMINE_PATH=/usr/src/redmine
 
 if [[ -z "${LOG_FILE}" || ! -w "${LOG_FILE}" ]] ; then
   LOG_FILE=/proc/1/fd/1

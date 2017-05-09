@@ -3,10 +3,12 @@ FROM redmine:3.3.0
 MAINTAINER "European Environment Agency (EEA): IDM2 A-Team" <eea-edw-a-team-alerts@googlegroups.com>
 
 ENV REDMINE_PATH /usr/src/redmine
+ENV REDMINE_USER redmine
+ENV REDMINE_GITHUB_PATH /var/local/redmine/github/
 
 # install dependencies
 RUN apt-get update -q && \
-    apt-get install -y --no-install-recommends graphviz vim nano mc && \
+    apt-get install -y --no-install-recommends cron graphviz vim nano mc && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
     # ln -s ${WORKDIR} /var/local/redmine
@@ -29,15 +31,15 @@ RUN git clone -b RELEASE_0_7_0 https://github.com/tckz/redmine-wiki_graphviz_plu
     git checkout 66b23e9cc311a1dc8e4a928feaa0c3a6f631764a && \
     cd .. && \
     #install the theme
-    git clone https://github.com/eea/eea.redmine.theme.git ${REDMINE_PATH}/public/themes/eea.redmine.theme
+    git clone https://github.com/eea/eea.redmine.theme.git ${REDMINE_PATH}/public/themes/eea.redmine.theme && \
+    chown -R ${REDMINE_USER}: ${REDMINE_PATH}/plugins ${REDMINE_PATH}/public/themes
 
-    cd ${REDMINE_PATH} && su ${REDMINE_USER} -c "bundle install"
+#install eea cron tools and start services
+ADD crons/ ${REDMINE_PATH}/crons
+ADD sync_github/ ${REDMINE_GITHUB_PATH}
 
-    #install eea cron tools and start services
-    ADD crons/ ${REDMINE_PATH}/crons
+USER root
 
-    RUN chmod +x ${REDMINE_PATH}/initialize_redmine.sh && \
-        chown ${REDMINE_USER}: ${REDMINE_PATH}/initialize_redmine.sh && \
-        chmod +x ${REDMINE_PATH}/crons/* && \
-        chown -R ${REDMINE_USER}: ${REDMINE_PATH}/crons && \
-        crontab -u ${REDMINE_USER} ${REDMINE_PATH}/crons/cronjobs && rm -rf ${REDMINE_PATH}/crons/cronjobs
+RUN chmod +x ${REDMINE_PATH}/crons/* && \
+    chown -R ${REDMINE_USER}: ${REDMINE_PATH}/crons && \
+    crontab -u ${REDMINE_USER} ${REDMINE_PATH}/crons/cronjobs && rm -rf ${REDMINE_PATH}/crons/cronjobs
