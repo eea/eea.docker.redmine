@@ -11,7 +11,6 @@ RUN apt-get update -q && \
     apt-get install -y --no-install-recommends cron graphviz vim nano mc && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
-    # ln -s ${WORKDIR} /var/local/redmine
 
 RUN git clone -b RELEASE_0_7_0 https://github.com/tckz/redmine-wiki_graphviz_plugin.git ${REDMINE_PATH}/plugins/wiki_graphviz_plugin && \
     git clone -b Ver_0.3.0 https://github.com/masamitsu-murase/redmine_add_subversion_links.git ${REDMINE_PATH}/plugins/redmine_add_subversion_links && \
@@ -33,8 +32,8 @@ RUN git clone -b RELEASE_0_7_0 https://github.com/tckz/redmine-wiki_graphviz_plu
     chown -R ${REDMINE_USER}: ${REDMINE_PATH}/plugins ${REDMINE_PATH}/public/themes
 
 #install eea cron tools and start services
-ADD crons/ ${REDMINE_PATH}/crons
-ADD sync_github/ ${REDMINE_GITHUB_PATH}
+COPY crons/ ${REDMINE_PATH}/crons
+COPY sync_github/ ${REDMINE_GITHUB_PATH}
 
 RUN chmod +x ${REDMINE_PATH}/crons/* && \
     chown -R ${REDMINE_USER}: ${REDMINE_PATH}/crons && \
