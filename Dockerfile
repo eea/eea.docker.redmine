@@ -13,8 +13,6 @@ RUN apt-get update -q && \
     rm -rf /var/lib/apt/lists/*
     # ln -s ${WORKDIR} /var/local/redmine
 
-USER redmine
-
 RUN git clone -b RELEASE_0_7_0 https://github.com/tckz/redmine-wiki_graphviz_plugin.git ${REDMINE_PATH}/plugins/wiki_graphviz_plugin && \
     git clone -b Ver_0.3.0 https://github.com/masamitsu-murase/redmine_add_subversion_links.git ${REDMINE_PATH}/plugins/redmine_add_subversion_links && \
     git clone -b v2.2.0 https://github.com/koppen/redmine_github_hook.git ${REDMINE_PATH}/plugins/redmine_github_hook && \
@@ -37,8 +35,6 @@ RUN git clone -b RELEASE_0_7_0 https://github.com/tckz/redmine-wiki_graphviz_plu
 #install eea cron tools and start services
 ADD crons/ ${REDMINE_PATH}/crons
 ADD sync_github/ ${REDMINE_GITHUB_PATH}
-
-USER root
 
 RUN chmod +x ${REDMINE_PATH}/crons/* && \
     chown -R ${REDMINE_USER}: ${REDMINE_PATH}/crons && \
