@@ -2,7 +2,6 @@
 """ Update EEA repositories
 """
 import os
-import sys
 import argparse
 import json
 import urllib2
@@ -21,13 +20,13 @@ class Sync(object):
 
     """
     def __init__(
-            self,
-            folder='.',
-            github="https://api.github.com/orgs/eea/repos?per_page=100&page=%s",
-            redmine="https://taskman.eionet.europa.eu/sys/fetch_changesets?key=%s",
-            api_key="",
-            timeout=60,
-            loglevel=logging.INFO):
+        self,
+        folder='.',
+        github="https://api.github.com/orgs/eea/repos?per_page=100&page=%s",
+        redmine="https://taskman.eionet.europa.eu/sys/fetch_changesets?key=%s",
+        api_key="",
+        timeout=60,
+        loglevel=logging.INFO):
 
         self.folder = folder
         self.github = github
@@ -130,7 +129,7 @@ class Sync(object):
         """ Start syncing
         """
         self.repos = []
-        links = [self.github % count for count in range(1,100)]
+        links = [self.github % count for count in range(1, 100)]
         try:
             for link in links:
                 with contextlib.closing(
@@ -138,7 +137,7 @@ class Sync(object):
                     repos = json.loads(conn.read())
                     if not repos:
                         break
-                    self.logger.info('Adding repositories from %s',  link)
+                    self.logger.info('Adding repositories from %s', link)
                     self.repos.extend(repos)
             self.sync_repos()
         except Exception, err:
@@ -148,6 +147,7 @@ class Sync(object):
 
 
 def parse_args():
+    """ Parse arguments """
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -167,7 +167,7 @@ def parse_args():
         '-g', '--github',
         help="Github org repo template",
         default=os.environ.get(
-            "SYNC_GITHUB_URL"
+            "SYNC_GITHUB_URL",
             "https://api.github.com/orgs/eea/repos?per_page=100&page=%s")
     )
 
