@@ -1,5 +1,8 @@
 #!/bin/bash
-source /var/local/environment/vars
+
+if [ -e /var/local/environment/vars ]; then
+  source /var/local/environment/vars
+fi
 
 if [[ -z "${LOG_FILE}" || ! -w "${LOG_FILE}" ]] ; then
   LOG_FILE=/proc/1/fd/1
