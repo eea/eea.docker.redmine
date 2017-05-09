@@ -3,6 +3,7 @@
 """
 import os
 import sys
+import argparse
 import json
 import urllib2
 import logging
@@ -19,16 +20,18 @@ class Sync(object):
       - debug  Log all messages
 
     """
-    def __init__(self,
-        folder='.',
-        github="https://api.github.com/orgs/eea/repos?per_page=100&page=%s",
-        redmine='http://taskman.eionet.europa.eu/projects/zope/repository',
-        timeout=15,
-        loglevel=logging.INFO):
+    def __init__(
+            self,
+            folder='.',
+            github="https://api.github.com/orgs/eea/repos?per_page=100&page=%s",
+            redmine="https://taskman.eionet.europa.eu/sys/fetch_changesets?key=%s",
+            api_key="",
+            timeout=60,
+            loglevel=logging.INFO):
 
         self.folder = folder
         self.github = github
-        self.redmine = redmine
+        self.redmine = redmine % api_key
         self.timeout = timeout
         self.repos = []
 
@@ -45,7 +48,9 @@ class Sync(object):
         # Setup logger
         self._logger = logging.getLogger('redmine')
         self._logger.setLevel(self.loglevel)
-        fh = logging.FileHandler('redmine.log')
+        fh = logging.FileHandler('{folder}/redmine.log'.format(
+            folder=self.folder)
+        )
         fh.setLevel(logging.INFO)
         ch = logging.StreamHandler()
         ch.setLevel(logging.DEBUG)
@@ -57,18 +62,14 @@ class Sync(object):
         self._logger.addHandler(ch)
         return self._logger
 
-    def refresh_repo(self, name=''):
+    def refresh_repo(self):
         """ Refresh redmine repositories
         """
-        name = name.replace('.git', '').replace('.', '-')
-        name = '/'.join((self.redmine, name))
-
-        self.logger.info('Refreshing repo: %s', name)
-
+        self.logger.info('Fetching changesets on all repos')
         try:
             with contextlib.closing(
-                urllib2.urlopen(name, timeout=self.timeout)) as conn:
-                self.logger.debug(conn.read())
+                    urllib2.urlopen(self.redmine, timeout=self.timeout)) as con:
+                self.logger.debug(con.read())
         except urllib2.HTTPError, err:
             self.logger.warn(err)
         except Exception, err:
@@ -78,26 +79,30 @@ class Sync(object):
         """ Update repo
         """
         self.logger.info('Updating repo: %s', name)
-        cmd = 'cd %(name)s && git fetch --all' % {'name': name}
+        cmd = 'cd {folder}/{name} && git fetch --all'.format(
+            folder=self.folder,
+            name=name
+        )
         process = Popen(cmd, shell=True,
                         stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True)
         res = process.stdout.read()
         self.logger.debug(res)
 
-        self.refresh_repo(name)
-
     def sync_repo(self, repo):
         """ Sync repo
         """
-        existing = os.listdir('.')
+        existing = os.listdir(self.folder)
 
         name = repo.get('name', '') + '.git'
-        self.logger.info('Syncing repo: %s', name)
-
         if name in existing:
             return self.update_repo(name)
 
-        cmd = 'git clone --mirror %(url)s' % {'url': repo.get('clone_url', '')}
+        self.logger.info('Syncing repo: %s', name)
+        cmd = 'git clone --mirror {url} {folder}/{name}'.format(
+            url=repo.get('clone_url', ''),
+            folder=self.folder,
+            name=name
+        )
 
         process = Popen(cmd, shell=True,
                         stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True)
@@ -113,6 +118,7 @@ class Sync(object):
         start = datetime.now()
         for repo in self.repos:
             self.sync_repo(repo)
+
         # Refresh default redmine repository
         self.refresh_repo()
 
@@ -128,7 +134,7 @@ class Sync(object):
         try:
             for link in links:
                 with contextlib.closing(
-                    urllib2.urlopen(link, timeout=self.timeout)) as conn:
+                        urllib2.urlopen(link, timeout=self.timeout)) as conn:
                     repos = json.loads(conn.read())
                     if not repos:
                         break
@@ -140,16 +146,69 @@ class Sync(object):
 
     __call__ = start
 
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        '-v', '--verbose',
+        action='store_true',
+        help="Increase logging verbosity")
+
+    parser.add_argument(
+        '-o', '--output',
+        help="Destination folder where to output github repos",
+        default=os.environ.get(
+            "SYNC_FOLDER",
+            ".")
+    )
+
+    parser.add_argument(
+        '-g', '--github',
+        help="Github org repo template",
+        default=os.environ.get(
+            "SYNC_GITHUB_URL"
+            "https://api.github.com/orgs/eea/repos?per_page=100&page=%s")
+    )
+
+    parser.add_argument(
+        '-r', '--redmine',
+        help="Redmine fetch_changesets template",
+        default=os.environ.get(
+            "SYNC_REDMINE_URL",
+            "https://taskman.eionet.europa.eu/sys/fetch_changesets?key=%s")
+    )
+
+    parser.add_argument(
+        '-k', '--key',
+        help="Redmine API Key",
+        default=os.environ.get(
+            "SYNC_API_KEY",
+            "")
+    )
+
+    parser.add_argument(
+        '-t', '--timeout',
+        help="Timeout",
+        type=int,
+        default=60)
+
+    return parser.parse_args()
+
+
+def main():
+    """ Main
+    """
+    args = parse_args()
+
+    Sync(
+        folder=args.output,
+        github=args.github,
+        redmine=args.redmine,
+        api_key=args.key,
+        timeout=args.timeout,
+        loglevel=logging.DEBUG if args.verbose else logging.INFO
+    ).start()
+
 if __name__ == "__main__":
-    LOG = len(sys.argv) > 1 and sys.argv[1] or 'info'
-    if LOG not in ('debug', 'info'):
-        print Sync.__doc__
-        sys.exit(1)
-
-    if LOG.lower() == 'info':
-        LOGLEVEL = logging.INFO
-    else:
-        LOGLEVEL = logging.DEBUG
-
-    sync = Sync(loglevel=LOGLEVEL)
-    sync.start()
+    main()
