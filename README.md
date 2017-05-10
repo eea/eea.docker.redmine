@@ -1,6 +1,6 @@
 ## EEA Redmine docker setup
 
-Taskman is a web application based on Redmine that facilitates Agile project management for EEA and Eionet software projects. It comes with some plugins and specific Eionet redmine theme.
+Taskman is a web application based on Redmine that facilitates Agile project management for EEA and Eionet software projects. It comes with some plugins and specific Eionet Redmine theme.
 
 ### Table of Contents
 
@@ -17,11 +17,11 @@ Taskman is a web application based on Redmine that facilitates Agile project man
 
 ### Introduction
 
-Dockerfile to build a [Redmine](http://www.redmine.org/) container image based on [sameersbn/docker-redmine](https://github.com/sameersbn/docker-redmine)
+Dockerfile to build a [Redmine](http://www.redmine.org/) container image based on [the official Redmine Docker image](https://hub.docker.com/_/redmine)
 
 #### Version
 
-See (https://github.com/sameersbn/docker-redmine#version)
+See (https://hub.docker.com/_/redmine)
 
 ### Installation
 
@@ -80,19 +80,7 @@ You now have the Redmine application up and ready for testing. If you want to us
 
 ### Configuration
 
-See (https://github.com/sameersbn/docker-redmine#configuration)
-
-### Plugins
-
-See (https://github.com/sameersbn/docker-redmine#plugins)
-
-### Themes
-
-See (https://github.com/sameersbn/docker-redmine#themes)
-
-### Shell Access
-
-See (https://github.com/sameersbn/docker-redmine#shell-access)
+See (https://hub.docker.com/_/redmine)
 
 ### Upgrading
 
@@ -137,3 +125,4 @@ docker exec -i mysql-redmine mysql -h localhost redmine_production < redmine.sql
   * http://www.redmine.org/
   * http://www.redmine.org/projects/redmine/wiki/Guide
   * http://www.redmine.org/projects/redmine/wiki/RedmineInstall
+  * https://hub.docker.com/_/redmine
