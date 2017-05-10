@@ -6,10 +6,11 @@ ENV REDMINE_PATH=/usr/src/redmine \
 
 #install eea cron tools
 COPY crons/ ${REDMINE_LOCAL_PATH}/crons
+COPY install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
 
 # install dependencies and plugins
 RUN apt-get update -q \
- && apt-get install -y --no-install-recommends cron graphviz vim nano mc \
+ && apt-get install -y --no-install-recommends cron unzip graphviz vim nano mc \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* \
  && mkdir -p ${REDMINE_LOCAL_PATH}/github \
@@ -26,6 +27,8 @@ RUN apt-get update -q \
  && git checkout 66b23e9cc311a1dc8e4a928feaa0c3a6f631764a \
  && cd .. \
  && git clone https://github.com/eea/eea.redmine.theme.git ${REDMINE_PATH}/public/themes/eea.redmine.theme \
+ && chmod +x ${REDMINE_PATH}/install_plugins.sh \
+ && chown redmine:redmine ${REDMINE_PATH}/install_plugins.sh \
  && chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH} \
  && crontab -u redmine ${REDMINE_LOCAL_PATH}/crons/cronjobs \
  && mv /docker-entrypoint.sh /redmine-entrypoint.sh
