@@ -30,6 +30,7 @@ RUN apt-get update -q \
  && chmod +x ${REDMINE_PATH}/install_plugins.sh \
  && chown redmine:redmine ${REDMINE_PATH}/install_plugins.sh \
  && chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH} \
+ && chmod +x ${REDMINE_LOCAL_PATH}/crons/redmine.py \
  && crontab -u redmine ${REDMINE_LOCAL_PATH}/crons/cronjobs \
  && mv /docker-entrypoint.sh /redmine-entrypoint.sh
 
