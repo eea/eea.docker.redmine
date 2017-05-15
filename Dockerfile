@@ -31,7 +31,6 @@ RUN apt-get update -q \
  && cd .. \
  && git clone https://github.com/eea/eea.redmine.theme.git ${REDMINE_PATH}/public/themes/eea.redmine.theme \
  && chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH} \
- && chmod +x ${REDMINE_LOCAL_PATH}/crons/redmine.py \
  && mv /docker-entrypoint.sh /redmine-entrypoint.sh
 
 COPY docker-entrypoint.sh /
