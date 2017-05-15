@@ -4,16 +4,16 @@ LABEL maintainer="EEA: IDM2 A-Team <eea-edw-a-team-alerts@googlegroups.com>"
 ENV REDMINE_PATH=/usr/src/redmine \
     REDMINE_LOCAL_PATH=/var/local/redmine
 
-#install eea cron tools
+# Install eea cron tools
 COPY crons/ ${REDMINE_LOCAL_PATH}/crons
 COPY install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
 
-#add email conf
+# Add email configuration
 COPY configuration.yml ${REDMINE_PATH}/config/configuration.yml
 RUN chmod +r ${REDMINE_PATH}/config/configuration.yml \
  && chown redmine:redmine ${REDMINE_PATH}/config/configuration.yml
 
-# install dependencies and plugins
+# Install dependencies and plugins
 RUN apt-get update -q \
  && apt-get install -y --no-install-recommends cron unzip graphviz vim nano mc \
  && apt-get clean \
