@@ -10,8 +10,6 @@ COPY install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
 
 # Add email configuration
 COPY configuration.yml ${REDMINE_PATH}/config/configuration.yml
-RUN chmod +r ${REDMINE_PATH}/config/configuration.yml \
- && chown redmine:redmine ${REDMINE_PATH}/config/configuration.yml
 
 # Install dependencies and plugins
 RUN apt-get update -q \
@@ -32,8 +30,6 @@ RUN apt-get update -q \
  && git checkout 66b23e9cc311a1dc8e4a928feaa0c3a6f631764a \
  && cd .. \
  && git clone https://github.com/eea/eea.redmine.theme.git ${REDMINE_PATH}/public/themes/eea.redmine.theme \
- && chmod +x ${REDMINE_PATH}/install_plugins.sh \
- && chown redmine:redmine ${REDMINE_PATH}/install_plugins.sh \
  && chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH} \
  && chmod +x ${REDMINE_LOCAL_PATH}/crons/redmine.py \
  && mv /docker-entrypoint.sh /redmine-entrypoint.sh
