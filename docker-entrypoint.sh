@@ -24,7 +24,7 @@ else
 fi
 
 # Start crond
-crontab -u redmine ${REDMINE_LOCAL_PATH}/crons/redmine_github_sync.sh
+crontab -u redmine ${REDMINE_LOCAL_PATH}/crons/cronjobs
 cron
 
 # Run redmine entry-point
