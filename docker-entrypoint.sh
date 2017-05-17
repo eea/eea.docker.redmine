@@ -3,7 +3,7 @@ set -e
 
 # Overwrite mail subject for dev env
 if [ ! -z "$DEVELOPMENT" ]; then
-  yes | cp overrides/runtime/app/models/mailer.rb ${REDMINE_PATH}/app/models/mailer.rb
+  yes | cp ${REDMINE_PATH}/overrides/runtime/app/models/mailer.rb ${REDMINE_PATH}/app/models/mailer.rb
 fi
 
 # Add env to cronjobs

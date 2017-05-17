@@ -7,6 +7,7 @@ ENV REDMINE_PATH=/usr/src/redmine \
 # Install eea cron tools
 COPY crons/ ${REDMINE_LOCAL_PATH}/crons
 COPY install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
+COPY overrides/ ${REDMINE_PATH}/overrides
 
 # Add email configuration
 COPY configuration.yml ${REDMINE_PATH}/config/configuration.yml
