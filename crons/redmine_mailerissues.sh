@@ -15,4 +15,4 @@ export BUNDLE_APP_CONFIG=/usr/local/bundle
 export BUNDLE_BIN=/usr/local/bundle/bin
 export BUNDLE_PATH=/usr/local/bundle
 
-echo "mailerissues - $(bin/rake -f Rakefile reminder:exec[test] RAILS_ENV=production)" >> $LOG_FILE 2>&1
+echo "mailerissues - $(bin/rake -f Rakefile reminder:exec RAILS_ENV=production)" >> $LOG_FILE 2>&1
