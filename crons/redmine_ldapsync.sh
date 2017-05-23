@@ -6,4 +6,13 @@ if [[ -z "${LOG_FILE}" || ! -w "${LOG_FILE}" ]] ; then
   LOG_FILE=/proc/1/fd/1
 fi
 
-echo "ldapsync - $(/usr/local/bin/bundle exec rake -f $REDMINE_PATH/Rakefile --silent redmine:plugins:ldap_sync:sync_users RAILS_ENV="production")" >> $LOG_FILE 2>&1
+cd $REDMINE_PATH
+
+export PATH=/usr/local/bin:$PATH
+export GEM_HOME=/usr/local/bundle
+export GEM_PATH=/usr/local/bundle/gems:/usr/local/lib/ruby/gems/2.2.0
+export BUNDLE_APP_CONFIG=/usr/local/bundle
+export BUNDLE_BIN=/usr/local/bundle/bin
+export BUNDLE_PATH=/usr/local/bundle
+
+echo "ldapsync - $(bin/rake -f Rakefile redmine:plugins:ldap_sync:sync_users RAILS_ENV="production")" >> $LOG_FILE 2>&1
