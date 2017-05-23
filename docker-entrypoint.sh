@@ -1,10 +1,10 @@
 #!/bin/bash
 set -e
 
-# Overwrite mail subject for dev env
-if [ ! -z "$DEVELOPMENT" ]; then
-  yes | cp ${REDMINE_PATH}/overrides/runtime/app/models/mailer.rb ${REDMINE_PATH}/app/models/mailer.rb
-fi
+# Overwrites for dev env
+# if [ ! -z "$DEVELOPMENT" ]; then
+#
+# fi
 
 # Add env to cronjobs
 if [ ! -z "$SYNC_API_KEY" ]; then
