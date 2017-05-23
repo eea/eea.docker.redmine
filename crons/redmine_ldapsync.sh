@@ -15,4 +15,4 @@ export BUNDLE_APP_CONFIG=/usr/local/bundle
 export BUNDLE_BIN=/usr/local/bundle/bin
 export BUNDLE_PATH=/usr/local/bundle
 
-echo "ldapsync - $(bin/rake -f Rakefile redmine:plugins:ldap_sync:sync_users RAILS_ENV="production")" >> $LOG_FILE 2>&1
+echo "ldapsync - $(bin/rake -f Rakefile redmine:plugins:ldap_sync:sync_all RAILS_ENV="production")" >> $LOG_FILE 2>&1
