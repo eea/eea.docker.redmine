@@ -1,5 +1,5 @@
 */15 9-19 * * 1-5 cd /var/local/redmine && ./crons/redmine_github_sync.sh
-#0,5,10,15,20,25,30,35,40,45,50,55 * * * * /var/local/redmine/crons/helpdesk.sh > /dev/null 2>&1
+*/5 * * * * cd /var/local/redmine && ./crons/helpdesk.sh
 */5 * * * * cd /var/local/redmine && ./crons/taskman_email.sh
-35 * * * * cd /var/local/redmine && ./crons/redmine_ldapsync.sh
+0 0,2,4,6,8,10,12,14,16,18,20,22 * * * cd /var/local/redmine && ./crons/redmine_ldapsync.sh
 0 6 * * * cd /var/local/redmine && ./crons/redmine_mailerissues.sh
