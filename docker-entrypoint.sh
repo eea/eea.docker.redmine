@@ -1,11 +1,6 @@
 #!/bin/bash
 set -e
 
-# Overwrites for dev env
-# if [ ! -z "$DEVELOPMENT" ]; then
-#
-# fi
-
 # Add env to cronjobs
 if [ ! -z "$SYNC_API_KEY" ]; then
   sed -i "s|SYNC_API_KEY|$SYNC_API_KEY|" ${REDMINE_LOCAL_PATH}/crons/redmine_github_sync.sh
