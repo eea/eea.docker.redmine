@@ -23,6 +23,7 @@ RUN apt-get update -q \
  && git clone -b v2.2.0 https://github.com/koppen/redmine_github_hook.git ${REDMINE_PATH}/plugins/redmine_github_hook \
  && git clone -b 0.0.2 https://github.com/bluezio/redmine_wiki_backlinks.git ${REDMINE_PATH}/plugins/redmine_wiki_backlinks \
  && git clone -b 0.0.8 https://github.com/bdemirkir/sidebar_hide.git ${REDMINE_PATH}/plugins/sidebar_hide \
+ && git clone -b 0.1.2 https://github.com/akiko-pusu/redmine_banner.git ${REDMINE_PATH}/plugins/redmine_banner \
  && git clone https://github.com/Hopebaytech/redmine_mail_reminder.git ${REDMINE_PATH}/plugins/redmine_mail_reminder \
  && cd ${REDMINE_PATH}/plugins/redmine_mail_reminder \
  && git checkout 394ec7cefa6ba2ab6865fb15b694e23b3b9aeda9 \
