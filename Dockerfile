@@ -37,6 +37,5 @@ COPY configuration.yml ${REDMINE_PATH}/config/configuration.yml
 COPY docker-setup.sh /
 COPY chaperone.conf /etc/chaperone.d/chaperone.conf
 
-WORKDIR /var/local/redmine
 ENTRYPOINT ["/usr/local/bin/chaperone"]
 CMD ["--user", "redmine"]
