@@ -34,8 +34,7 @@ COPY overrides/ ${REDMINE_PATH}/overrides
 
 # Add email configuration
 COPY configuration.yml ${REDMINE_PATH}/config/configuration.yml
-COPY docker-setup.sh /
 COPY chaperone.conf /etc/chaperone.d/chaperone.conf
 
 ENTRYPOINT ["/usr/local/bin/chaperone"]
-CMD ["--user", "redmine"]
+CMD []
