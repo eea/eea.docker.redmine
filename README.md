@@ -43,31 +43,35 @@ docker build --tag="$USER/redmine" .
 
 The quickest way to get started is using [docker-compose](https://docs.docker.com/compose/).
 
-Alternately, you can manually launch the `redmine` container and the supporting `postgresql` container by following this two step guide.
+Alternately, you can manually launch the `redmine` container and the supporting database container (MySQL or PostgreSQL), by following this two step guide.
 
-Step 1. Launch a postgresql container
+Step 1. Launch a database container
 
+PostgreSQL
 ```bash
-docker run --name=postgresql-redmine -d \
-  --env='DB_NAME=redmine_production' \
-  --env='DB_USER=redmine' --env='DB_PASS=password' \
-  --volume=/srv/docker/redmine/postgresql:/var/lib/postgresql \
-  sameersbn/postgresql:9.4
+docker run -d --name some-postgres -e POSTGRES_PASSWORD=secret -e POSTGRES_USER=redmine postgres
+```
+
+MySQL
+```bash
+docker run -d --name some-mysql -e MYSQL_ROOT_PASSWORD=secret -e MYSQL_DATABASE=redmine mysql
 ```
 
 Step 2. Launch the redmine container
 
+PostgreSQL
 ```bash
-docker run --name=redmine -d \
-  --link=postgresql-redmine:postgresql --publish=10083:80 \
-  --env='REDMINE_PORT=10083' \
-  --volume=/srv/docker/redmine/redmine:/home/redmine/data \
-  eeacms/redmine:latest
+docker run -d --name some-redmine --link some-postgres:postgres redmine
+```
+
+MySQL
+```bash
+docker run -d --name some-redmine --link some-mysql:mysql redmine
 ```
 
 **NOTE**: Please allow a minute or two for the Redmine application to start.
 
-Point your browser to `http://localhost:10083` and login using the default username and password:
+Point your browser to `http://localhost:8080` and login using the default username and password:
 
 * username: **admin**
 * password: **admin**
@@ -95,8 +99,8 @@ docker pull eeacms/redmine
 **Step 2**: Stop and remove the currently running image
 
 ```bash
-docker stop redmine
-docker rm redmine
+docker stop some-redmine
+docker rm some-redmine
 ```
 
 **Step 3**: Backup the database in case something goes wrong.
