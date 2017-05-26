@@ -32,11 +32,13 @@ RUN apt-get update -q \
 COPY crons/ ${REDMINE_LOCAL_PATH}/crons
 COPY install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
 COPY overrides/ ${REDMINE_PATH}/overrides
+COPY chaperone.conf /etc/chaperone.d/chaperone.conf
+
+# Send Redmine logs on STDOT
+COPY config/additional_environment.rb ${REDMINE_PATH}/config/additional_environment.rb
 
 # Add email configuration
 COPY config/configuration.yml ${REDMINE_PATH}/config/configuration.yml
-COPY config/additional_environment.rb ${REDMINE_PATH}/config/additional_environment.rb
-COPY chaperone.conf /etc/chaperone.d/chaperone.conf
 
 ENTRYPOINT ["/usr/local/bin/chaperone"]
 CMD []
