@@ -34,7 +34,7 @@ COPY install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
 COPY overrides/ ${REDMINE_PATH}/overrides
 COPY chaperone.conf /etc/chaperone.d/chaperone.conf
 
-# Send Redmine logs on STDOT
+# Send Redmine logs on STDOUT/STDERR
 COPY config/additional_environment.rb ${REDMINE_PATH}/config/additional_environment.rb
 
 # Add email configuration
