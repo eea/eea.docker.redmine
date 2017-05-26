@@ -47,17 +47,11 @@ class Sync(object):
         # Setup logger
         self._logger = logging.getLogger('redmine')
         self._logger.setLevel(self.loglevel)
-        fh = logging.FileHandler('{folder}/redmine.log'.format(
-            folder=self.folder)
-        )
-        fh.setLevel(logging.INFO)
         ch = logging.StreamHandler()
         ch.setLevel(logging.DEBUG)
         formatter = logging.Formatter(
             '%(asctime)s - %(lineno)3d - %(levelname)7s - %(message)s')
-        fh.setFormatter(formatter)
         ch.setFormatter(formatter)
-        self._logger.addHandler(fh)
         self._logger.addHandler(ch)
         return self._logger
 

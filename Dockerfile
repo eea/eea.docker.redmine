@@ -34,7 +34,8 @@ COPY install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
 COPY overrides/ ${REDMINE_PATH}/overrides
 
 # Add email configuration
-COPY configuration.yml ${REDMINE_PATH}/config/configuration.yml
+COPY config/configuration.yml ${REDMINE_PATH}/config/configuration.yml
+COPY config/additional_environment.rb ${REDMINE_PATH}/config/additional_environment.rb
 COPY chaperone.conf /etc/chaperone.d/chaperone.conf
 
 ENTRYPOINT ["/usr/local/bin/chaperone"]
