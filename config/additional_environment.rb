@@ -1,2 +1,2 @@
-   config.logger = Logger.new("/proc/1/fd/1")
+   config.logger = Logger.new(STDOUT)
    config.logger.level = Logger::INFO
