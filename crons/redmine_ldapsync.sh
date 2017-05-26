@@ -1,14 +1,4 @@
 #!/bin/bash
 
 REDMINE_PATH=/usr/src/redmine
-
-cd $REDMINE_PATH
-
-export PATH=/usr/local/bin:$PATH
-export GEM_HOME=/usr/local/bundle
-export GEM_PATH=/usr/local/bundle/gems:/usr/local/lib/ruby/gems/2.2.0
-export BUNDLE_APP_CONFIG=/usr/local/bundle
-export BUNDLE_BIN=/usr/local/bundle/bin
-export BUNDLE_PATH=/usr/local/bundle
-
-echo "ldapsync - $(bin/rake -f Rakefile redmine:plugins:ldap_sync:sync_all RAILS_ENV="production")"
+echo "ldapsync - $(/usr/local/bin/bundle exec rake -f $REDMINE_PATH/Rakefile redmine:plugins:ldap_sync:sync_users RAILS_ENV="production")"
