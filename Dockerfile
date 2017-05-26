@@ -30,7 +30,7 @@ RUN apt-get update -q \
 
 # Install eea cron tools
 COPY crons/ ${REDMINE_LOCAL_PATH}/crons
-COPY install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
+COPY config/install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
 COPY chaperone.conf /etc/chaperone.d/chaperone.conf
 
 # Send Redmine logs on STDOUT/STDERR
