@@ -106,12 +106,12 @@ docker rm some-redmine
 **Step 3**: Backup the database in case something goes wrong.
 
 ```bash
-mysqldump -h <mysql-server-ip> -uredmine -p --add-drop-table redmine_production > redmine.sql
+mysqldump -h <mysql-server-ip> -uredmine -p --add-drop-table redmine > redmine.sql
 ```
 
 With docker
 ```bash
-docker exec mysql-redmine mysqldump -h localhost --add-drop-table redmine_production > redmine.sql
+docker exec mysql-redmine mysqldump -h localhost --add-drop-table redmine > redmine.sql
 ```
 
 **Step 4**: Start the image
@@ -123,7 +123,7 @@ docker run --name=redmine -d [OPTIONS] eeacms/redmine
 **Step 5**: Restore database from before
 
 ```bash
-docker exec -i mysql-redmine mysql -h localhost redmine_production < redmine.sql
+docker exec -i mysql-redmine mysql -h localhost redmine < redmine.sql
 ```
 ### References
   * http://www.redmine.org/
