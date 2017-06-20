@@ -28,6 +28,9 @@ RUN apt-get update -q \
  && git clone https://github.com/eea/eea.redmine.theme.git ${REDMINE_PATH}/public/themes/eea.redmine.theme \
  && chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH}
 
+# Install gems
+echo 'gem "dalli", "~> 2.7.6"' >> ${REDMINE_PATH}/Gemfile
+
 # Install eea cron tools
 COPY crons/ ${REDMINE_LOCAL_PATH}/crons
 COPY config/install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
