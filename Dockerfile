@@ -29,7 +29,7 @@ RUN apt-get update -q \
  && chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH}
 
 # Install gems
-echo 'gem "dalli", "~> 2.7.6"' >> ${REDMINE_PATH}/Gemfile
+RUN echo 'gem "dalli", "~> 2.7.6"' >> ${REDMINE_PATH}/Gemfile
 
 # Install eea cron tools
 COPY crons/ ${REDMINE_LOCAL_PATH}/crons
