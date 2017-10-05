@@ -19,7 +19,7 @@ RUN apt-get update -q \
  && git clone -b 0.1.2 https://github.com/akiko-pusu/redmine_banner.git ${REDMINE_PATH}/plugins/redmine_banner \
  && git clone https://github.com/Hopebaytech/redmine_mail_reminder.git ${REDMINE_PATH}/plugins/redmine_mail_reminder \
  && cd ${REDMINE_PATH}/plugins/redmine_mail_reminder \
- && git checkout 394ec7cefa6ba2ab6865fb15b694e23b3b9aeda9 \
+ && git checkout e27585fb3ddb505befcb2614eaeab27755917882 \
  && cd .. \
  && git clone https://github.com/thorin/redmine_ldap_sync.git ${REDMINE_PATH}/plugins/redmine_ldap_sync \
  && cd ${REDMINE_PATH}/plugins/redmine_ldap_sync \
