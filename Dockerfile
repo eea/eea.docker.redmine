@@ -6,7 +6,7 @@ ENV REDMINE_PATH=/usr/src/redmine \
 
 # Install dependencies and plugins
 RUN apt-get update -q \
- && apt-get install -y --no-install-recommends unzip graphviz vim python3-pip \
+ && apt-get install -y --no-install-recommends unzip graphviz vim python3-pip cron \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* \
  && pip3 install chaperone \
@@ -33,7 +33,11 @@ RUN echo 'gem "dalli", "~> 2.7.6"' >> ${REDMINE_PATH}/Gemfile
 # Install eea cron tools
 COPY crons/ ${REDMINE_LOCAL_PATH}/crons
 COPY config/install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
-COPY chaperone.conf /etc/chaperone.d/chaperone.conf
+COPY redmine_jobs /etc/cron.d/redmine_jobs
+RUN chmod 0644  /etc/cron.d/redmine_jobs
+
+# Add crontab file in the cron directory
+RUN crontab /etc/cron.d/redmine_jobs
 
 # Send Redmine logs on STDOUT/STDERR
 COPY config/additional_environment.rb ${REDMINE_PATH}/config/additional_environment.rb
@@ -41,5 +45,11 @@ COPY config/additional_environment.rb ${REDMINE_PATH}/config/additional_environm
 # Add email configuration
 COPY config/configuration.yml ${REDMINE_PATH}/config/configuration.yml
 
-ENTRYPOINT ["/usr/local/bin/chaperone"]
+COPY start_redmine.sh start_redmine.sh
+RUN chmod 0766 start_redmine.sh
+
+
+ENTRYPOINT ["./start_redmine.sh"]
+
 CMD []
+
