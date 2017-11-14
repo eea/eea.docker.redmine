@@ -2,5 +2,4 @@
 0 6 * * * /var/local/redmine/crons/redmine_github_sync.sh  >/proc/1/fd/1 2>/proc/1/fd/2
 */5 * * * * /var/local/redmine/crons/helpdesk.sh >/proc/1/fd/1 2>/proc/1/fd/2
 */5 * * * * /var/local/redmine/crons/taskman_email.sh >/proc/1/fd/1 2>/proc/1/fd/2
-0 2 * * * /var/local/redmine/crons/redmine_ldapsync.sh >/proc/1/fd/1 2>/proc/1/fd/2
-0 5 * * * /var/local/redmine/crons/redmine_mailerissues.sh >/proc/1/fd/1 2>/proc/1/fd/2
+0 2 * * *  /var/local/redmine/crons/redmine_ldapsync.sh >/proc/1/fd/1 2>/proc/1/fd/2

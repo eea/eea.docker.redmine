@@ -6,7 +6,7 @@ ENV REDMINE_PATH=/usr/src/redmine \
 
 # Install dependencies and plugins
 RUN apt-get update -q \
- && apt-get install -y --no-install-recommends unzip graphviz vim python3-pip cron \
+ && apt-get install -y --no-install-recommends unzip graphviz vim python3-pip cron rsyslog \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* \
  && pip3 install chaperone \
@@ -34,10 +34,13 @@ RUN echo 'gem "dalli", "~> 2.7.6"' >> ${REDMINE_PATH}/Gemfile
 COPY crons/ ${REDMINE_LOCAL_PATH}/crons
 COPY config/install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
 COPY redmine_jobs /etc/cron.d/redmine_jobs
-RUN chmod 0644  /etc/cron.d/redmine_jobs
+RUN chmod 0644  /etc/cron.d/redmine_jobs \
+ && crontab /etc/cron.d/redmine_jobs \
+ && sed -i '/#cron./c\cron.*                          \/proc\/1\/fd\/1'  /etc/rsyslog.conf 
 
-# Add crontab file in the cron directory
-RUN crontab /etc/cron.d/redmine_jobs
+RUN echo "export REDMINE_PATH=$REDMINE_PATH\nexport BUNDLE_PATH=$BUNDLE_PATH\nexport BUNDLE_APP_CONFIG=$BUNDLE_PATH\nexport PATH=$BUNDLE_PATH/bin:$PATH"  > ${REDMINE_PATH}/.profile \
+ && chown redmine:redmine ${REDMINE_PATH}/.profile \
+ && usermod -d ${REDMINE_PATH} redmine
 
 # Send Redmine logs on STDOUT/STDERR
 COPY config/additional_environment.rb ${REDMINE_PATH}/config/additional_environment.rb
@@ -45,11 +48,16 @@ COPY config/additional_environment.rb ${REDMINE_PATH}/config/additional_environm
 # Add email configuration
 COPY config/configuration.yml ${REDMINE_PATH}/config/configuration.yml
 
-COPY start_redmine.sh start_redmine.sh
-RUN chmod 0766 start_redmine.sh
+COPY start_redmine.sh /start_redmine.sh
+RUN chmod 0766 /start_redmine.sh
 
 
-ENTRYPOINT ["./start_redmine.sh"]
+ENTRYPOINT ["/start_redmine.sh"]
 
 CMD []
+
+
+#ENTRYPOINT []
+
+#CMD ["/docker-entrypoint.sh", "rails", "server", "-b", "0.0.0.0"]
 
