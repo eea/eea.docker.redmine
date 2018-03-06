@@ -1,4 +1,4 @@
-FROM redmine:3.4.2
+FROM redmine:3.4.4
 LABEL maintainer="EEA: IDM2 A-Team <eea-edw-a-team-alerts@googlegroups.com>"
 
 ENV REDMINE_PATH=/usr/src/redmine \
@@ -33,10 +33,15 @@ RUN echo 'gem "dalli", "~> 2.7.6"' >> ${REDMINE_PATH}/Gemfile
 # Install eea cron tools
 COPY crons/ ${REDMINE_LOCAL_PATH}/crons
 COPY config/install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
+COPY plugins.cfg ${REDMINE_PATH}/plugins.cfg
+
 COPY redmine_jobs /etc/cron.d/redmine_jobs
 RUN chmod 0644  /etc/cron.d/redmine_jobs \
  && crontab /etc/cron.d/redmine_jobs \
- && sed -i '/#cron./c\cron.*                          \/proc\/1\/fd\/1'  /etc/rsyslog.conf 
+ && sed -i '/#cron./c\cron.*                          \/proc\/1\/fd\/1'  /etc/rsyslog.conf \
+ && sed -i '/#$ModLoad imudp/c\$ModLoad imudp'  /etc/rsyslog.conf \
+ && sed -i '/#$UDPServerRun/c\$UDPServerRun 514'  /etc/rsyslog.conf \
+ && sed -i '/$UDPServerRun 514/a $UDPServerAddress 127.0.0.1' /etc/rsyslog.conf 
 
 RUN echo "export REDMINE_PATH=$REDMINE_PATH\nexport BUNDLE_PATH=$BUNDLE_PATH\nexport BUNDLE_APP_CONFIG=$BUNDLE_PATH\nexport PATH=$BUNDLE_PATH/bin:$PATH"  > ${REDMINE_PATH}/.profile \
  && chown redmine:redmine ${REDMINE_PATH}/.profile \
