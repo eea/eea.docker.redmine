@@ -36,9 +36,8 @@ if [ ! -z "${PLUGINS_URL}" ]; then
   run_install=0
   for plugin in $(cat ${REDMINE_PATH}/plugins.cfg); do
    if [ ! -f /install_plugins/$plugin ]; then
-      wget PLUGINS_URL
-      PLUGINS_USER
-      PLUGINS_PASSWORD
+      full_url=${PLUGINS_URL/https:\/\//https:\/\/$PLUGINS_USER:$PLUGINS_PASSWORD@}
+      wget -O  /install_plugins/$plugin $full_url/$plugin
      run_install=1
    fi
   done

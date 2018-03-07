@@ -25,7 +25,7 @@ RUN apt-get update -q \
  && git checkout 0ad6646785e58e79264f17a49f7d62f8ca89adcf \
  && cd .. \
  && git clone https://github.com/eea/eea.redmine.theme.git ${REDMINE_PATH}/public/themes/eea.redmine.theme \
- && chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH}
+ && chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH} 
 
 # Install gems
 RUN echo 'gem "dalli", "~> 2.7.6"' >> ${REDMINE_PATH}/Gemfile
