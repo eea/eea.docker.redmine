@@ -1,5 +1,10 @@
 #!/bin/bash
 
+touch /etc/crontab /etc/cron.*/* 
+crontab /var/redmine_jobs.txt 
+chmod 600 /etc/crontab  
+
+
 service rsyslog restart
 service cron restart
 

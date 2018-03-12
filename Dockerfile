@@ -37,10 +37,7 @@ COPY plugins.cfg ${REDMINE_PATH}/plugins.cfg
 
 COPY redmine_jobs /var/redmine_jobs.txt
 
-RUN touch /etc/crontab /etc/cron.*/* \
- && crontab /var/redmine_jobs.txt \
- && chmod 600 /etc/crontab  \
- && sed -i '/#cron./c\cron.*                          \/proc\/1\/fd\/1'  /etc/rsyslog.conf \
+RUN sed -i '/#cron./c\cron.*                          \/proc\/1\/fd\/1'  /etc/rsyslog.conf \
  && sed -i 's/-\/var\/log\/syslog/\/proc\/1\/fd\/1/g'  /etc/rsyslog.conf 
 
 RUN echo "export REDMINE_PATH=$REDMINE_PATH\nexport BUNDLE_PATH=$BUNDLE_PATH\nexport BUNDLE_APP_CONFIG=$BUNDLE_PATH\nexport PATH=$BUNDLE_PATH/bin:$PATH"  > ${REDMINE_PATH}/.profile \
