@@ -49,8 +49,8 @@ if [ ! -z "${PLUGINS_URL}" ]; then
     fi
   done 
 
-  if [ $run_install -eq 1]; then
-     /install_plugins
+  if [ $run_install -eq 1 ]; then
+     ${REDMINE_PATH}/install_plugins.sh
   fi
 
 fi
