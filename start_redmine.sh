@@ -14,6 +14,8 @@ echo "TZ=$TZ" >> /etc/default/cron
 
 if [ ! -z "${T_EMAIL_HOST}" ]; then
 
+  mkdir -p /var/local/environment
+
   echo "
 # Taskman email configuration
 T_EMAIL_HOST=${T_EMAIL_HOST}
