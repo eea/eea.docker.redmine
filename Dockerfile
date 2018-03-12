@@ -36,7 +36,9 @@ COPY config/install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
 COPY plugins.cfg ${REDMINE_PATH}/plugins.cfg
 
 COPY redmine_jobs /var/redmine_jobs.txt
-RUN crontab /var/redmine_jobs.txt \
+
+RUN touch /etc/crontab /etc/cron.*/* \
+ && crontab /var/redmine_jobs.txt \
  && chmod 600 /etc/crontab  \
  && sed -i '/#cron./c\cron.*                          \/proc\/1\/fd\/1'  /etc/rsyslog.conf \
  && sed -i 's/-\/var\/log\/syslog/\/proc\/1\/fd\/1/g'  /etc/rsyslog.conf 
