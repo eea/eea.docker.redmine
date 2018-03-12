@@ -36,7 +36,7 @@ H_EMAIL_PORT=${H_EMAIL_PORT}
 H_EMAIL_USER=${H_EMAIL_USER}
 H_EMAIL_PASS=${H_EMAIL_PASS}
 H_EMAIL_FOLDER=Inbox
-H_EMAIL_SSL=false" > cat /var/local/environment/vars
+H_EMAIL_SSL=false" > /var/local/environment/vars
 fi
 
 if [ ! -z "${PLUGINS_URL}" ]; then
