@@ -35,13 +35,11 @@ COPY crons/ ${REDMINE_LOCAL_PATH}/crons
 COPY config/install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
 COPY plugins.cfg ${REDMINE_PATH}/plugins.cfg
 
-COPY redmine_jobs /etc/cron.d/redmine_jobs
-RUN chmod 0644  /etc/cron.d/redmine_jobs \
- && crontab /etc/cron.d/redmine_jobs \
+COPY redmine_jobs /var/redmine_jobs.txt
+RUN crontab /var/redmine_jobs.txt \
+ && chmod 600 /etc/crontab  \
  && sed -i '/#cron./c\cron.*                          \/proc\/1\/fd\/1'  /etc/rsyslog.conf \
- && sed -i '/#$ModLoad imudp/c\$ModLoad imudp'  /etc/rsyslog.conf \
- && sed -i '/#$UDPServerRun/c\$UDPServerRun 514'  /etc/rsyslog.conf \
- && sed -i '/$UDPServerRun 514/a $UDPServerAddress 127.0.0.1' /etc/rsyslog.conf 
+ && sed -i 's/-\/var\/log\/syslog/\/proc\/1\/fd\/1/g'  /etc/rsyslog.conf 
 
 RUN echo "export REDMINE_PATH=$REDMINE_PATH\nexport BUNDLE_PATH=$BUNDLE_PATH\nexport BUNDLE_APP_CONFIG=$BUNDLE_PATH\nexport PATH=$BUNDLE_PATH/bin:$PATH"  > ${REDMINE_PATH}/.profile \
  && chown redmine:redmine ${REDMINE_PATH}/.profile \
