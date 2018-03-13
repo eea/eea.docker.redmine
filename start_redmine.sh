@@ -26,7 +26,7 @@ T_EMAIL_FOLDER=Inbox
 T_EMAIL_SSL=true
 
 # Incoming emails API: Administration -> Settings -> Incoming email - API key
-HELPDESK_EMAIL_KEY=${INCOMING_MAIL_API_KEY}
+HELPDESK_EMAIL_KEY=${HELPDESK_EMAIL_KEY}
 # Host for the helpdesk api from where to fetch support mails
 TASKMAN_URL=${REDMINE_HOST}
 
