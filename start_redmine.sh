@@ -41,14 +41,17 @@ fi
 
 if [ ! -z "${PLUGINS_URL}" ]; then
   run_install=0
-  for plugin in $(cat ${REDMINE_PATH}/plugins.cfg); do
-   if [ ! -f /install_plugins/$plugin ]; then
+  for plugin_conf in $(cat ${REDMINE_PATH}/plugins.cfg); do
+
+  IFS=' ' read -r -a plugin <<< "$plugin_conf"
+
+  if [ ! -f /install_plugins/${plugin[1]} ]; then
       full_url=${PLUGINS_URL/https:\/\//https:\/\/$PLUGINS_USER:$PLUGINS_PASSWORD@}
-      wget -O  /install_plugins/$plugin $full_url/$plugin
-     run_install=1
+      wget -O  /install_plugins/${plugin[1]} $full_url/${plugin[1]}
+      run_install=1
    fi
    
-   if [ ! -d ${REDMINE_PATH}/plugins/$(echo $plugin | cut -d'-' -f1) ]; then
+   if [ ! -d ${REDMINE_PATH}/plugins/${plugin[0]} ]; then
       run_install=1
    fi   
 
