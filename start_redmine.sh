@@ -54,6 +54,10 @@ if [ ! -z "${PLUGINS_URL}" ]; then
     if [ $(grep  ${file/\/install_plugins\//} ${REDMINE_PATH}/plugins.cfg | wc -l ) -eq 0 ]; then
          rm $file
     fi
+    
+    if [ ! -d ${REDMINE_PATH}/plugins/$(echo $plugin | cut -d'-' -f1) ]; then
+         run_install=1
+    fi
   done 
 
   if [ $run_install -eq 1 ]; then
