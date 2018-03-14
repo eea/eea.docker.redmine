@@ -58,6 +58,7 @@ if [ ! -z "${PLUGINS_URL}" ]; then
 
   if [ $run_install -eq 1 ]; then
      ${REDMINE_PATH}/install_plugins.sh
+     export REDMINE_PLUGINS_MIGRATE=yes
   fi
 
 fi
