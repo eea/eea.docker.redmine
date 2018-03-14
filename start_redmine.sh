@@ -47,6 +47,11 @@ if [ ! -z "${PLUGINS_URL}" ]; then
       wget -O  /install_plugins/$plugin $full_url/$plugin
      run_install=1
    fi
+   
+   if [ ! -d ${REDMINE_PATH}/plugins/$(echo $plugin | cut -d'-' -f1) ]; then
+      run_install=1
+   fi   
+
   done
 
   #remove old plugins
@@ -61,6 +66,8 @@ if [ ! -z "${PLUGINS_URL}" ]; then
   fi
 
 fi
+
+
 
 
 
