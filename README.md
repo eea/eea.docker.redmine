@@ -41,7 +41,7 @@ docker build --tag="$USER/redmine" .
 
 ### Quick Start
 
-The quickest way to get started is using [docker-compose](https://docs.docker.com/compose/).
+The quickest way to get started is using [Rancher Template](https://github.com/eea/eea.rancher.catalog/tree/master/templates/taskman).
 
 Alternately, you can manually launch the `redmine` container and the supporting database container (MySQL or PostgreSQL), by following this two step guide.
 
@@ -130,3 +130,4 @@ docker exec -i mysql-redmine mysql -h localhost redmine < redmine.sql
   * http://www.redmine.org/projects/redmine/wiki/Guide
   * http://www.redmine.org/projects/redmine/wiki/RedmineInstall
   * https://hub.docker.com/_/redmine
+  * https://github.com/eea/eea.rancher.catalog/tree/master/templates/taskman
