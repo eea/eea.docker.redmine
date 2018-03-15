@@ -61,7 +61,7 @@ if [ ! -z "${PLUGINS_URL}" ]; then
 
   #remove old plugins
   for file in  /install_plugins/*; do 
-    if [ $(grep  " ${file/\/install_plugins\//}$" ${REDMINE_PATH}/plugins.cfg | wc -l ) -eq 0 ]; then
+    if [ $(grep  ":${file/\/install_plugins\//}$" ${REDMINE_PATH}/plugins.cfg | wc -l ) -eq 0 ]; then
          rm $file
     fi  
   done 
