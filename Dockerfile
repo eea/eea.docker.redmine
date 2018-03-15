@@ -57,9 +57,3 @@ RUN chmod 0766 /start_redmine.sh
 ENTRYPOINT ["/start_redmine.sh"]
 
 CMD []
-
-
-#ENTRYPOINT []
-
-#CMD ["/docker-entrypoint.sh", "rails", "server", "-b", "0.0.0.0"]
-
