@@ -40,23 +40,23 @@ H_EMAIL_SSL=false" > /var/local/environment/vars
 fi
 
 if [ ! -z "${PLUGINS_URL}" ]; then
-  read_conf=0
-  for plugin_conf in $(cat ${REDMINE_PATH}/plugins.cfg); do
-      read_conf=$(( $read_conf + 1 ))  
-      if  (( read_conf % 2 )); then
-          if [ ! -d ${REDMINE_PATH}/plugins/$plugin_conf ]; then
-            echo "Found missing plugin - $plugin_conf, will install it"
-            REDMINE_PLUGINS_MIGRATE="yes"
-         fi   
-      else
-          if [ ! -f /install_plugins/$plugin_conf ]; then
-              echo "Found missing plugin - $plugin_conf, will download and install it"
-              full_url=${PLUGINS_URL/https:\/\//https:\/\/$PLUGINS_USER:$PLUGINS_PASSWORD@}
-              wget -q -O  /install_plugins/$plugin_conf $full_url/$plugin_conf
-              unzip -d ${REDMINE_PATH}/plugins -o /install_plugins/$plugin_conf
+  full_url=${PLUGINS_URL/https:\/\//https:\/\/$PLUGINS_USER:$PLUGINS_PASSWORD@}
+  for plugin in $(cat ${REDMINE_PATH}/plugins.cfg); do
+      
+      plugin_name=$(echo $plugin | cut -d':' -f1)
+      plugin_file=$(echo $plugin | cut -d':' -f2)
+
+      if [ ! -f /install_plugins/$plugin_file ]; then
+              echo "Found missing plugin - $plugin_file, will download and install it"
+              wget -q -O  /install_plugins/$plugin_file $full_url/$plugin_file
+              unzip -d ${REDMINE_PATH}/plugins -o /install_plugins/$plugin_file
               REDMINE_PLUGINS_MIGRATE="yes" 
-          fi
-      fi
+     fi
+     if [ ! -d ${REDMINE_PATH}/plugins/$plugin_name ]; then
+            echo "Found missing plugin - $plugin_name, will install it"
+            unzip -d ${REDMINE_PATH}/plugins -o /install_plugins/$plugin_file
+            REDMINE_PLUGINS_MIGRATE="yes"
+     fi   
   done
 
   #remove old plugins
