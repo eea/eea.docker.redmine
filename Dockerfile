@@ -1,4 +1,4 @@
-FROM redmine:3.4.2
+FROM redmine:3.4.4
 LABEL maintainer="EEA: IDM2 A-Team <eea-edw-a-team-alerts@googlegroups.com>"
 
 ENV REDMINE_PATH=/usr/src/redmine \
@@ -25,7 +25,7 @@ RUN apt-get update -q \
  && git checkout 0ad6646785e58e79264f17a49f7d62f8ca89adcf \
  && cd .. \
  && git clone https://github.com/eea/eea.redmine.theme.git ${REDMINE_PATH}/public/themes/eea.redmine.theme \
- && chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH}
+ && chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH} 
 
 # Install gems
 RUN echo 'gem "dalli", "~> 2.7.6"' >> ${REDMINE_PATH}/Gemfile
@@ -33,10 +33,12 @@ RUN echo 'gem "dalli", "~> 2.7.6"' >> ${REDMINE_PATH}/Gemfile
 # Install eea cron tools
 COPY crons/ ${REDMINE_LOCAL_PATH}/crons
 COPY config/install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
-COPY redmine_jobs /etc/cron.d/redmine_jobs
-RUN chmod 0644  /etc/cron.d/redmine_jobs \
- && crontab /etc/cron.d/redmine_jobs \
- && sed -i '/#cron./c\cron.*                          \/proc\/1\/fd\/1'  /etc/rsyslog.conf 
+COPY plugins.cfg ${REDMINE_PATH}/plugins.cfg
+
+COPY redmine_jobs /var/redmine_jobs.txt
+
+RUN sed -i '/#cron./c\cron.*                          \/proc\/1\/fd\/1'  /etc/rsyslog.conf \
+ && sed -i 's/-\/var\/log\/syslog/\/proc\/1\/fd\/1/g'  /etc/rsyslog.conf 
 
 RUN echo "export REDMINE_PATH=$REDMINE_PATH\nexport BUNDLE_PATH=$BUNDLE_PATH\nexport BUNDLE_APP_CONFIG=$BUNDLE_PATH\nexport PATH=$BUNDLE_PATH/bin:$PATH"  > ${REDMINE_PATH}/.profile \
  && chown redmine:redmine ${REDMINE_PATH}/.profile \
