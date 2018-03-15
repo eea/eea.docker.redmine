@@ -41,20 +41,22 @@ fi
 
 if [ ! -z "${PLUGINS_URL}" ]; then
   run_install=0
+  read_conf=0
   for plugin_conf in $(cat ${REDMINE_PATH}/plugins.cfg); do
-
-  IFS=' ' read -r -a plugin <<< "$plugin_conf"
-
-  if [ ! -f /install_plugins/${plugin[1]} ]; then
-      full_url=${PLUGINS_URL/https:\/\//https:\/\/$PLUGINS_USER:$PLUGINS_PASSWORD@}
-      wget -O  /install_plugins/${plugin[1]} $full_url/${plugin[1]}
-      run_install=1
-   fi
-   
-   if [ ! -d ${REDMINE_PATH}/plugins/${plugin[0]} ]; then
-      run_install=1
-   fi   
-
+      read_conf=$(( $read_conf + 1 ))  
+      if  (( read_conf % 2 )); then
+          if [ ! -d ${REDMINE_PATH}/plugins/$plugin_conf ]; then
+            echo "Found missing plugin - $plugin_conf, will install it"
+            run_install=1
+         fi   
+      else
+          if [ ! -f /install_plugins/$plugin_conf ]; then
+              echo "Found missing plugin - $plugin_conf, will download and install it"
+              full_url=${PLUGINS_URL/https:\/\//https:\/\/$PLUGINS_USER:$PLUGINS_PASSWORD@}
+              wget -O  /install_plugins/$plugin_conf $full_url/$plugin_conf
+              run_install=1
+          fi
+      fi
   done
 
   #remove old plugins
