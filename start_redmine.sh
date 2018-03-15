@@ -53,7 +53,7 @@ if [ ! -z "${PLUGINS_URL}" ]; then
           if [ ! -f /install_plugins/$plugin_conf ]; then
               echo "Found missing plugin - $plugin_conf, will download and install it"
               full_url=${PLUGINS_URL/https:\/\//https:\/\/$PLUGINS_USER:$PLUGINS_PASSWORD@}
-              wget -O  /install_plugins/$plugin_conf $full_url/$plugin_conf
+              wget -q -O  /install_plugins/$plugin_conf $full_url/$plugin_conf
               run_install=1
           fi
       fi
