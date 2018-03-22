@@ -20,10 +20,7 @@ RUN apt-get update -q \
  && cd ${REDMINE_PATH}/plugins/redmine_banner \
  && git checkout 5ae224156f188e9eb8fd9d84baeb3ff504541095 \
  && cd .. \
- && git clone https://github.com/thorin/redmine_ldap_sync.git ${REDMINE_PATH}/plugins/redmine_ldap_sync \
- && cd ${REDMINE_PATH}/plugins/redmine_ldap_sync \
- && git checkout 0ad6646785e58e79264f17a49f7d62f8ca89adcf \
- && cd .. \
+ && git clone -b 2.1.0  https://github.com/thorin/redmine_ldap_sync.git ${REDMINE_PATH}/plugins/redmine_ldap_sync \
  && git clone https://github.com/eea/eea.redmine.theme.git ${REDMINE_PATH}/public/themes/eea.redmine.theme \
  && chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH} 
 
