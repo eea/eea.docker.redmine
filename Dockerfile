@@ -15,10 +15,13 @@ RUN apt-get update -q \
  && git clone -b Ver_0.3.0 https://github.com/masamitsu-murase/redmine_add_subversion_links.git ${REDMINE_PATH}/plugins/redmine_add_subversion_links \
  && git clone -b v2.2.0 https://github.com/koppen/redmine_github_hook.git ${REDMINE_PATH}/plugins/redmine_github_hook \
  && git clone -b 0.0.2 https://github.com/bluezio/redmine_wiki_backlinks.git ${REDMINE_PATH}/plugins/redmine_wiki_backlinks \
- && git clone -b 0.0.8 https://github.com/bdemirkir/sidebar_hide.git ${REDMINE_PATH}/plugins/sidebar_hide \
  && git clone https://github.com/akiko-pusu/redmine_banner.git ${REDMINE_PATH}/plugins/redmine_banner \
  && cd ${REDMINE_PATH}/plugins/redmine_banner \
  && git checkout 5ae224156f188e9eb8fd9d84baeb3ff504541095 \
+ && cd .. \
+ && git clone https://github.com/alphanodes/additionals.git ${REDMINE_PATH}/plugins/additionals \
+ && cd ${REDMINE_PATH}/plugins/additionals \
+ && git checkout 43767189ac7f6206fe5e8656bdb33451c6fc10f3 \
  && cd .. \
  && git clone -b 2.1.0  https://github.com/thorin/redmine_ldap_sync.git ${REDMINE_PATH}/plugins/redmine_ldap_sync \
  && git clone https://github.com/eea/eea.redmine.theme.git ${REDMINE_PATH}/public/themes/eea.redmine.theme \
