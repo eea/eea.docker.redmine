@@ -39,6 +39,9 @@ H_EMAIL_FOLDER=Inbox
 H_EMAIL_SSL=false" > /var/local/environment/vars
 fi
 
+#delete empty plugins
+find  /install_plugins -size 0 -type f -exec rm {} \;
+
 if [ ! -z "${PLUGINS_URL}" ]; then
   full_url=${PLUGINS_URL/https:\/\//https:\/\/$PLUGINS_USER:$PLUGINS_PASSWORD@}
   for plugin in $(cat ${REDMINE_PATH}/plugins.cfg); do
