@@ -85,7 +85,7 @@ fi
 
 
 rm /usr/src/redmine/plugins/redmine_checklists/lib/redmine_checklists/patches/compatibility/application_controller_patch.rb
-
+rm /usr/src/redmine/plugins/redmine_agile/lib/redmine_agile/patches/compatibility/application_controller_patch.rb
 
 /docker-entrypoint.sh rails server -b 0.0.0.0
 
