@@ -42,6 +42,11 @@ fi
 #delete empty plugins
 find  /install_plugins -size 0 -type f -exec rm {} \;
 
+#fixes
+echo 'gem "acts-as-taggable-on", "~> 5.0"' >> ${REDMINE_PATH}/Gemfile
+rm /usr/src/redmine/plugins/redmine_checklists/lib/redmine_checklists/patches/compatibility/application_controller_patch.rb
+
+
 if [ ! -z "${PLUGINS_URL}" ]; then
   full_url=${PLUGINS_URL/https:\/\//https:\/\/$PLUGINS_USER:$PLUGINS_PASSWORD@}
   for plugin in $(cat ${REDMINE_PATH}/plugins.cfg); do
@@ -79,6 +84,7 @@ fi
 
 
 
+rm /usr/src/redmine/plugins/redmine_checklists/lib/redmine_checklists/patches/compatibility/application_controller_patch.rb
 
 
 /docker-entrypoint.sh rails server -b 0.0.0.0
