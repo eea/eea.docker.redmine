@@ -43,8 +43,6 @@ fi
 find  /install_plugins -size 0 -type f -exec rm {} \;
 
 #fixes
-echo 'gem "acts-as-taggable-on", "~> 5.0"' >> ${REDMINE_PATH}/Gemfile
-rm /usr/src/redmine/plugins/redmine_checklists/lib/redmine_checklists/patches/compatibility/application_controller_patch.rb
 
 
 if [ ! -z "${PLUGINS_URL}" ]; then
@@ -84,8 +82,8 @@ fi
 
 
 
-rm /usr/src/redmine/plugins/redmine_checklists/lib/redmine_checklists/patches/compatibility/application_controller_patch.rb
-rm /usr/src/redmine/plugins/redmine_agile/lib/redmine_agile/patches/compatibility/application_controller_patch.rb
+#rm /usr/src/redmine/plugins/redmine_checklists/lib/redmine_checklists/patches/compatibility/application_controller_patch.rb
+#rm /usr/src/redmine/plugins/redmine_agile/lib/redmine_agile/patches/compatibility/application_controller_patch.rb
 
 /docker-entrypoint.sh rails server -b 0.0.0.0
 
