@@ -33,6 +33,9 @@ COPY crons/ ${REDMINE_LOCAL_PATH}/crons
 COPY config/install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
 COPY plugins.cfg ${REDMINE_PATH}/plugins.cfg
 
+# patch for banner
+COPY projects_helper_patch.rb ${REDMINE_PATH}/plugins/redmine_banner/lib/banners/projects_helper_patch.rb
+
 COPY redmine_jobs /var/redmine_jobs.txt
 
 RUN sed -i '/#cron./c\cron.*                          \/proc\/1\/fd\/1'  /etc/rsyslog.conf \
