@@ -31,6 +31,8 @@ RUN echo 'gem "acts-as-taggable-on", "~> 5.0"' >> ${REDMINE_PATH}/Gemfile \
   &&  echo 'gem "mime-types"' >> ${REDMINE_PATH}/Gemfile \
   &&  echo 'gem "mongo"' >> ${REDMINE_PATH}/Gemfile 
 
+#patch
+RUN rm -f ${REDMINE_PATH}/plugins/redmine_dmsf/lib/redmine_dmsf/test/* 
 
 # Install eea cron tools
 COPY crons/ ${REDMINE_LOCAL_PATH}/crons
