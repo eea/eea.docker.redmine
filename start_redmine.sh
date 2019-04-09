@@ -81,7 +81,9 @@ if [ ! -z "${PLUGINS_URL}" ]; then
 fi
 
 
+#patch
 
+sed -i "s/gem 'redmine_extensions' unless/gem 'redmine_extensions', '~> 0.2.5' unless/g"  ${REDMINE_PATH}/plugins/*/Gemfile
 rm -f /usr/src/redmine/plugins/redmine_checklists/lib/redmine_checklists/patches/compatibility/application_controller_patch.rb
 rm -f /usr/src/redmine/plugins/redmine_agile/lib/redmine_agile/patches/compatibility/application_controller_patch.rb
 
