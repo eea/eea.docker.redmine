@@ -6,7 +6,9 @@ ENV REDMINE_PATH=/usr/src/redmine \
 
 # Install dependencies and plugins
 RUN apt-get update -q \
- && apt-get install -y --no-install-recommends unzip graphviz vim python3-pip cron rsyslog python3-setuptools \
+ && apt-get install -y --no-install-recommends unzip graphviz vim python3-pip cron rsyslog python3-setuptools make gcc \
+    xapian-omega ruby-xapian libxapian-dev xpdf poppler-utils antiword  unzip catdoc libwpd-tools \
+    libwps-tools gzip unrtf catdvi djview djview3 uuid uuid-dev xz-utils libemail-outlook-message-perl \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* \
  && mkdir -p ${REDMINE_LOCAL_PATH}/github \
@@ -20,12 +22,12 @@ RUN apt-get update -q \
  && git clone -b 0.2.0 https://github.com/akiko-pusu/redmine_banner.git ${REDMINE_PATH}/plugins/redmine_banner \
  && git clone -b 2.0.20 https://github.com/alphanodes/additionals.git ${REDMINE_PATH}/plugins/additionals \
  && git clone  https://github.com/eea/redmine_ldap_sync.git ${REDMINE_PATH}/plugins/redmine_ldap_sync \
+ && git clone https://github.com/danmunn/redmine_dmsf.git ${REDMINE_PATH}/plugins/redmine_dmsf \
  && git clone https://github.com/eea/eea.redmine.theme.git ${REDMINE_PATH}/public/themes/eea.redmine.theme \
  && chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH} 
 
 # Install gems
-RUN echo 'gem "dalli", "~> 2.7.6"' >> ${REDMINE_PATH}/Gemfile \
- && echo 'gem "acts-as-taggable-on", "~> 5.0"' >> ${REDMINE_PATH}/Gemfile
+RUN echo 'gem "acts-as-taggable-on", "~> 5.0"' >> ${REDMINE_PATH}/Gemfile 
 
 
 # Install eea cron tools
