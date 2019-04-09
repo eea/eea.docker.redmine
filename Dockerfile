@@ -27,7 +27,8 @@ RUN apt-get update -q \
  && chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH} 
 
 # Install gems
-RUN echo 'gem "acts-as-taggable-on", "~> 5.0"' >> ${REDMINE_PATH}/Gemfile 
+RUN echo 'gem "acts-as-taggable-on", "~> 5.0"' >> ${REDMINE_PATH}/Gemfile \
+  &&  echo 'gem "mime-types" ' >> ${REDMINE_PATH}/Gemfile 
 
 
 # Install eea cron tools
