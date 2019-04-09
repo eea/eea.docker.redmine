@@ -28,7 +28,8 @@ RUN apt-get update -q \
 
 # Install gems
 RUN echo 'gem "acts-as-taggable-on", "~> 5.0"' >> ${REDMINE_PATH}/Gemfile \
-  &&  echo 'gem "mime-types" ' >> ${REDMINE_PATH}/Gemfile 
+  &&  echo 'gem "mime-types"' >> ${REDMINE_PATH}/Gemfile \
+  &&  echo 'gem "mongo"' >> ${REDMINE_PATH}/Gemfile 
 
 
 # Install eea cron tools
