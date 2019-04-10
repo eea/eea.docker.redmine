@@ -9,8 +9,18 @@ RUN apt-get update -q \
  && apt-get install -y --no-install-recommends unzip graphviz vim python3-pip cron rsyslog python3-setuptools make gcc \
     xapian-omega ruby-xapian libxapian-dev xpdf poppler-utils antiword  unzip catdoc libwpd-tools \
     libwps-tools gzip unrtf catdvi djview djview3 uuid uuid-dev xz-utils libemail-outlook-message-perl \
+    g++ \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* \
+ && version=$(xapian-config --version | egrep -o '[0-9\.]+') \
+ && cd /tmp \
+ && test -f xapian-bindings-$version.tar.xz || wget http://oligarchy.co.uk/xapian/$version/xapian-bindings-$version.tar.xz \
+ && test -d xapian-bindings-$version || tar xf xapian-bindings-$version.tar.xz \
+ && cd xapian-bindings-$version \
+ && env RUBY=$(which ruby) ./configure --with-ruby \
+ && make \
+ && make install \
+ && ls -ltr  /tmp \
  && mkdir -p ${REDMINE_LOCAL_PATH}/github \
  && git clone -b v0.8.0 https://github.com/tckz/redmine-wiki_graphviz_plugin.git ${REDMINE_PATH}/plugins/wiki_graphviz_plugin \
 # && git clone -b Ver_0.3.0 https://github.com/masamitsu-murase/redmine_add_subversion_links.git ${REDMINE_PATH}/plugins/redmine_add_subversion_links \
@@ -38,6 +48,10 @@ RUN rm -f ${REDMINE_PATH}/plugins/redmine_dmsf/lib/redmine_dmsf/test/*
 COPY crons/ ${REDMINE_LOCAL_PATH}/crons
 COPY config/install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
 COPY plugins.cfg ${REDMINE_PATH}/plugins.cfg
+
+
+
+
 
 # patch for banner
 COPY projects_helper_patch.rb ${REDMINE_PATH}/plugins/redmine_banner/lib/banners/projects_helper_patch.rb
