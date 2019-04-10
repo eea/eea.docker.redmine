@@ -32,7 +32,8 @@ RUN apt-get update -q \
  && git clone -b 0.2.0 https://github.com/akiko-pusu/redmine_banner.git ${REDMINE_PATH}/plugins/redmine_banner \
  && git clone -b 2.0.20 https://github.com/alphanodes/additionals.git ${REDMINE_PATH}/plugins/additionals \
  && git clone  https://github.com/eea/redmine_ldap_sync.git ${REDMINE_PATH}/plugins/redmine_ldap_sync \
- && git clone https://github.com/danmunn/redmine_dmsf.git ${REDMINE_PATH}/plugins/redmine_dmsf \
+ && git clone -b v2.0.0 https://github.com/danmunn/redmine_dmsf.git ${REDMINE_PATH}/plugins/redmine_dmsf \
+ && sed -i  "s#\$files = .*#\$files = 'files/dmsf'#" ${REDMINE_PATH}/plugins/redmine_dmsf/extra/xapian_indexer.rb \
  && git clone https://github.com/eea/eea.redmine.theme.git ${REDMINE_PATH}/public/themes/eea.redmine.theme \
  && chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH} 
 
@@ -42,7 +43,7 @@ RUN echo 'gem "acts-as-taggable-on", "~> 5.0"' >> ${REDMINE_PATH}/Gemfile \
   &&  echo 'gem "mongo"' >> ${REDMINE_PATH}/Gemfile 
 
 #patch
-RUN rm -f ${REDMINE_PATH}/plugins/redmine_dmsf/lib/redmine_dmsf/test/* 
+RUN rm -f ${REDMINE_PATH}/plugins/redmine_dmsf/lib/redmine_dmsf/test/*  
 
 # Install eea cron tools
 COPY crons/ ${REDMINE_LOCAL_PATH}/crons
