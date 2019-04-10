@@ -3,3 +3,4 @@
 */5 * * * * /var/local/redmine/crons/helpdesk.sh 2>&1  | logger
 */5 * * * * /var/local/redmine/crons/taskman_email.sh 2>&1 | logger
 0 2 * * *  /var/local/redmine/crons/redmine_ldapsync.sh 2>&1 | logger
+8 * * * * /usr/bin/ruby  /var/local/redmine/plugins/redmine_dmsf/extra/xapian_indexer.rb 2>&1 | logger
