@@ -42,9 +42,6 @@ fi
 #delete empty plugins
 find  /install_plugins -size 0 -type f -exec rm {} \;
 
-#fixes
-
-
 if [ ! -z "${PLUGINS_URL}" ]; then
   full_url=${PLUGINS_URL/https:\/\//https:\/\/$PLUGINS_USER:$PLUGINS_PASSWORD@}
   for plugin in $(cat ${REDMINE_PATH}/plugins.cfg); do
@@ -81,7 +78,7 @@ if [ ! -z "${PLUGINS_URL}" ]; then
 fi
 
 
-
+#patch
 rm -f /usr/src/redmine/plugins/redmine_checklists/lib/redmine_checklists/patches/compatibility/application_controller_patch.rb
 rm -f /usr/src/redmine/plugins/redmine_agile/lib/redmine_agile/patches/compatibility/application_controller_patch.rb
 
