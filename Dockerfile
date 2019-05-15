@@ -34,8 +34,12 @@ COPY crons/ ${REDMINE_LOCAL_PATH}/crons
 COPY config/install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
 COPY plugins.cfg ${REDMINE_PATH}/plugins.cfg
 
-# patch for banner
-COPY projects_helper_patch.rb ${REDMINE_PATH}/plugins/redmine_banner/lib/banners/projects_helper_patch.rb
+# patches for plugins, to be removed when fixed
+#banner plugin fix
+COPY patches/projects_helper_patch.rb ${REDMINE_PATH}/plugins/redmine_banner/lib/banners/projects_helper_patch.rb
+#wiki linkis "key not found" error
+#Remove when fixed - https://github.com/bluezio/redmine_wiki_backlinks/issues/10
+COPY patches/wiki_links_controller.rb  ${REDMINE_PATH}/plugins/redmine_wiki_backlinks/app/controllers/wiki_links_controller.rb
 
 COPY redmine_jobs /var/redmine_jobs.txt
 
