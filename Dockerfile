@@ -40,7 +40,7 @@ COPY plugins.cfg ${REDMINE_PATH}/plugins.cfg
 COPY patches/projects_helper_patch.rb ${REDMINE_PATH}/plugins/redmine_banner/lib/banners/projects_helper_patch.rb
 #wiki linkis "key not found" error
 #Remove when fixed - https://github.com/bluezio/redmine_wiki_backlinks/issues/10
-#COPY patches/wiki_links_controller.rb  ${REDMINE_PATH}/plugins/redmine_wiki_backlinks/app/controllers/wiki_links_controller.rb
+COPY patches/wiki_links_controller.rb  ${REDMINE_PATH}/plugins/redmine_wiki_backlinks/app/controllers/wiki_links_controller.rb
 
 #SystemStackError (stack level too deep) with additionals/lib/additionals/patches/formatting_helper_patch.rb
 COPY patches/textile_helper.rb ${REDMINE_PATH}/plugins/redmine_drawio/lib/redmine_drawio/helpers/textile_helper.rb
