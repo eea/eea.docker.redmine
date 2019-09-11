@@ -44,7 +44,7 @@ class WikiLinksController < ApplicationController
 
     begin
       # Collect the pretty and ugly titles and sort by pretty title
-      @link_pages = WikiPage.select(:title).find(ids_to).map(&:title)
+      @link_pages = WikiPage.find(ids_to).map(&:title)
     rescue StandardError => e
       @link_pages = []
        puts e.message
