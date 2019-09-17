@@ -45,6 +45,9 @@ COPY patches/wiki_links_controller.rb  ${REDMINE_PATH}/plugins/redmine_wiki_back
 #SystemStackError (stack level too deep) with additionals/lib/additionals/patches/formatting_helper_patch.rb
 COPY patches/textile_helper.rb ${REDMINE_PATH}/plugins/redmine_drawio/lib/redmine_drawio/helpers/textile_helper.rb
 
+# redmine_cms:1.2.0 patch
+COPY patches/pages_part.rb /tmp
+
 COPY redmine_jobs /var/redmine_jobs.txt
 
 RUN sed -i '/#cron./c\cron.*                          \/proc\/1\/fd\/1'  /etc/rsyslog.conf \
