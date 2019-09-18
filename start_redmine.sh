@@ -82,10 +82,10 @@ fi
 rm -f /usr/src/redmine/plugins/redmine_checklists/lib/redmine_checklists/patches/compatibility/application_controller_patch.rb
 rm -f /usr/src/redmine/plugins/redmine_agile/lib/redmine_agile/patches/compatibility/application_controller_patch.rb
 
-#patch
-if [ -f /usr/src/redmine/plugins/redmine_cms/app/models/pages_part.rb ] && [ -f /tmp/pages_part.rb ]; then
-	mv /tmp/pages_part.rb /usr/src/redmine/plugins/redmine_cms/app/models/pages_part.rb
-        chown redmine:redmine /usr/src/redmine/plugins/redmine_cms/app/models/pages_part.rb
+#patch for redmine_cms-1_2_0-light.zip
+if [ -f /usr/src/redmine/plugins/redmine_cms/app/models/pages_part.rb ] ; then
+        sed -i "s/class_name => CmsPage/class_name => 'CmsPage'/" /usr/src/redmine/plugins/redmine_cms/app/models/pages_part.rb
+        sed -i "s/class_name => CmsPart/class_name => 'CmsPart'/" /usr/src/redmine/plugins/redmine_cms/app/models/pages_part.rb
 fi
 
 
