@@ -18,8 +18,8 @@ RUN apt-get update -q \
  && git checkout 62488fa341d21c9b46b27cbb787ee61b46266d0e \
  && cd .. \
  && git clone -b 0.2.0 https://github.com/akiko-pusu/redmine_banner.git ${REDMINE_PATH}/plugins/redmine_banner \
- && git clone -b 2.0.20 https://github.com/alphanodes/additionals.git ${REDMINE_PATH}/plugins/additionals \
- && git clone -b v0.8.5 https://github.com/mikitex70/redmine_drawio.git ${REDMINE_PATH}/plugins/redmine_drawio \
+ && git clone -b 2.0.21 https://github.com/alphanodes/additionals.git ${REDMINE_PATH}/plugins/additionals \
+ && git clone -b v0.9.0 https://github.com/mikitex70/redmine_drawio.git ${REDMINE_PATH}/plugins/redmine_drawio \
  && git clone  https://github.com/eea/redmine_ldap_sync.git ${REDMINE_PATH}/plugins/redmine_ldap_sync \
  && git clone https://github.com/eea/eea.redmine.theme.git ${REDMINE_PATH}/public/themes/eea.redmine.theme \
  && git clone https://github.com/eea/taskman.redmine.theme.git ${REDMINE_PATH}/public/themes/taskman.redmine.theme \
@@ -44,6 +44,7 @@ COPY patches/wiki_links_controller.rb  ${REDMINE_PATH}/plugins/redmine_wiki_back
 
 #SystemStackError (stack level too deep) with additionals/lib/additionals/patches/formatting_helper_patch.rb
 COPY patches/textile_helper.rb ${REDMINE_PATH}/plugins/redmine_drawio/lib/redmine_drawio/helpers/textile_helper.rb
+
 
 COPY redmine_jobs /var/redmine_jobs.txt
 
