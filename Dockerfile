@@ -1,4 +1,4 @@
-FROM redmine:4.0.4
+FROM redmine:4.0.5
 LABEL maintainer="EEA: IDM2 A-Team <eea-edw-a-team-alerts@googlegroups.com>"
 
 ENV REDMINE_PATH=/usr/src/redmine \
@@ -28,9 +28,6 @@ RUN apt-get update -q \
 # Install gems
 RUN echo 'gem "dalli", "~> 2.7.6"' >> ${REDMINE_PATH}/Gemfile \
  && echo 'gem "acts-as-taggable-on", "~> 5.0"' >> ${REDMINE_PATH}/Gemfile
-
-# patch until https://www.redmine.org/issues/32223 is solved, to be removed on 4.1.0 release
-RUN echo 'gem "sprockets", "~> 3.7.2"' >> ${REDMINE_PATH}/Gemfile
 
 
 # Install eea cron tools
