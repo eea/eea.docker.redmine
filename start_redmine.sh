@@ -81,7 +81,16 @@ fi
 #patch
 rm -f /usr/src/redmine/plugins/redmine_checklists/lib/redmine_checklists/patches/compatibility/application_controller_patch.rb
 rm -f /usr/src/redmine/plugins/redmine_agile/lib/redmine_agile/patches/compatibility/application_controller_patch.rb
-rm -g /usr/src/redmine/plugins/redmine_contacts_helpdesk/lib/redmine_helpdesk/patches/avatars_helper_patch.rb
+
+#patch for avatars_helper & wkhtmltopdf-binary
+rm -f /usr/src/redmine/plugins/redmine_contacts_helpdesk/lib/redmine_helpdesk/patches/avatars_helper_patch.rb
+if [ -f /usr/src/redmine/plugins/redmine_contacts_helpdesk/lib/redmine_helpdesk.rb ]; then
+     sed -i "s#require 'redmine_helpdesk/patches/avatars_helper_patch'##" /usr/src/redmine/plugins/redmine_contacts_helpdesk/lib/redmine_helpdesk.rb
+fi
+
+if [ -f /usr/src/redmine/plugins/redmine_reporter/Gemfile ] && [ $(gem list -q wkhtmltopdf-binary | grep 0.12.4 | wc -l) -eq 0 ]; then
+	gem install wkhtmltopdf-binary -v '0.12.4' --source 'https://rubygems.org/'
+fi	
 
 /docker-entrypoint.sh rails server -b 0.0.0.0
 
