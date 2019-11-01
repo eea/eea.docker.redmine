@@ -88,10 +88,6 @@ if [ -f /usr/src/redmine/plugins/redmine_contacts_helpdesk/lib/redmine_helpdesk.
      sed -i "s#require 'redmine_helpdesk/patches/avatars_helper_patch'##" /usr/src/redmine/plugins/redmine_contacts_helpdesk/lib/redmine_helpdesk.rb
 fi
 
-if [ -f /usr/src/redmine/plugins/redmine_reporter/Gemfile ] && [ $(gem list -q wkhtmltopdf-binary | grep 0.12.4 | wc -l) -eq 0 ]; then
-	gem install wkhtmltopdf-binary -v '0.12.4' --source 'https://rubygems.org/'
-fi	
-
 #ensure correct permissions
 chown -R redmine:redmine /usr/src/redmine/tmp /usr/src/redmine/plugins
 
