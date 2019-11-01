@@ -92,6 +92,10 @@ if [ -f /usr/src/redmine/plugins/redmine_reporter/Gemfile ] && [ $(gem list -q w
 	gem install wkhtmltopdf-binary -v '0.12.4' --source 'https://rubygems.org/'
 fi	
 
+#ensure correct permissions
+chown -R redmine:redmine /usr/src/redmine/tmp /usr/src/redmine/plugins
+
+
 /docker-entrypoint.sh rails server -b 0.0.0.0
 
 
