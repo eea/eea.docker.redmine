@@ -1,4 +1,4 @@
-FROM redmine:4.0.6
+FROM redmine:4.1.0
 LABEL maintainer="EEA: IDM2 A-Team <eea-edw-a-team-alerts@googlegroups.com>"
 
 ENV REDMINE_PATH=/usr/src/redmine \
@@ -17,11 +17,11 @@ RUN apt-get update -q \
  && cd ${REDMINE_PATH}/plugins/redmine_wiki_backlinks \
  && git checkout 62488fa341d21c9b46b27cbb787ee61b46266d0e \
  && cd .. \
- && git clone -b 0.2.0 https://github.com/akiko-pusu/redmine_banner.git ${REDMINE_PATH}/plugins/redmine_banner \
- && git clone -b 2.0.21 https://github.com/alphanodes/additionals.git ${REDMINE_PATH}/plugins/additionals \
- && git clone -b v0.9.0 https://github.com/mikitex70/redmine_drawio.git ${REDMINE_PATH}/plugins/redmine_drawio \
+ && git clone -b 0.3.1 https://github.com/akiko-pusu/redmine_banner.git ${REDMINE_PATH}/plugins/redmine_banner \
+ && git clone -b 2.0.23 https://github.com/alphanodes/additionals.git ${REDMINE_PATH}/plugins/additionals \
+ && git clone -b v0.9.3 https://github.com/mikitex70/redmine_drawio.git ${REDMINE_PATH}/plugins/redmine_drawio \
  && git clone  https://github.com/eea/redmine_ldap_sync.git ${REDMINE_PATH}/plugins/redmine_ldap_sync \
- && git clone https://github.com/eea/eea.redmine.theme.git ${REDMINE_PATH}/public/themes/eea.redmine.theme \
+# && git clone https://github.com/eea/eea.redmine.theme.git ${REDMINE_PATH}/public/themes/eea.redmine.theme \
  && git clone https://github.com/eea/taskman.redmine.theme.git ${REDMINE_PATH}/public/themes/taskman.redmine.theme \
  && chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH} 
 
