@@ -1,4 +1,4 @@
-FROM redmine:4.1.0
+FROM redmine:4.1.1
 LABEL maintainer="EEA: IDM2 A-Team <eea-edw-a-team-alerts@googlegroups.com>"
 
 ENV REDMINE_PATH=/usr/src/redmine \
