@@ -1,6 +1,9 @@
 #!/bin/bash
 
 touch /etc/crontab /etc/cron.*/* 
+if [ -n "$RESTART_CRON" ] && [ $(grep -c 'rails server' /var/redmine_jobs.txt) -eq 0 ] ; then
+	echo "${RESTART_CRON} kill -2 \$(ps -fu redmine | grep 'rails server' | grep -v grep | awk '{print \$2}')" >> /var/redmine_jobs.txt
+fi	
 crontab /var/redmine_jobs.txt 
 chmod 600 /etc/crontab  
 
