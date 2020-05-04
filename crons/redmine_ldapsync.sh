@@ -14,5 +14,6 @@ fi
 
 
 cd $REDMINE_PATH
-echo "ldapsync - $(
-cd $REDMINE_PATH;/usr/local/bin/bundle exec rake -f $REDMINE_PATH/Rakefile redmine:plugins:ldap_sync:sync_users RAILS_ENV="production")"
+echo "ldapsync - "
+
+/usr/local/bin/bundle exec rake -f $REDMINE_PATH/Rakefile redmine:plugins:ldap_sync:sync_users RAILS_ENV="production"
