@@ -20,6 +20,7 @@ if [ ! -z "${T_EMAIL_HOST}" ]; then
   mkdir -p /var/local/environment
 
   echo "
+export TZ=${TZ}
 # Taskman email configuration
 T_EMAIL_HOST=${T_EMAIL_HOST}
 T_EMAIL_PORT=${T_EMAIL_PORT}
