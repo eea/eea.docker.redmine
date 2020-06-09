@@ -16,8 +16,8 @@ RUN apt-get update -q \
 ## && git clone https://github.com/bluezio/redmine_wiki_backlinks.git ${REDMINE_PATH}/plugins/redmine_wiki_backlinks \	
 ## && cd ${REDMINE_PATH}/plugins/redmine_wiki_backlinks \	
 ## && git checkout 62488fa341d21c9b46b27cbb787ee61b46266d0e \	
- && cd .. \	
- && git clone -b 0.3.3 https://github.com/akiko-pusu/redmine_banner.git ${REDMINE_PATH}/plugins/redmine_banner \
+## && cd .. \	
+## && git clone -b 0.3.3 https://github.com/akiko-pusu/redmine_banner.git ${REDMINE_PATH}/plugins/redmine_banner \
 ## && git clone -b 2.0.23 https://github.com/alphanodes/additionals.git ${REDMINE_PATH}/plugins/additionals \	
 ## && git clone -b v0.9.3 https://github.com/mikitex70/redmine_drawio.git ${REDMINE_PATH}/plugins/redmine_drawio \	
 ## && git clone  https://github.com/eea/redmine_ldap_sync.git ${REDMINE_PATH}/plugins/redmine_ldap_sync \	
