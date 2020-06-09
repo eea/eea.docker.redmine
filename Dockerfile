@@ -9,15 +9,15 @@ RUN apt-get update -q \
  && apt-get install -y --no-install-recommends unzip graphviz vim python3-pip cron rsyslog python3-setuptools \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* \
-  && mkdir -p ${REDMINE_LOCAL_PATH}/github \	
-## && git clone -b v0.8.0 https://github.com/tckz/redmine-wiki_graphviz_plugin.git ${REDMINE_PATH}/plugins/wiki_graphviz_plugin \	
+ && mkdir -p ${REDMINE_LOCAL_PATH}/github \	
+ && git clone -b v0.8.0 https://github.com/tckz/redmine-wiki_graphviz_plugin.git ${REDMINE_PATH}/plugins/wiki_graphviz_plugin \	
 # && git clone -b Ver_0.3.0 https://github.com/masamitsu-murase/redmine_add_subversion_links.git ${REDMINE_PATH}/plugins/redmine_add_subversion_links \	
 # && git clone https://github.com/eea/redmine_github_hook.git ${REDMINE_PATH}/plugins/redmine_github_hook \	
-## && git clone https://github.com/bluezio/redmine_wiki_backlinks.git ${REDMINE_PATH}/plugins/redmine_wiki_backlinks \	
-## && cd ${REDMINE_PATH}/plugins/redmine_wiki_backlinks \	
-## && git checkout 62488fa341d21c9b46b27cbb787ee61b46266d0e \	
-## && cd .. \	
-## && git clone -b 0.3.1 https://github.com/akiko-pusu/redmine_banner.git ${REDMINE_PATH}/plugins/redmine_banner \
+ && git clone https://github.com/bluezio/redmine_wiki_backlinks.git ${REDMINE_PATH}/plugins/redmine_wiki_backlinks \	
+ && cd ${REDMINE_PATH}/plugins/redmine_wiki_backlinks \	
+ && git checkout 62488fa341d21c9b46b27cbb787ee61b46266d0e \	
+ && cd .. \	
+ && git clone -b 0.3.1 https://github.com/akiko-pusu/redmine_banner.git ${REDMINE_PATH}/plugins/redmine_banner \
  && git clone -b 2.0.23 https://github.com/alphanodes/additionals.git ${REDMINE_PATH}/plugins/additionals \	
  && git clone -b v0.9.3 https://github.com/mikitex70/redmine_drawio.git ${REDMINE_PATH}/plugins/redmine_drawio \	
  && git clone  https://github.com/eea/redmine_ldap_sync.git ${REDMINE_PATH}/plugins/redmine_ldap_sync \	
@@ -34,6 +34,17 @@ RUN echo 'gem "dalli", "~> 2.7.6"' >> ${REDMINE_PATH}/Gemfile \
 COPY crons/ ${REDMINE_LOCAL_PATH}/crons
 COPY config/install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
 COPY plugins.cfg ${REDMINE_PATH}/plugins.cfg
+
+# patches for plugins, to be removed when fixed
+#banner plugin fix
+COPY patches/projects_helper_patch.rb ${REDMINE_PATH}/plugins/redmine_banner/lib/banners/projects_helper_patch.rb
+#wiki linkis "key not found" error
+#Remove when fixed - https://github.com/bluezio/redmine_wiki_backlinks/issues/10
+COPY patches/wiki_links_controller.rb  ${REDMINE_PATH}/plugins/redmine_wiki_backlinks/app/controllers/wiki_links_controller.rb
+
+#SystemStackError (stack level too deep) with additionals/lib/additionals/patches/formatting_helper_patch.rb
+COPY patches/textile_helper.rb ${REDMINE_PATH}/plugins/redmine_drawio/lib/redmine_drawio/helpers/textile_helper.rb
+
 
 COPY redmine_jobs /var/redmine_jobs.txt
 
