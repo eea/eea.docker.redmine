@@ -24,9 +24,9 @@ RUN apt-get update -q \
 # && git clone https://github.com/eea/eea.redmine.theme.git ${REDMINE_PATH}/public/themes/eea.redmine.theme \
  && git clone https://github.com/eea/taskman.redmine.theme.git ${REDMINE_PATH}/public/themes/taskman.redmine.theme \
 
- && git clone https://github.com/two-pack/redmine_xls_export.git ${REDMINE_PATH}/plugins/redmine_xls_export \
+ && git clone https://github.com/alecghica/redmine_xls_export.git ${REDMINE_PATH}/plugins/redmine_xls_export \
  && cd ${REDMINE_PATH}/plugins/redmine_xls_export \
- && git checkout d832a9230728d68732d574620662ccce77dc2772 \
+ && git checkout 8364baf0eb5a7d8d1b7c3dcf0e57f869ae6ddb58 \
  && cd .. \
 
  && git clone https://github.com/suer/redmine_export_with_journals.git ${REDMINE_PATH}/plugins/redmine_export_with_journals \
