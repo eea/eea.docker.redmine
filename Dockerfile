@@ -17,6 +17,12 @@ RUN apt-get update -q \
  && cd ${REDMINE_PATH}/plugins/redmine_wiki_backlinks \
  && git checkout 62488fa341d21c9b46b27cbb787ee61b46266d0e \
  && cd .. \
+# TODO: to be taken from the original repo when PR is merged:
+#    *** https://github.com/two-pack/redmine_xls_export/pull/129
+ && git clone https://github.com/alecghica/redmine_xls_export.git ${REDMINE_PATH}/plugins/redmine_xls_export \
+ && cd ${REDMINE_PATH}/plugins/redmine_xls_export \
+ && git checkout 8364baf0eb5a7d8d1b7c3dcf0e57f869ae6ddb58 \
+ && cd .. \
  && git clone -b 0.3.3 https://github.com/akiko-pusu/redmine_banner.git ${REDMINE_PATH}/plugins/redmine_banner \
  && git clone -b 2.0.23 https://github.com/alphanodes/additionals.git ${REDMINE_PATH}/plugins/additionals \
  && git clone -b v0.9.5 https://github.com/mikitex70/redmine_drawio.git ${REDMINE_PATH}/plugins/redmine_drawio \
