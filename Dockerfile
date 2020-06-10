@@ -29,10 +29,10 @@ RUN apt-get update -q \
  && git checkout 8364baf0eb5a7d8d1b7c3dcf0e57f869ae6ddb58 \
  && cd .. \
 
- && git clone https://github.com/suer/redmine_export_with_journals.git ${REDMINE_PATH}/plugins/redmine_export_with_journals \
- && cd ${REDMINE_PATH}/plugins/redmine_export_with_journals \
- && git checkout 131d44aee6f4af0b5fc8c4ee1ce1e0ca3d5615bd \
- && cd .. \
+# && git clone https://github.com/suer/redmine_export_with_journals.git ${REDMINE_PATH}/plugins/redmine_export_with_journals \
+# && cd ${REDMINE_PATH}/plugins/redmine_export_with_journals \
+# && git checkout 131d44aee6f4af0b5fc8c4ee1ce1e0ca3d5615bd \
+# && cd .. \
 
  && chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH} 
 
