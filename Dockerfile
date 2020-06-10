@@ -23,7 +23,17 @@ RUN apt-get update -q \
  && git clone  https://github.com/eea/redmine_ldap_sync.git ${REDMINE_PATH}/plugins/redmine_ldap_sync \
 # && git clone https://github.com/eea/eea.redmine.theme.git ${REDMINE_PATH}/public/themes/eea.redmine.theme \
  && git clone https://github.com/eea/taskman.redmine.theme.git ${REDMINE_PATH}/public/themes/taskman.redmine.theme \
- && git clone -b 0.2.1.t11 https://github.com/two-pack/redmine_xls_export.git ${REDMINE_PATH}/plugins/redmine_xls_export \
+
+ && git clone https://github.com/two-pack/redmine_xls_export.git ${REDMINE_PATH}/plugins/redmine_xls_export \
+ && cd ${REDMINE_PATH}/plugins/redmine_xls_export \
+ && git checkout d832a9230728d68732d574620662ccce77dc2772 \
+ && cd .. \
+
+ && git clone https://github.com/suer/redmine_export_with_journals.git ${REDMINE_PATH}/plugins/redmine_export_with_journals \
+ && cd ${REDMINE_PATH}/plugins/redmine_export_with_journals \
+ && git checkout 131d44aee6f4af0b5fc8c4ee1ce1e0ca3d5615bd \
+ && cd .. \
+
  && chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH} 
 
 # Install gems
