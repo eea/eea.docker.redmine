@@ -11,8 +11,6 @@ RUN apt-get update -q \
  && rm -rf /var/lib/apt/lists/* \
  && mkdir -p ${REDMINE_LOCAL_PATH}/github \
  && git clone -b v0.8.0 https://github.com/tckz/redmine-wiki_graphviz_plugin.git ${REDMINE_PATH}/plugins/wiki_graphviz_plugin \
-# && git clone -b Ver_0.3.0 https://github.com/masamitsu-murase/redmine_add_subversion_links.git ${REDMINE_PATH}/plugins/redmine_add_subversion_links \
-# && git clone https://github.com/eea/redmine_github_hook.git ${REDMINE_PATH}/plugins/redmine_github_hook \
  && git clone https://github.com/bluezio/redmine_wiki_backlinks.git ${REDMINE_PATH}/plugins/redmine_wiki_backlinks \
  && cd ${REDMINE_PATH}/plugins/redmine_wiki_backlinks \
  && git checkout 62488fa341d21c9b46b27cbb787ee61b46266d0e \
@@ -21,17 +19,18 @@ RUN apt-get update -q \
  && git clone -b 2.0.23 https://github.com/alphanodes/additionals.git ${REDMINE_PATH}/plugins/additionals \
  && git clone -b v0.9.5 https://github.com/mikitex70/redmine_drawio.git ${REDMINE_PATH}/plugins/redmine_drawio \
  && git clone  https://github.com/eea/redmine_ldap_sync.git ${REDMINE_PATH}/plugins/redmine_ldap_sync \
-# && git clone https://github.com/eea/eea.redmine.theme.git ${REDMINE_PATH}/public/themes/eea.redmine.theme \
+ && git clone -b v0.2.1.t11 https://github.com/two-pack/redmine_xls_export.git ${REDMINE_PATH}/plugins/redmine_xls_export \
  && git clone https://github.com/eea/taskman.redmine.theme.git ${REDMINE_PATH}/public/themes/taskman.redmine.theme \
 
- && git clone https://github.com/alecghica/redmine_xls_export.git ${REDMINE_PATH}/plugins/redmine_xls_export \
- && cd ${REDMINE_PATH}/plugins/redmine_xls_export \
- && git checkout 8364baf0eb5a7d8d1b7c3dcf0e57f869ae6ddb58 \
- && cd .. \
+ # Plugins we don't use anymore
+# && git clone -b Ver_0.3.0 https://github.com/masamitsu-murase/redmine_add_subversion_links.git ${REDMINE_PATH}/plugins/redmine_add_subversion_links \
+# && git clone https://github.com/eea/redmine_github_hook.git ${REDMINE_PATH}/plugins/redmine_github_hook \
+# && git clone https://github.com/eea/eea.redmine.theme.git ${REDMINE_PATH}/public/themes/eea.redmine.theme \
 
-# && git clone https://github.com/suer/redmine_export_with_journals.git ${REDMINE_PATH}/plugins/redmine_export_with_journals \
-# && cd ${REDMINE_PATH}/plugins/redmine_export_with_journals \
-# && git checkout 131d44aee6f4af0b5fc8c4ee1ce1e0ca3d5615bd \
+ # To be removed when we upgrade to a major version of redmine_crm-4_2_7-pro
+# && git clone https://github.com/alecghica/redmine_xls_export.git ${REDMINE_PATH}/plugins/redmine_xls_export \
+# && cd ${REDMINE_PATH}/plugins/redmine_xls_export \
+# && git checkout 8364baf0eb5a7d8d1b7c3dcf0e57f869ae6ddb58 \
 # && cd .. \
 
  && chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH} 
@@ -39,7 +38,6 @@ RUN apt-get update -q \
 # Install gems
 RUN echo 'gem "dalli", "~> 2.7.6"' >> ${REDMINE_PATH}/Gemfile \
  && echo 'gem "acts-as-taggable-on", "~> 5.0"' >> ${REDMINE_PATH}/Gemfile
-
 
 # Install eea cron tools
 COPY crons/ ${REDMINE_LOCAL_PATH}/crons
