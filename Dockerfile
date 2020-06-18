@@ -19,7 +19,7 @@ RUN apt-get update -q \
  && git clone -b 2.0.23 https://github.com/alphanodes/additionals.git ${REDMINE_PATH}/plugins/additionals \
  && git clone -b v0.9.5 https://github.com/mikitex70/redmine_drawio.git ${REDMINE_PATH}/plugins/redmine_drawio \
  && git clone  https://github.com/eea/redmine_ldap_sync.git ${REDMINE_PATH}/plugins/redmine_ldap_sync \
- && git clone -b v0.2.1.t11 https://github.com/two-pack/redmine_xls_export.git ${REDMINE_PATH}/plugins/redmine_xls_export \
+ && git clone -b 0.2.1.t11 https://github.com/two-pack/redmine_xls_export.git ${REDMINE_PATH}/plugins/redmine_xls_export \
  && git clone https://github.com/eea/taskman.redmine.theme.git ${REDMINE_PATH}/public/themes/taskman.redmine.theme \
 
  # Plugins we don't use anymore
