@@ -27,7 +27,7 @@ RUN apt-get update -q \
 #  To be removed when upgraded to a version greater then redmine_crm-4_2_7-pro
  && git clone https://github.com/alecghica/redmine_xls_export.git ${REDMINE_PATH}/plugins/redmine_xls_export \
  && cd ${REDMINE_PATH}/plugins/redmine_xls_export \
- && git checkout 8364baf0eb5a7d8d1b7c3dcf0e57f869ae6ddb58 \
+ && git checkout f1c897bcf2caf943ebf9d821268dcb25478010cd \
  && cd .. \
 
 #  Plugins we don't use anymore
