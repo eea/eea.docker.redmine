@@ -19,19 +19,21 @@ RUN apt-get update -q \
  && git clone -b 2.0.23 https://github.com/alphanodes/additionals.git ${REDMINE_PATH}/plugins/additionals \
  && git clone -b v0.9.5 https://github.com/mikitex70/redmine_drawio.git ${REDMINE_PATH}/plugins/redmine_drawio \
  && git clone  https://github.com/eea/redmine_ldap_sync.git ${REDMINE_PATH}/plugins/redmine_ldap_sync \
- && git clone -b 0.2.1.t11 https://github.com/two-pack/redmine_xls_export.git ${REDMINE_PATH}/plugins/redmine_xls_export \
  && git clone https://github.com/eea/taskman.redmine.theme.git ${REDMINE_PATH}/public/themes/taskman.redmine.theme \
 
- # Plugins we don't use anymore
+#  To be enabled when upgraded to a version greater then redmine_crm-4_2_7-pro
+# && git clone -b 0.2.1.t11 https://github.com/two-pack/redmine_xls_export.git ${REDMINE_PATH}/plugins/redmine_xls_export \
+
+#  To be removed when upgraded to a version greater then redmine_crm-4_2_7-pro
+ && git clone https://github.com/alecghica/redmine_xls_export.git ${REDMINE_PATH}/plugins/redmine_xls_export \
+ && cd ${REDMINE_PATH}/plugins/redmine_xls_export \
+ && git checkout 8364baf0eb5a7d8d1b7c3dcf0e57f869ae6ddb58 \
+ && cd .. \
+
+#  Plugins we don't use anymore
 # && git clone -b Ver_0.3.0 https://github.com/masamitsu-murase/redmine_add_subversion_links.git ${REDMINE_PATH}/plugins/redmine_add_subversion_links \
 # && git clone https://github.com/eea/redmine_github_hook.git ${REDMINE_PATH}/plugins/redmine_github_hook \
 # && git clone https://github.com/eea/eea.redmine.theme.git ${REDMINE_PATH}/public/themes/eea.redmine.theme \
-
- # To be removed when we upgrade to a major version of redmine_crm-4_2_7-pro
-# && git clone https://github.com/alecghica/redmine_xls_export.git ${REDMINE_PATH}/plugins/redmine_xls_export \
-# && cd ${REDMINE_PATH}/plugins/redmine_xls_export \
-# && git checkout 8364baf0eb5a7d8d1b7c3dcf0e57f869ae6ddb58 \
-# && cd .. \
 
  && chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH} 
 
