@@ -21,8 +21,12 @@ RUN apt-get update -q \
  && git clone  https://github.com/eea/redmine_ldap_sync.git ${REDMINE_PATH}/plugins/redmine_ldap_sync \
  && git clone https://github.com/eea/taskman.redmine.theme.git ${REDMINE_PATH}/public/themes/taskman.redmine.theme \
 
-#  To be enabled when upgraded to a version greater then redmine_crm-4_2_7-pro
- && git clone -b 0.2.1.t11 https://github.com/two-pack/redmine_xls_export.git ${REDMINE_PATH}/plugins/redmine_xls_export \
+#  To be changed when upgraded to a version greater then redmine_crm-4_3_1-pro
+ && git clone https://github.com/two-pack/redmine_xls_export.git ${REDMINE_PATH}/plugins/redmine_xls_export \
+ && cd ${REDMINE_PATH}/plugins/redmine_xls_export \
+ && git checkout f44cf9f228298615ea1f37749412c52f0c5b0bc9 \
+ && sed -i 's/"spreadsheet".*/"spreadsheet", "~> 0.6.8"/' \
+ && cd .. \
 
 #  To be removed when upgraded to a version greater then redmine_crm-4_2_7-pro
 # && git clone https://github.com/eea/redmine_xls_export.git ${REDMINE_PATH}/plugins/redmine_xls_export \
