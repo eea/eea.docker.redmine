@@ -18,7 +18,7 @@ default:
       enable_starttls_auto: true
       address: "postfix"
       port: 25
-      domain: "eea.europa.eu"
+      domain: "eionet.europa.eu"
       tls: true
 
   # Absolute path to the directory where attachments are stored.
