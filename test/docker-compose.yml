@@ -1,0 +1,55 @@
+version: '2'
+services:
+  mysql:
+    image: mysql:5.7
+    environment:
+      MYSQL_DATABASE: redmine_test
+      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_USER: redmine
+      TZ: Europe/Copenhagen
+    ports:
+    - 3306:3306  
+    volumes:
+    - taskman_test_db:/var/lib/mysql
+    command:
+    - --query-cache-size=0
+    - --query-cache-limit=64M
+    - --query-cache-type=0
+    - --innodb-buffer-pool-size=1G
+    - --innodb-buffer-pool-instances=4
+    - --net-read-timeout=7200
+    - --net-write-timeout=7200
+    - --max-allowed-packet=128M
+    - --tmp-table-size=384M
+    - --max-heap-table-size=384M
+    - --join-buffer-size=256M
+    - --character_set_server=utf8mb4
+
+  redmine:
+    build: ../.
+    environment:
+      PLUGINS_PASSWORD: $REDMINE_PLUGINS_PASSWORD 
+      PLUGINS_URL: https://eeasvn.eea.europa.eu/repositories/deployment/production/taskman
+      PLUGINS_USER: $REDMINE_PLUGINS_USER
+      REDMINE_HOST: redmine:3000
+      RAILS_ENV: test
+      TZ: Europe/Copenhagen
+    links:
+    - mysql:mysql
+
+  memcached:
+    image: memcached:1
+    environment:
+      TZ: Europe/Copenhagen
+    command:
+    - -m
+    - '512'
+
+  postfix:
+    image: eaudeweb/mailtrap:latest
+
+
+volumes:
+  taskman_test_db:
+    driver: local
