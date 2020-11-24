@@ -16,7 +16,7 @@ pipeline {
           script {
             try {
               checkout scm
-              
+              sh "pwd; ls -ltr *; ls -ltr test/*" 
               sh "cp test/start-redmine.sh ."
               withCredentials([ usernamePassword(credentialsId: 'redminepluginssvn', usernameVariable: 'REDMINE_PLUGINS_USER', passwordVariable: 'REDMINE_PLUGINS_PASSWORD')]) {
                    sh "docker-compose -f test/docker-compose.yml up -d"
