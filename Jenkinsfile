@@ -16,18 +16,18 @@ pipeline {
           script {
             try {
               checkout scm
-              sh "mv test/* ."
+              sh "mv test/start_redmine.sh ."
                
               withCredentials([ usernamePassword(credentialsId: 'redminepluginssvn', usernameVariable: 'REDMINE_PLUGINS_USER', passwordVariable: 'REDMINE_PLUGINS_PASSWORD')]) {
               
-                  sh "docker-compose up -d"   
-                  sh "docker-compose exec redmine bundle exec rake redmine:plugins:test"
-                  sh "docker-compose exec redmine bundle exec rake test"             
+                  sh "docker-compose -f test/docker-compose.yml up -d"   
+                  sh "docker-compose -f test/docker-compose.yml exec redmine bundle exec rake redmine:plugins:test"
+                  sh "docker-compose -f test/docker-compose.yml exec redmine bundle exec rake test"             
               } 
             } finally {
-              sh '''docker-compose stop'''
-              sh '''docker-compose rm -v'''
-              sh '''docker volume rm taskman_test_db'''
+              sh '''docker-compose -f test/docker-compose.yml stop'''
+              sh '''docker-compose -f test/docker-compose.yml rm -v'''
+              sh '''docker volume rm test_taskman_test_db'''
             }
           }
         }
