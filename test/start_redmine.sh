@@ -75,7 +75,7 @@ echo 'test:
 
 #prepare configuarion 
 sed -i 's/BUNDLE_WITHOUT.*//' /usr/local/bundle/config
-rm -f config/configuration.yml
+rm -f /usr/src/redmine/config/configuration.yml
 
 if [ -d /usr/src/redmine/plugins/redmine_contacts ]; then
 	mv /usr/src/redmine/plugins/redmine_contacts /tmp/
@@ -104,5 +104,4 @@ if [ -d /tmp/redmine_contacts_helpdesk ]; then
 fi
 
 
-tail -f /dev/null
 

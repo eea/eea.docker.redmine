@@ -8,8 +8,6 @@ services:
       MYSQL_ROOT_PASSWORD: password
       MYSQL_USER: redmine
       TZ: Europe/Copenhagen
-    ports:
-    - 3306:3306  
     volumes:
     - taskman_test_db:/var/lib/mysql
     command:
@@ -35,6 +33,10 @@ services:
       REDMINE_HOST: redmine:3000
       RAILS_ENV: test
       TZ: Europe/Copenhagen
+    entrypoint:
+    - tail
+    - -f
+    - /dev/null
     depends_on:
     - mysql  
     links:

@@ -20,13 +20,14 @@ pipeline {
                
               withCredentials([ usernamePassword(credentialsId: 'redminepluginssvn', usernameVariable: 'REDMINE_PLUGINS_USER', passwordVariable: 'REDMINE_PLUGINS_PASSWORD')]) {
               
-                  sh "docker-compose -f test/docker-compose.yml up -d"   
+                  sh "docker-compose -f test/docker-compose.yml up -d"
+                  sh "docker-compose -f test/docker-compose.yml exec redmine /start_redmine.sh"
                   sh "docker-compose -f test/docker-compose.yml exec redmine bundle exec rake redmine:plugins:test"
                   sh "docker-compose -f test/docker-compose.yml exec redmine bundle exec rake test"             
               } 
             } finally {
               sh '''docker-compose -f test/docker-compose.yml stop'''
-              sh '''docker-compose -f test/docker-compose.yml rm -v'''
+              sh '''docker-compose -f test/docker-compose.yml rm -vf'''
               sh '''docker volume rm test_taskman_test_db'''
             }
           }
