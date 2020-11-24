@@ -35,6 +35,8 @@ services:
       REDMINE_HOST: redmine:3000
       RAILS_ENV: test
       TZ: Europe/Copenhagen
+    depends_on:
+    - mysql:mysql  
     links:
     - mysql:mysql
 
