@@ -36,7 +36,7 @@ services:
       RAILS_ENV: test
       TZ: Europe/Copenhagen
     depends_on:
-    - mysql:mysql  
+    - mysql  
     links:
     - mysql:mysql
 
