@@ -94,7 +94,13 @@ echo 'gem "ci_reporter_minitest"' >> Gemfile
 echo "
 require 'ci/reporter/rake/minitest'
 
-task :test => 'ci:setup:minitest'" >> Rakefile
+task :test => 'ci:setup:minitest'
+namespace "redmine" do
+  namespace "plugins" do
+    task :test => 'ci:setup:minitest'
+  end
+end
+" >> Rakefile
 
 cat Gemfile
 cat Rakefile
