@@ -103,5 +103,9 @@ if [ -d /tmp/redmine_contacts_helpdesk ]; then
       bundle exec rake redmine:plugins:migrate
 fi
 
+echo 'gem "ci_reporter_minitest"' >> Gemfile
+echo "
+require 'ci/reporter/rake/minitest'
 
+task :test => 'ci:setup:minitest'" >> Rakefile
 
