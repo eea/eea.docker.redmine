@@ -95,8 +95,8 @@ echo "
 require 'ci/reporter/rake/minitest'
 
 task :test => 'ci:setup:minitest'
-namespace "redmine" do
-  namespace "plugins" do
+namespace 'redmine' do
+  namespace 'plugins' do
     task :test => 'ci:setup:minitest'
   end
 end
