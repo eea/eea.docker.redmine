@@ -3,6 +3,7 @@
 
 service rsyslog restart
 
+mkdir -p /install_plugins
 
 #delete empty plugins
 find  /install_plugins -size 0 -type f -exec rm {} \;
