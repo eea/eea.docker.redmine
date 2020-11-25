@@ -37,7 +37,8 @@ pipeline {
                   
                   sh "docker cp ${DOCKER_REDMINE}:/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-Minitest-Result.xml"
                   
-                  junit "TEST-PLUGINS-Result.xml"
+                  archiveArtifacts artifacts: "TEST-PLUGINS-Result.xml", fingerprint: true
+                  archiveArtifacts artifacts: "TEST-Minitest-Result.xml", fingerprint: true
                   junit "TEST-Minitest-Result.xml"
                   // archiveArtifacts artifacts: 'rake_test.log', fingerprint: true 
                   // archiveArtifacts artifacts: 'plugins_test.log', fingerprint: true
