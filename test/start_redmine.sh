@@ -5,8 +5,7 @@ service rsyslog restart
 
 mkdir -p /install_plugins
 
-#delete empty plugins
-find  /install_plugins -size 0 -type f -exec rm {} \;
+env
 
 if [ ! -z "${PLUGINS_URL}" ]; then
   full_url=${PLUGINS_URL/https:\/\//https:\/\/$PLUGINS_USER:$PLUGINS_PASSWORD@}
@@ -17,7 +16,8 @@ if [ ! -z "${PLUGINS_URL}" ]; then
 
       if [ ! -f /install_plugins/$plugin_file ]; then
               echo "Found missing plugin - $plugin_file, will download and install it"
-              wget -q -O  /install_plugins/$plugin_file $full_url/$plugin_file
+              wget -O  /install_plugins/$plugin_file $full_url/$plugin_file
+              #wget -q -O  /install_plugins/$plugin_file $full_url/$plugin_file
               unzip -d ${REDMINE_PATH}/plugins -o /install_plugins/$plugin_file
               REDMINE_PLUGINS_MIGRATE="yes" 
      fi
@@ -86,6 +86,18 @@ if [ -d /usr/src/redmine/plugins/redmine_contacts_helpdesk ]; then
         mv /usr/src/redmine/plugins/redmine_contacts_helpdesk /tmp/
 fi
 
+
+echo 'gem "ci_reporter_minitest"' >> Gemfile
+echo 'gem "ci"' >> Gemfile
+
+echo "
+require 'ci/reporter/rake/minitest'
+
+task :test => 'ci:setup:minitest'" >> Rakefile
+
+cat Gemfile
+cat Rakefile
+
 bundle install
 
 bundle exec rake db:migrate
@@ -104,9 +116,4 @@ if [ -d /tmp/redmine_contacts_helpdesk ]; then
       bundle exec rake redmine:plugins:migrate
 fi
 
-echo 'gem "ci_reporter_minitest"' >> Gemfile
-echo "
-require 'ci/reporter/rake/minitest'
-
-task :test => 'ci:setup:minitest'" >> Rakefile
 
