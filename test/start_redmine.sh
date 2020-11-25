@@ -88,9 +88,6 @@ fi
 
 
 echo 'gem "ci_reporter_minitest"' >> Gemfile
-echo 'gem "ci"' >> Gemfile
-echo 'gem "minitest-ci"' >> Gemfile
-echo 'gem "ci_reporter"' >> Gemfile
 
 
 
