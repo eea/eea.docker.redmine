@@ -39,7 +39,7 @@ pipeline {
             } finally {
               sh '''docker-compose -f test/docker-compose.yml stop'''
               sh '''docker-compose -f test/docker-compose.yml rm -vf'''
-              sh '''docker rmi \$(docker images -q)'''
+              sh '''docker rmi test_redmine'''
               sh '''docker volume ls'''
               sh '''docker volume rm test_taskman_test_db'''
 
