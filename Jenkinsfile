@@ -29,13 +29,16 @@ pipeline {
                   sh "docker exec ${DOCKER_REDMINE} bundle exec rake redmine:plugins:test"
                   sh "docker exec ${DOCKER_REDMINE} ls -ltr test/"
                   
-		  try {
-                  sh "docker exec ${DOCKER_REDMINE} bundle exec rake test"  
-                  } catch (err) {
-                  echo "Unstable: ${err}"
-                  }
-                  sh "docker exec ${DOCKER_REDMINE} ls -ltr test/reports/"           
-              } 
+		  catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE')  {
+                      sh "docker exec ${DOCKER_REDMINE} bundle exec rake test | tee -a rake_test.log"  
+                  } 
+                  sh "docker cp ${DOCKER_REDMINE}:rake_test.log rake_test.log"           
+                  
+                  sh "docker cp ${DOCKER_REDMINE}:test/reports/TEST-Minitest-Result.xml TEST-Minitest-Result.xml"
+                  junit "TEST-Minitest-Result.xml"
+                  archiveArtifacts artifacts: 'rake_test.log', fingerprint: true 
+                          
+                } 
             } finally {
               sh '''docker-compose -f test/docker-compose.yml stop'''
               sh '''docker-compose -f test/docker-compose.yml rm -vf'''
