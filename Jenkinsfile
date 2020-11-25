@@ -27,9 +27,9 @@ pipeline {
                   ).trim()
                   sh "docker exec ${DOCKER_REDMINE} /start_redmine.sh"
                   sh "docker exec ${DOCKER_REDMINE} bundle exec rake redmine:plugins:test"
-                  sh "ls -ltr test/reports/*"
-                  sh "mv test/reports test/reports1"
-                  try {
+                  sh "ls -ltr test/*"
+                  
+		  try {
                   sh "docker exec ${DOCKER_REDMINE} bundle exec rake test"  
                   } catch (err) {
                   echo "Unstable: ${err}"
