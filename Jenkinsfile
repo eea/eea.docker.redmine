@@ -22,7 +22,7 @@ pipeline {
               
                   sh "docker-compose -f test/docker-compose.yml up -d"
                   DOCKER_REDMINE = sh (
-                     script: "docker-compose -f test/docker-compose.yml ps | grep redmine | awk '{print $1}'",
+                     script: "docker-compose -f test/docker-compose.yml ps | grep redmine | awk '{print \$1}'",
                      returnStdout: true
                   ).trim()
                   sh "docker exec ${DOCKER_REDMINE} /start_redmine.sh"
