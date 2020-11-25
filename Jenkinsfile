@@ -27,14 +27,14 @@ pipeline {
                   ).trim()
                   sh "docker exec ${DOCKER_REDMINE} /start_redmine.sh"
                   sh "docker exec ${DOCKER_REDMINE} bundle exec rake redmine:plugins:test | tee -a plugins_test.log"
-                  sh "docker cp ${DOCKER_REDMINE}:plugins_test.log plugins_test.log"
+                  sh "ls -ltr plugins_test.log"
 
                   sh "docker cp ${DOCKER_REDMINE}:test/reports/TEST-Minitest-Result.xml TEST-PLUGINS-Result.xml"
                   
 		  catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE')  {
                       sh "docker exec ${DOCKER_REDMINE} bundle exec rake test | tee -a rake_test.log"  
                   } 
-                  sh "docker cp ${DOCKER_REDMINE}:rake_test.log rake_test.log"           
+                  sh "ls -ltr rake_test.log"           
                   
                   sh "docker cp ${DOCKER_REDMINE}:test/reports/TEST-Minitest-Result.xml TEST-Minitest-Result.xml"
                   
