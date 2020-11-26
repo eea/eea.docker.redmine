@@ -105,6 +105,11 @@ end
 cat Gemfile
 cat Rakefile
 
+
+#remove from testing archived plugin
+rm -rf /usr/src/redmine/plugins/redmine_ldap_sync
+
+
 bundle install
 
 bundle exec rake db:migrate
