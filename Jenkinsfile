@@ -29,17 +29,20 @@ pipeline {
                   
                   sh "docker exec ${DOCKER_REDMINE} bundle exec rake redmine:plugins:test"
                   
-                  sh "docker cp ${DOCKER_REDMINE}:/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-PLUGINS-Result.xml"
+                  sh "docker cp ${DOCKER_REDMINE}:/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-Plugins-Result.xml"
                                     
 		  catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE')  {
                       sh "docker exec ${DOCKER_REDMINE} bundle exec rake test"  
                   } 
                   
-                  sh "docker cp ${DOCKER_REDMINE}:/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-Minitest-Result.xml"
+                  sh "docker cp ${DOCKER_REDMINE}:/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-Redmine-Result.xml"
                   
-                  archiveArtifacts artifacts: "TEST-PLUGINS-Result.xml", fingerprint: true
-                  archiveArtifacts artifacts: "TEST-Minitest-Result.xml", fingerprint: true
-                  junit "TEST-Minitest-Result.xml"
+                  sh "cp test/merge_junitxml.py .;python merge_junitxml.py TEST-Plugins-Result.xml TEST-Redmine-Result.xml TEST-Result.xml"
+                 
+                  archiveArtifacts artifacts: "TEST-Plugins-Result.xml", fingerprint: true
+                  archiveArtifacts artifacts: "TEST-Redmine-Result.xml", fingerprint: true
+                       
+                  junit "TEST-Result.xml"
                   // archiveArtifacts artifacts: 'rake_test.log', fingerprint: true 
                   // archiveArtifacts artifacts: 'plugins_test.log', fingerprint: true
                           
