@@ -27,8 +27,10 @@ pipeline {
                   ).trim()
                   sh "docker exec ${DOCKER_REDMINE} /start_redmine.sh"
                   
-                  sh "docker exec ${DOCKER_REDMINE} bundle exec rake redmine:plugins:test"
-                  
+                  catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE')  {
+                      sh "docker exec ${DOCKER_REDMINE} bundle exec rake redmine:plugins:test"
+                  }
+
                   sh "docker cp ${DOCKER_REDMINE}:/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-Plugins-Result.xml"
                                     
 		  catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE')  {
