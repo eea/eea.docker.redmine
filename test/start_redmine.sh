@@ -78,15 +78,6 @@ echo 'test:
 sed -i 's/BUNDLE_WITHOUT.*//' /usr/local/bundle/config
 rm -f /usr/src/redmine/config/configuration.yml
 
-if [ -d /usr/src/redmine/plugins/redmine_contacts ]; then
-	mv /usr/src/redmine/plugins/redmine_contacts /tmp/
-fi
-
-if [ -d /usr/src/redmine/plugins/redmine_contacts_helpdesk ]; then
-        mv /usr/src/redmine/plugins/redmine_contacts_helpdesk /tmp/
-fi
-
-
 echo 'gem "ci_reporter_minitest"' >> Gemfile
 
 
@@ -102,17 +93,29 @@ namespace 'redmine' do
 end
 " >> Rakefile
 
-cat Gemfile
-cat Rakefile
+
+
+bundle install
+
+mv plugins /tmp
+bundle exec rake db:migrate
+mv /tmp/plugins  /usr/src/redmine/
+
+
+if [ -d /usr/src/redmine/plugins/redmine_contacts ]; then
+        mv /usr/src/redmine/plugins/redmine_contacts /tmp/
+fi
+
+if [ -d /usr/src/redmine/plugins/redmine_contacts_helpdesk ]; then
+        mv /usr/src/redmine/plugins/redmine_contacts_helpdesk /tmp/
+fi
 
 
 #remove from testing archived plugin
 rm -rf /usr/src/redmine/plugins/redmine_ldap_sync
 
 
-bundle install
 
-bundle exec rake db:migrate
 bundle exec rake redmine:plugins:migrate
 
 if [ -d /tmp/redmine_contacts ]; then

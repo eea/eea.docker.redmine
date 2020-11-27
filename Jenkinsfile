@@ -20,7 +20,7 @@ pipeline {
                
               withCredentials([ usernamePassword(credentialsId: 'redminepluginssvn', usernameVariable: 'REDMINE_PLUGINS_USER', passwordVariable: 'REDMINE_PLUGINS_PASSWORD')]) {
               
-                  sh "docker-compose -f test/docker-compose.yml up -d"
+                  sh "docker-compose -f test/docker-compose.yml up -d --build"
                   DOCKER_REDMINE = sh (
                      script: "docker-compose -f test/docker-compose.yml ps | grep redmine | awk '{print \$1}'",
                      returnStdout: true
