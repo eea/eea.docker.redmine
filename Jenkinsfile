@@ -38,12 +38,26 @@ pipeline {
                   } 
                   
                   sh "docker cp ${DOCKER_REDMINE}:/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-Redmine-Result.xml"
-                  
-                  sh "cp test/merge_junitxml.py .;python merge_junitxml.py TEST-Plugins-Result.xml TEST-Redmine-Result.xml TEST-Result.xml"
-                 
+
+                  catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE')  {
+                      sh "docker exec ${DOCKER_REDMINE} bundle exec rake test:system"
+                  }
+
+                  catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS')  {
+                      sh "mkdir screenshots"
+                      docker cp ${DOCKER_REDMINE}:/usr/src/redmine/tmp/screenshots/. screenshots
+                      archiveArtifacts artifacts: "screenshots/*", fingerprint: true  
+                  }
+
+                  sh "docker cp ${DOCKER_REDMINE}:/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-Browser-Result.xml"
+            
+                  sh "cp test/merge_junitxml.py .;python merge_junitxml.py TEST-Browser-Result.xml TEST-Plugins-Result.xml TEST-Redmine-Result.xml TEST-Result.xml"
+                
+                  archiveArtifacts artifacts: "TEST-Browser-Result.xml", fingerprint: true
                   archiveArtifacts artifacts: "TEST-Plugins-Result.xml", fingerprint: true
                   archiveArtifacts artifacts: "TEST-Redmine-Result.xml", fingerprint: true
-                       
+                  
+            
                   junit "TEST-Result.xml"
                   // archiveArtifacts artifacts: 'rake_test.log', fingerprint: true 
                   // archiveArtifacts artifacts: 'plugins_test.log', fingerprint: true
@@ -53,8 +67,7 @@ pipeline {
               sh '''docker-compose -f test/docker-compose.yml stop'''
               sh '''docker-compose -f test/docker-compose.yml rm -vf'''
               sh '''docker rmi test_redmine'''
-              sh '''docker volume ls'''
-              sh '''docker volume rm test_taskman_test_db'''
+              sh '''docker volume rm test_taskman_test_db test_redmine_files'''
 
             }
           }

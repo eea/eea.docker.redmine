@@ -37,6 +37,8 @@ services:
     - tail
     - -f
     - /dev/null
+    volumes:
+    - redmine_files:/usr/src/redmine/test/fixtures/files  
     depends_on:
     - mysql  
     links:
@@ -53,7 +55,16 @@ services:
   postfix:
     image: eaudeweb/mailtrap:latest
 
-
+  hub:
+    image: selenium/standalone-chrome:4.0.0-alpha-7-20201119
+    shm_size: 2g
+    depends_on:
+    - redmine
+    volumes:
+      - redmine_files:/usr/src/redmine/test/fixtures/files
+  
 volumes:
   taskman_test_db:
     driver: local
+  redmine_files:
+    driver: local  

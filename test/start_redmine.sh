@@ -91,8 +91,24 @@ namespace 'redmine' do
     task :test => 'ci:setup:minitest'
   end
 end
+namespace 'test' do
+  task :system => 'ci:setup:minitest'
+end
 " >> Rakefile
 
+
+#setup for selenium
+mkdir /usr/src/redmine/test/fixtures/files/downloads
+chmod -R 777 /usr/src/redmine/test
+chmod -R 777 /usr/src/redmine/test/fixtures/files/downloads
+
+sed -i "s#Rails.root,.*#Rails.root, 'test/fixtures/files/downloads'))#" test/application_system_test_case.rb 
+sed -i 's#CSV.read.*#CSV.read("/usr/src/redmine/test/fixtures/files/downloads/issues.csv")#' test/system/issues_test.rb
+sed -i '/CSV.read.*/i\    sleep 5' test/system/issues_test.rb
+sed -i '/select#time_entry_activity_id/i\    sleep 3' test/system/timelog_test.rb
+sed -i '/.*driven_by :selenium.*/a\      url: "http:\/\/hub:4444\/wd\/hub",' test/application_system_test_case.rb
+sed -i '/.*chromeOptions.*/a\          "args" =>  %w[headless window-size=1024x900],' test/application_system_test_case.rb
+sed -i '/.*setup do.*/a\    Capybara.server_host = "0.0.0.0"\n    Capybara.server = :puma, { Threads: "1:1" }\n    Capybara.app_host = "http:\/\/redmine:#{Capybara.current_session.server.port}"\n    host! "http:\/\/redmine:#{Capybara.current_session.server.port}"' test/application_system_test_case.rb
 
 
 bundle install
