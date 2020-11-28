@@ -45,7 +45,7 @@ pipeline {
 
                   catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS')  {
                       sh "mkdir screenshots"
-                      docker cp ${DOCKER_REDMINE}:/usr/src/redmine/tmp/screenshots/. screenshots
+                      sh "docker cp ${DOCKER_REDMINE}:/usr/src/redmine/tmp/screenshots/. screenshots/"
                       archiveArtifacts artifacts: "screenshots/*", fingerprint: true  
                   }
 
