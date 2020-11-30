@@ -109,6 +109,7 @@ pipeline {
             sh '''docker volume rm test_taskman_test_db test_redmine_files'''
           }
         }
+      }
         cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, deleteDirs: true)
 
         script {
