@@ -1,11 +1,6 @@
 #!/bin/bash
 
-
-service rsyslog restart
-
 mkdir -p /install_plugins
-
-env
 
 if [ ! -z "${PLUGINS_URL}" ]; then
   full_url=${PLUGINS_URL/https:\/\//https:\/\/$PLUGINS_USER:$PLUGINS_PASSWORD@}
@@ -16,8 +11,7 @@ if [ ! -z "${PLUGINS_URL}" ]; then
 
       if [ ! -f /install_plugins/$plugin_file ]; then
               echo "Found missing plugin - $plugin_file, will download and install it"
-              wget -O  /install_plugins/$plugin_file $full_url/$plugin_file
-              #wget -q -O  /install_plugins/$plugin_file $full_url/$plugin_file
+              wget -q -O  /install_plugins/$plugin_file $full_url/$plugin_file
               unzip -d ${REDMINE_PATH}/plugins -o /install_plugins/$plugin_file
               REDMINE_PLUGINS_MIGRATE="yes" 
      fi
