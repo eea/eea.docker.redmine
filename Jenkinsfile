@@ -39,6 +39,8 @@ pipeline {
                   
                   sh "docker cp ${DOCKER_REDMINE}:/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-Redmine-Result.xml"
 
+		  sh "docker exec test_hub_1 ls -ltr /usr/src/redmine/test/fixtures/files/"
+		      
                   catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE')  {
                       sh "docker exec ${DOCKER_REDMINE} bundle exec rake test:system"
                   }
