@@ -15,6 +15,7 @@ pipeline {
   stages {
 
     stage("Build image") {
+      when { not { buildingTag() } }
       steps {
         script{
           withCredentials([usernamePassword(credentialsId: 'redminepluginssvn', usernameVariable: 'REDMINE_PLUGINS_USER', passwordVariable: 'REDMINE_PLUGINS_PASSWORD')]) {
@@ -28,12 +29,14 @@ pipeline {
     }
 
     stage("Prepare redmine for tests") {
+      when { not { buildingTag() } }
       steps {
         sh '''docker exec ${DOCKER_REDMINE} /start_redmine.sh'''
       }
     }
 
     stage("Test plugins") {
+      when { not { buildingTag() } }
       steps {
         catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
           sh "docker exec ${DOCKER_REDMINE} bundle exec rake redmine:plugins:test"
@@ -46,6 +49,7 @@ pipeline {
       }
     }
     stage("Unit tests (redmine)") {
+      when { not { buildingTag() } }
       steps {
         catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
           sh "docker exec ${DOCKER_REDMINE} bundle exec rake test"
@@ -57,6 +61,7 @@ pipeline {
       }
     }
     stage("Integration/browser tests (redmine)") {
+      when { not { buildingTag() } }
       steps {
         catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
           sh "docker exec ${DOCKER_REDMINE} bundle exec rake test:system"
@@ -68,7 +73,6 @@ pipeline {
         }
       }
       post {
-
         unstable {
           catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
             sh "mkdir -p screenshots"
@@ -98,7 +102,7 @@ pipeline {
   post {
     always {
       script {
-        if (${env.DOCKER_REDMINE}) {
+        if (env.DOCKER_REDMINE) {
           catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
             sh '''cp test/merge_junitxml.py .'''
             sh '''python merge_junitxml.py TEST-*-Result.xml TEST-Result.xml'''
