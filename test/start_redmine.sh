@@ -105,6 +105,7 @@ chmod -R 777 /usr/src/redmine/test/fixtures/files/downloads
 sed -i "s#Rails.root,.*#Rails.root, 'test/fixtures/files/downloads'))#" test/application_system_test_case.rb 
 sed -i 's#CSV.read.*#CSV.read("/usr/src/redmine/test/fixtures/files/downloads/issues.csv")#' test/system/issues_test.rb
 sed -i '/CSV.read.*/i\    sleep 5' test/system/issues_test.rb
+sed -i 's#sleep 0.2#sleep 1#' test/system/issues_test.rb
 sed -i '/select#time_entry_activity_id/i\    sleep 3' test/system/timelog_test.rb
 sed -i '/.*driven_by :selenium.*/a\      url: "http:\/\/hub:4444\/wd\/hub",' test/application_system_test_case.rb
 sed -i '/.*chromeOptions.*/a\          "args" =>  %w[headless window-size=1024x900],' test/application_system_test_case.rb
