@@ -98,7 +98,7 @@ pipeline {
   post {
     always {
       script {
-        if ($ {env.DOCKER_REDMINE}) {
+        if (${env.DOCKER_REDMINE}) {
           catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
             sh '''cp test/merge_junitxml.py .'''
             sh '''python merge_junitxml.py TEST-*-Result.xml TEST-Result.xml'''
