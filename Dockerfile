@@ -34,7 +34,7 @@ RUN apt-get update -q \
  && git clone https://github.com/two-pack/redmine_xls_export.git ${REDMINE_PATH}/plugins/redmine_xls_export \
  && cd ${REDMINE_PATH}/plugins/redmine_xls_export \
  && git checkout f44cf9f228298615ea1f37749412c52f0c5b0bc9 \
- && sed -i 's/"spreadsheet".*/"spreadsheet", "~> 0.6.8"/' Gemfile \
+ #&& sed -i 's/"spreadsheet".*/"spreadsheet", "~> 0.6.8"/' Gemfile \
  && cd .. \
 
 #  To be removed when upgraded to a version greater then redmine_crm-4_2_7-pro
