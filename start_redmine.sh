@@ -114,7 +114,7 @@ if [ -f /usr/src/redmine/plugins/redmine_contacts_helpdesk/lib/redmine_helpdesk.
 fi
 
 #ensure correct permissions
-chown -R redmine:redmine /usr/src/redmine/tmp /usr/src/redmine/plugins
+chown -R redmine:redmine /usr/src/redmine/plugins
 
 
 /docker-entrypoint.sh rails server -b 0.0.0.0
