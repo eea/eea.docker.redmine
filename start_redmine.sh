@@ -15,7 +15,7 @@ echo "export SYNC_API_KEY=$SYNC_API_KEY"  >> ${REDMINE_PATH}/.profile
 echo "export SYNC_REDMINE_URL=$SYNC_REDMINE_URL"  >> ${REDMINE_PATH}/.profile 
 echo "TZ=$TZ" >> /etc/default/cron
 
-if [ ! -z "${T_EMAIL_HOST}" ]; then
+if [ -n "${T_EMAIL_HOST}" ]; then
 
   mkdir -p /var/local/environment
 
@@ -42,6 +42,27 @@ H_EMAIL_PASS=${H_EMAIL_PASS}
 H_EMAIL_FOLDER=Inbox
 H_EMAIL_SSL=false" > /var/local/environment/vars
 fi
+
+REDMINE_SMTP_HOST=${REDMINE_SMTP_HOST:-postfix}
+REDMINE_SMTP_PORT=${REDMINE_SMTP_PORT:-25}
+REDMINE_SMTP_DOMAIN=${REDMINE_SMTP_DOMAIN:-eionet.europa.eu}
+REDMINE_SMTP_TLS=${REDMINE_SMTP_TLS:-true}
+REDMINE_SMTP_STARTTLSAUTO=${REDMINE_SMTP_STARTTLSAUTO:-true}
+
+first_line=$(awk '/smtp_settings/ {print FNR}' ${REDMINE_PATH}/config/configuration.yml)
+head -n ${first_line} ${REDMINE_PATH}/config/configuration.yml > /tmp/configuration.yml
+echo "      enable_starttls_auto: ${REDMINE_SMTP_STARTTLSAUTO}
+      address: \"${REDMINE_SMTP_HOST}\"
+      port: ${REDMINE_SMTP_PORT}
+      domain: \"${REDMINE_SMTP_DOMAIN}\"
+      tls: ${REDMINE_SMTP_TLS}" >> /tmp/configuration.yml
+
+last_line=$(sed -n '/smtp_settings/,/^$/p' ${REDMINE_PATH}/config/configuration.yml | wc -l )
+let last_part=${first_line}+${last_line}-1
+tail --lines=+$last_part ${REDMINE_PATH}/config/configuration.yml >> /tmp/configuration.yml
+diff /tmp/configuration.yml ${REDMINE_PATH}/config/configuration.yml
+mv /tmp/configuration.yml ${REDMINE_PATH}/config/configuration.yml
+
 
 #delete empty plugins
 find  /install_plugins -size 0 -type f -exec rm {} \;
