@@ -46,16 +46,23 @@ fi
 REDMINE_SMTP_HOST=${REDMINE_SMTP_HOST:-postfix}
 REDMINE_SMTP_PORT=${REDMINE_SMTP_PORT:-25}
 REDMINE_SMTP_DOMAIN=${REDMINE_SMTP_DOMAIN:-eionet.europa.eu}
-REDMINE_SMTP_TLS=${REDMINE_SMTP_TLS:-true}
 REDMINE_SMTP_STARTTLSAUTO=${REDMINE_SMTP_STARTTLSAUTO:-true}
 
 first_line=$(awk '/smtp_settings/ {print FNR}' ${REDMINE_PATH}/config/configuration.yml)
 head -n ${first_line} ${REDMINE_PATH}/config/configuration.yml > /tmp/configuration.yml
-echo "      enable_starttls_auto: ${REDMINE_SMTP_STARTTLSAUTO}
+if [[ "${REDMINE_SMTP_TLS}" == "false" ]]; then
+  echo "      enable_starttls_auto: ${REDMINE_SMTP_STARTTLSAUTO}
       address: \"${REDMINE_SMTP_HOST}\"
       port: ${REDMINE_SMTP_PORT}
       domain: \"${REDMINE_SMTP_DOMAIN}\"
-      tls: ${REDMINE_SMTP_TLS}" >> /tmp/configuration.yml
+      tls: false" >> /tmp/configuration.yml
+else
+  echo "      enable_starttls_auto: ${REDMINE_SMTP_STARTTLSAUTO}
+      address: \"${REDMINE_SMTP_HOST}\"
+      port: ${REDMINE_SMTP_PORT}
+      domain: \"${REDMINE_SMTP_DOMAIN}\"
+" >> /tmp/configuration.yml
+fi
 
 last_line=$(sed -n '/smtp_settings/,/^$/p' ${REDMINE_PATH}/config/configuration.yml | wc -l )
 let last_part=${first_line}+${last_line}-1
