@@ -19,7 +19,6 @@ default:
       address: "postfix"
       port: 25
       domain: "eionet.europa.eu"
-      tls: true
 
   # Absolute path to the directory where attachments are stored.
   # The default is the 'files' directory in your Redmine instance.
