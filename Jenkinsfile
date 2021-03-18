@@ -141,7 +141,7 @@ pipeline {
           echo "Recipients is ${recipients}"
 
           emailext(
-          subject: '$DEFAULT_SUBJECT', body: details, attachLog: true, compressLog: true, recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'CulpritsRecipientProvider']])
+          subject: '$DEFAULT_SUBJECT', body: details, attachLog: false, compressLog: true, recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'CulpritsRecipientProvider']])
 
         }
       }
