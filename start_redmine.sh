@@ -123,6 +123,9 @@ fi
 #ensure correct permissions
 chown -R redmine:redmine /usr/src/redmine/plugins
 
+if [ -n "$REDMINE_DB_POOL" ]; then
+    sed -i "/bundle check/a\        echo '  pool: $REDMINE_DB_POOL' >> config\/database.yml"    /docker-entrypoint.sh
+fi
 
 /docker-entrypoint.sh rails server -b 0.0.0.0
 
