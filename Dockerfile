@@ -16,38 +16,19 @@ RUN apt-get update -q \
  && git checkout 62488fa341d21c9b46b27cbb787ee61b46266d0e \
  && cd .. \
  && git clone -b 0.3.4 https://github.com/akiko-pusu/redmine_banner.git ${REDMINE_PATH}/plugins/redmine_banner \
- 
- # fixes contacts bug
- #&& git clone  https://github.com/alphanodes/additionals.git  ${REDMINE_PATH}/plugins/additionals \
- #&& cd ${REDMINE_PATH}/plugins/additionals \
- #&& git checkout ac18f8e17f0780203ff2d15a6deac6774510a0ac \
- #&& cd .. \
- 
- #  To be enabled additionals >= 3.0.1
  && git clone -b 3.0.2 https://github.com/alphanodes/additionals.git ${REDMINE_PATH}/plugins/additionals \
- 
  && git clone -b v1.1.0 https://github.com/mikitex70/redmine_drawio.git ${REDMINE_PATH}/plugins/redmine_drawio \
  && git clone  https://github.com/eea/redmine_ldap_sync.git ${REDMINE_PATH}/plugins/redmine_ldap_sync \
  && git clone https://github.com/eea/taskman.redmine.theme.git ${REDMINE_PATH}/public/themes/taskman.redmine.theme \
-
 #  To be changed when upgraded to a version greater then redmine_crm-4_3_1-pro
  && git clone https://github.com/two-pack/redmine_xls_export.git ${REDMINE_PATH}/plugins/redmine_xls_export \
  && cd ${REDMINE_PATH}/plugins/redmine_xls_export \
  && git checkout f44cf9f228298615ea1f37749412c52f0c5b0bc9 \
- #&& sed -i 's/"spreadsheet".*/"spreadsheet", "~> 0.6.8"/' Gemfile \
  && cd .. \
-
-#  To be removed when upgraded to a version greater then redmine_crm-4_2_7-pro
-# && git clone https://github.com/eea/redmine_xls_export.git ${REDMINE_PATH}/plugins/redmine_xls_export \
-# && cd ${REDMINE_PATH}/plugins/redmine_xls_export \
-# && git checkout f1c897bcf2caf943ebf9d821268dcb25478010cd \
-# && cd .. \
-
 #  Plugins we don't use anymore
 # && git clone -b Ver_0.3.0 https://github.com/masamitsu-murase/redmine_add_subversion_links.git ${REDMINE_PATH}/plugins/redmine_add_subversion_links \
 # && git clone https://github.com/eea/redmine_github_hook.git ${REDMINE_PATH}/plugins/redmine_github_hook \
 # && git clone https://github.com/eea/eea.redmine.theme.git ${REDMINE_PATH}/public/themes/eea.redmine.theme \
-
  && chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH} 
 
 # Install gems
@@ -60,16 +41,10 @@ COPY config/install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
 COPY plugins.cfg ${REDMINE_PATH}/plugins.cfg
 
 # patches for plugins, to be removed when fixed
-#banner plugin fix
 
-#COPY patches/projects_helper_patch.rb ${REDMINE_PATH}/plugins/redmine_banner/lib/banners/projects_helper_patch.rb
 #wiki linkis "key not found" error
 #Remove when fixed - https://github.com/bluezio/redmine_wiki_backlinks/issues/10
 COPY patches/wiki_links_controller.rb  ${REDMINE_PATH}/plugins/redmine_wiki_backlinks/app/controllers/wiki_links_controller.rb
-
-#SystemStackError (stack level too deep) with additionals/lib/additionals/patches/formatting_helper_patch.rb
-#COPY patches/textile_helper.rb ${REDMINE_PATH}/plugins/redmine_drawio/lib/redmine_drawio/helpers/textile_helper.rb
-
 
 COPY redmine_jobs /var/redmine_jobs.txt
 
