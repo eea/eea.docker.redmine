@@ -122,6 +122,7 @@ fi
 
 #ensure correct permissions
 chown -R redmine:redmine /usr/src/redmine/plugins
+chown redmine:redmine /usr/src/redmine/tmp
 
 if [ -n "$REDMINE_DB_POOL" ]; then
     sed -i "/bundle check/a\        echo '  pool: $REDMINE_DB_POOL' >> config\/database.yml"    /docker-entrypoint.sh
