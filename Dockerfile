@@ -1,4 +1,4 @@
-FROM redmine:4.2.1
+FROM redmine:4.2.4
 LABEL maintainer="EEA: IDM2 A-Team <eea-edw-a-team-alerts@googlegroups.com>"
 
 ENV REDMINE_PATH=/usr/src/redmine \
@@ -16,8 +16,8 @@ RUN apt-get update -q \
  && git checkout 62488fa341d21c9b46b27cbb787ee61b46266d0e \
  && cd .. \
  && git clone -b 0.3.4 https://github.com/akiko-pusu/redmine_banner.git ${REDMINE_PATH}/plugins/redmine_banner \
- && git clone -b 3.0.2 https://github.com/alphanodes/additionals.git ${REDMINE_PATH}/plugins/additionals \
- && git clone -b v1.1.0 https://github.com/mikitex70/redmine_drawio.git ${REDMINE_PATH}/plugins/redmine_drawio \
+ && git clone -b 3.0.4 https://github.com/alphanodes/additionals.git ${REDMINE_PATH}/plugins/additionals \
+ && git clone -b v1.3.0 https://github.com/mikitex70/redmine_drawio.git ${REDMINE_PATH}/plugins/redmine_drawio \
  && git clone  https://github.com/eea/redmine_ldap_sync.git ${REDMINE_PATH}/plugins/redmine_ldap_sync \
  && git clone https://github.com/eea/taskman.redmine.theme.git ${REDMINE_PATH}/public/themes/taskman.redmine.theme \
 #  To be changed when upgraded to a version greater then redmine_crm-4_3_1-pro
