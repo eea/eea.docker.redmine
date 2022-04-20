@@ -19,7 +19,7 @@ RUN apt-get update -q \
  && git clone -b 3.0.4 https://github.com/alphanodes/additionals.git ${REDMINE_PATH}/plugins/additionals \
  && git clone -b v1.3.0 https://github.com/mikitex70/redmine_drawio.git ${REDMINE_PATH}/plugins/redmine_drawio \
  && git clone  https://github.com/eea/redmine_ldap_sync.git ${REDMINE_PATH}/plugins/redmine_ldap_sync \
- && git clone -b 1.0.3 https://github.com/eea/redmine_openid_connect.git ${REDMINE_PATH}/plugins/redmine_openid_connect \
+ && git clone -b 1.0.4 https://github.com/eea/redmine_openid_connect.git ${REDMINE_PATH}/plugins/redmine_openid_connect \
  && git clone https://github.com/eea/taskman.redmine.theme.git ${REDMINE_PATH}/public/themes/taskman.redmine.theme \
 #  To be changed when upgraded to a version greater then redmine_crm-4_3_1-pro
  && git clone https://github.com/two-pack/redmine_xls_export.git ${REDMINE_PATH}/plugins/redmine_xls_export \
