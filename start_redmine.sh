@@ -21,26 +21,13 @@ if [ -n "${T_EMAIL_HOST}" ]; then
 
   echo "
 export TZ=${TZ}
-# Taskman email configuration
-T_EMAIL_HOST=${T_EMAIL_HOST}
-T_EMAIL_PORT=${T_EMAIL_PORT}
-T_EMAIL_USER=${T_EMAIL_USER}
-T_EMAIL_PASS=${T_EMAIL_PASS}
-T_EMAIL_FOLDER=Inbox
-T_EMAIL_SSL=true
 
 # Incoming emails API: Administration -> Settings -> Incoming email - API key
 HELPDESK_EMAIL_KEY=${HELPDESK_EMAIL_KEY}
 # Host for the helpdesk api from where to fetch support mails
 TASKMAN_URL=${REDMINE_HOST}
 
-# Helpdesk email configuration
-H_EMAIL_HOST=${H_EMAIL_HOST}
-H_EMAIL_PORT=${H_EMAIL_PORT}
-H_EMAIL_USER=${H_EMAIL_USER}
-H_EMAIL_PASS=${H_EMAIL_PASS}
-H_EMAIL_FOLDER=Inbox
-H_EMAIL_SSL=false" > /var/local/environment/vars
+" > /var/local/environment/vars
 fi
 
 REDMINE_SMTP_HOST=${REDMINE_SMTP_HOST:-postfix}
