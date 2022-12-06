@@ -27,6 +27,14 @@ HELPDESK_EMAIL_KEY=${HELPDESK_EMAIL_KEY}
 # Host for the helpdesk api from where to fetch support mails
 TASKMAN_URL=${REDMINE_HOST}
 
+T_EMAIL_HOST=${T_EMAIL_HOST}
+T_EMAIL_PORT=${T_EMAIL_PORT}
+T_EMAIL_USER=${T_EMAIL_USER}
+T_EMAIL_PASS=${T_EMAIL_PASS}
+T_EMAIL_FOLDER=Inbox
+T_EMAIL_SSL=true
+
+
 " > /var/local/environment/vars
 fi
 
