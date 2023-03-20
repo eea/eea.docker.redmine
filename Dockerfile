@@ -135,7 +135,8 @@ RUN apt-get update -q \
  && git clone -b 0.3.4 https://github.com/akiko-pusu/redmine_banner.git ${REDMINE_PATH}/plugins/redmine_banner \
  && git clone -b 3.0.5 https://github.com/alphanodes/additionals.git ${REDMINE_PATH}/plugins/additionals \
  && git clone -b v1.4.4 https://github.com/mikitex70/redmine_drawio.git ${REDMINE_PATH}/plugins/redmine_drawio \
- && git clone  https://github.com/eea/redmine_ldap_sync.git ${REDMINE_PATH}/plugins/redmine_ldap_sync \
+ && git clone -b 1.0.6 https://github.com/ncoders/redmine_local_avatars.git ${REDMINE_PATH}/plugins/redmine_local_avatars \
+  && git clone  https://github.com/eea/redmine_ldap_sync.git ${REDMINE_PATH}/plugins/redmine_ldap_sync \
 # Disable keycloak integration
 # && git clone -b 1.0.5 https://github.com/eea/redmine_openid_connect.git ${REDMINE_PATH}/plugins/redmine_openid_connect \
  && git clone https://github.com/eea/taskman.redmine.theme.git ${REDMINE_PATH}/public/themes/taskman.redmine.theme \
