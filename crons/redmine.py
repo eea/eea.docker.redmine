@@ -123,7 +123,7 @@ class Sync(object):
         """ Start syncing
         """
         self.repos = []
-        links = [self.github % count for count in range(1, 100)]
+        links = [self.github % count for count in range(1, 10)]
         try:
             for link in links:
                 with contextlib.closing(
