@@ -26,7 +26,7 @@ class Sync(object):
         github="https://api.github.com/orgs/eea/repos?per_page=100&page=%s",
         redmine="https://taskman.eionet.europa.eu/sys/fetch_changesets?key=%s",
         api_key="",
-        timeout=60,
+        timeout=120,
         authentication="",
         loglevel=logging.INFO):
 
@@ -206,7 +206,7 @@ def parse_args():
         '-t', '--timeout',
         help="Timeout",
         type=int,
-        default=60)
+        default=120)
 
     return parser.parse_args()
 
