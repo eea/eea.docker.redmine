@@ -32,6 +32,7 @@ class Sync(object):
         self.github = github
         self.redmine = redmine % api_key
         self.timeout = timeout
+        self.authentication = authentication
         self.repos = []
 
         self.loglevel = loglevel
@@ -89,10 +90,15 @@ class Sync(object):
         name = repo.get('name', '') + '.git'
         if name in existing:
             return self.update_repo(name)
-
+        
+        if self.authentication:
+            authentication = "https://" + self.authentication  + "@github.com"
+        else:
+            authentication = "https://github.com"
+        
         self.logger.info('Syncing repo: %s', name)
         cmd = 'git clone --mirror {url} {folder}/{name}'.format(
-            url=repo.get('clone_url', ''),
+            url=repo.get('clone_url', '').replace("https://github.com", authentication),
             folder=self.folder,
             name=name
         )
@@ -123,7 +129,7 @@ class Sync(object):
         """ Start syncing
         """
         self.repos = []
-        links = [self.github % count for count in range(1, 10)]
+        links = [self.github % count for count in range(1, 100)]
         try:
             for link in links:
                 with contextlib.closing(
@@ -182,6 +188,14 @@ def parse_args():
     )
 
     parser.add_argument(
+        '-a', '--authentication',
+        help="GitHub Authentication User:Token",
+        default=os.environ.get(
+            "GITHUB_AUTHENTICATION",
+            "")
+    )
+    
+    parser.add_argument(
         '-t', '--timeout',
         help="Timeout",
         type=int,
@@ -201,6 +215,7 @@ def main():
         redmine=args.redmine,
         api_key=args.key,
         timeout=args.timeout,
+        authentication=args.authentication,
         loglevel=logging.DEBUG if args.verbose else logging.INFO
     ).start()
 
