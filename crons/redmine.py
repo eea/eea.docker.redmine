@@ -33,6 +33,8 @@ class Sync(object):
         self.redmine = redmine % api_key
         self.timeout = timeout
         self.authentication = authentication
+        if authentication:
+            self.github = github.replace("https://api.github.com", "https://" + authentication + "@api.github.com")
         self.repos = []
 
         self.loglevel = loglevel
