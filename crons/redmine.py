@@ -135,8 +135,11 @@ class Sync(object):
         try:
             if self.authentication:
                 base64string = base64.encodestring(self.authentication).replace('\n', '')
+            else
+                base64string = ""
             for link in links:
                 request = urllib2.Request(link)
+                
                 if base64string:
                     request.add_header("Authorization", "Basic %s" % base64string)
                 with contextlib.closing(
