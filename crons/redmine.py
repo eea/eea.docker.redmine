@@ -7,6 +7,7 @@ import json
 import urllib2
 import logging
 import contextlib
+import base64
 from datetime import datetime
 from subprocess import Popen, PIPE, STDOUT
 
@@ -34,8 +35,6 @@ class Sync(object):
         self.redmine = redmine % api_key
         self.timeout = timeout
         self.authentication = authentication
-        if authentication:
-            self.github = github.replace("https://api.github.com", "https://" + authentication + "@api.github.com")
         self.repos = []
 
         self.loglevel = loglevel
@@ -134,9 +133,14 @@ class Sync(object):
         self.repos = []
         links = [self.github % count for count in range(1, 100)]
         try:
+            if self.authentication:
+                base64string = base64.encodestring(self.authentication).replace('\n', '')
             for link in links:
+                request = urllib2.Request(link)
+                if base64string:
+                    request.add_header("Authorization", "Basic %s" % base64string)
                 with contextlib.closing(
-                        urllib2.urlopen(link, timeout=self.timeout)) as conn:
+                        urllib2.urlopen(request, timeout=self.timeout)) as conn:
                     repos = json.loads(conn.read())
                     if not repos:
                         break
