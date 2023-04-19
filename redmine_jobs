@@ -1,6 +1,6 @@
 #Redmine cron jobs
 #sync eea github
-0 6 * * * /var/local/redmine/crons/redmine_github_sync.sh 2>&1 | logger
+0 6 * * * su redmine -c "/var/local/redmine/crons/redmine_github_sync.sh" 2>&1 | logger
 #redmine helpdesk plugin incoming email
 */5 * * * * /var/local/redmine/crons/helpdesk.sh 2>&1  | logger
 #redmine taskman default email inbox ( reply to default email or new ticket )
