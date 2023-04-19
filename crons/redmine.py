@@ -26,6 +26,7 @@ class Sync(object):
         redmine="https://taskman.eionet.europa.eu/sys/fetch_changesets?key=%s",
         api_key="",
         timeout=60,
+        authentication="",
         loglevel=logging.INFO):
 
         self.folder = folder
