@@ -1,4 +1,10 @@
-FROM ruby:2.7-slim-buster
+#
+# NOTE: THIS DOCKERFILE IS GENERATED VIA "apply-templates.sh"
+#
+# PLEASE DO NOT EDIT IT DIRECTLY.
+#
+
+FROM ruby:3.2-slim-buster
 
 # explicitly set uid/gid to guarantee that it won't change in the future
 # the values 999:999 are identical to the current user/group id assigned
@@ -22,14 +28,42 @@ RUN set -eux; \
 		ghostscript \
 		gsfonts \
 		imagemagick \
-# grab gosu for easy step-down from root
-		gosu \
 # grab tini for signal processing and zombie killing
 		tini \
 	; \
 # allow imagemagick to use ghostscript for PDF -> PNG thumbnail conversion (4.1+)
 	sed -ri 's/(rights)="none" (pattern="PDF")/\1="read" \2/' /etc/ImageMagick-6/policy.xml; \
 	rm -rf /var/lib/apt/lists/*
+
+# grab gosu for easy step-down from root
+ENV GOSU_VERSION 1.17
+RUN set -eux; \
+	\
+	savedAptMark="$(apt-mark showmanual)"; \
+	apt-get update; \
+	apt-get install -y --no-install-recommends \
+		gnupg \
+	; \
+	rm -rf /var/lib/apt/lists/*; \
+	\
+	dpkgArch="$(dpkg --print-architecture | awk -F- '{ print $NF }')"; \
+	wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch"; \
+	wget -O /usr/local/bin/gosu.asc "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch.asc"; \
+	export GNUPGHOME="$(mktemp -d)"; \
+	gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4; \
+	gpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu; \
+	gpgconf --kill all; \
+	rm -rf "$GNUPGHOME" /usr/local/bin/gosu.asc; \
+	\
+	apt-mark auto '.*' > /dev/null; \
+	apt-mark manual $savedAptMark > /dev/null; \
+	apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false; \
+	\
+# smoke test
+	chmod +x /usr/local/bin/gosu; \
+	gosu --version; \
+	gosu nobody true
+
 
 ENV RAILS_ENV production
 WORKDIR /usr/src/redmine
@@ -43,9 +77,9 @@ RUN set -eux; \
 	chown redmine:redmine "$HOME"; \
 	chmod 1777 "$HOME"
 
-ENV REDMINE_VERSION 4.2.11
-ENV REDMINE_DOWNLOAD_URL https://www.redmine.org/releases/redmine-4.2.11.tar.gz
-ENV REDMINE_DOWNLOAD_SHA256 de4ce017c2ad0af94b2941259f356094f369b1b2c621b5a1dd8984a2cf10dc25
+ENV REDMINE_VERSION 5.1.2
+ENV REDMINE_DOWNLOAD_URL https://www.redmine.org/releases/redmine-5.1.2.tar.gz
+ENV REDMINE_DOWNLOAD_SHA256 26c0ca0a9aaee1ceb983825bf1266c99b0850bf013c178713f5a3b0080012123
 
 RUN set -eux; \
 # if we use wget here, we get certificate issues (https://github.com/docker-library/redmine/pull/249#issuecomment-984176479)
@@ -71,8 +105,11 @@ RUN set -eux; \
 		gcc \
 		libpq-dev \
 		libsqlite3-dev \
+		libxml2-dev \
+		libxslt-dev \
 		make \
 		patch \
+		pkgconf \
 		xz-utils \
 	; \
 	rm -rf /var/lib/apt/lists/*; \
@@ -89,6 +126,8 @@ RUN set -eux; \
 		echo "$adapter:" >> ./config/database.yml; \
 		echo "  adapter: $adapter" >> ./config/database.yml; \
 	done; \
+# nokogiri's vendored libxml2 + libxslt do not build on mips64le, so use the apt packages when building
+	gosu redmine bundle config build.nokogiri --use-system-libraries; \
 	gosu redmine bundle install --jobs "$(nproc)"; \
 	rm ./config/database.yml; \
 # fix permissions for running as an arbitrary user
@@ -99,9 +138,8 @@ RUN set -eux; \
 	apt-mark auto '.*' > /dev/null; \
 	[ -z "$savedAptMark" ] || apt-mark manual $savedAptMark; \
 	find /usr/local -type f -executable -exec ldd '{}' ';' \
-		| awk '/=>/ { print $(NF-1) }' \
+		| awk '/=>/ { so = $(NF-1); if (index(so, "/usr/local/") == 1) { next }; gsub("^/(usr/)?", "", so); printf "*%s\n", so }' \
 		| sort -u \
-		| grep -v '^/usr/local/' \
 		| xargs -r dpkg-query --search \
 		| cut -d: -f1 \
 		| sort -u \
@@ -116,6 +154,7 @@ COPY docker-entrypoint.sh /
 EXPOSE 3000
 CMD ["rails", "server", "-b", "0.0.0.0"]
 
+
 LABEL maintainer="EEA: IDM2 A-Team <eea-edw-a-team-alerts@googlegroups.com>"
 
 ENV REDMINE_PATH=/usr/src/redmine \
@@ -127,15 +166,18 @@ RUN apt-get update -q \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* \
  && mkdir -p ${REDMINE_LOCAL_PATH}/github \
- && git clone -b v0.8.0 https://github.com/tckz/redmine-wiki_graphviz_plugin.git ${REDMINE_PATH}/plugins/wiki_graphviz_plugin \
+ && git clone https://github.com/tckz/redmine-wiki_graphviz_plugin.git ${REDMINE_PATH}/plugins/wiki_graphviz_plugin \
+ && cd wiki_graphviz_plugin \
+ && git checkout 6da502f9a5eec94747aaaa7241b92370fa433de1 \
+ && cd .. \
  && git clone https://github.com/bluezio/redmine_wiki_backlinks.git ${REDMINE_PATH}/plugins/redmine_wiki_backlinks \
  && cd ${REDMINE_PATH}/plugins/redmine_wiki_backlinks \
  && git checkout 62488fa341d21c9b46b27cbb787ee61b46266d0e \
  && cd .. \
  && git clone -b 0.3.4 https://github.com/akiko-pusu/redmine_banner.git ${REDMINE_PATH}/plugins/redmine_banner \
- && git clone -b 3.0.5 https://github.com/alphanodes/additionals.git ${REDMINE_PATH}/plugins/additionals \
- && git clone -b v1.4.4 https://github.com/mikitex70/redmine_drawio.git ${REDMINE_PATH}/plugins/redmine_drawio \
- && git clone -b 1.0.6 https://github.com/ncoders/redmine_local_avatars.git ${REDMINE_PATH}/plugins/redmine_local_avatars \
+ && git clone -b 3.1.0 https://github.com/alphanodes/additionals.git ${REDMINE_PATH}/plugins/additionals \
+ && git clone -b v1.4.8 https://github.com/mikitex70/redmine_drawio.git ${REDMINE_PATH}/plugins/redmine_drawio \
+ && git clone -b 1.0.7 https://github.com/ncoders/redmine_local_avatars.git ${REDMINE_PATH}/plugins/redmine_local_avatars \
  && git clone  https://github.com/eea/redmine_ldap_sync.git ${REDMINE_PATH}/plugins/redmine_ldap_sync \
  && git clone https://github.com/eea/taskman.redmine.theme.git ${REDMINE_PATH}/public/themes/taskman.redmine.theme \
 #  To be changed when upgraded to a version greater then redmine_crm-4_3_1-pro
