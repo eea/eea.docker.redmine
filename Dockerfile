@@ -162,7 +162,7 @@ ENV REDMINE_PATH=/usr/src/redmine \
 
 # Install dependencies and plugins
 RUN apt-get update -q \
- && apt-get install -y --no-install-recommends unzip graphviz vim python3-pip cron rsyslog python3-setuptools \
+ && apt-get install -y --no-install-recommends build-essential unzip graphviz vim python3-pip cron rsyslog python3-setuptools \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* \
  && mkdir -p ${REDMINE_LOCAL_PATH}/github \
