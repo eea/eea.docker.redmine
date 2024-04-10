@@ -167,7 +167,7 @@ RUN apt-get update -q \
  && rm -rf /var/lib/apt/lists/* \
  && mkdir -p ${REDMINE_LOCAL_PATH}/github \
  && git clone https://github.com/tckz/redmine-wiki_graphviz_plugin.git ${REDMINE_PATH}/plugins/wiki_graphviz_plugin \
- && cd wiki_graphviz_plugin \
+ && cd ${REDMINE_PATH}/plugins/wiki_graphviz_plugin \
  && git checkout 6da502f9a5eec94747aaaa7241b92370fa433de1 \
  && cd .. \
  && git clone https://github.com/bluezio/redmine_wiki_backlinks.git ${REDMINE_PATH}/plugins/redmine_wiki_backlinks \
