@@ -4,7 +4,7 @@
 import os
 import argparse
 import json
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import logging
 import contextlib
 import base64
@@ -64,11 +64,11 @@ class Sync(object):
         self.logger.info('Fetching changesets on all repos')
         try:
             with contextlib.closing(
-                    urllib2.urlopen(self.redmine, timeout=self.timeout)) as con:
+                    urllib.request.urlopen(self.redmine, timeout=self.timeout)) as con:
                 self.logger.debug(con.read())
-        except urllib2.HTTPError, err:
+        except urllib.error.HTTPError as err:
             self.logger.warn(err)
-        except Exception, err:
+        except Exception as err:
             self.logger.exception(err)
 
     def update_repo(self, name):
@@ -134,23 +134,23 @@ class Sync(object):
         links = [self.github % count for count in range(1, 100)]
         try:
             if self.authentication:
-                base64string = base64.encodestring(self.authentication).replace('\n', '')
-            else
+                base64string = base64.b64encode(self.authentication.encode()).decode()
+            else:
                 base64string = ""
             for link in links:
-                request = urllib2.Request(link)
+                request = urllib.request.Request(link)
                 
                 if base64string:
                     request.add_header("Authorization", "Basic %s" % base64string)
                 with contextlib.closing(
-                        urllib2.urlopen(request, timeout=self.timeout)) as conn:
+                        urllib.request.urlopen(request, timeout=self.timeout)) as conn:
                     repos = json.loads(conn.read())
                     if not repos:
                         break
                     self.logger.info('Adding repositories from %s', link)
                     self.repos.extend(repos)
             self.sync_repos()
-        except Exception, err:
+        except Exception as err:
             self.logger.exception(err)
 
     __call__ = start
@@ -209,7 +209,7 @@ def parse_args():
         '-t', '--timeout',
         help="Timeout",
         type=int,
-        default=120)
+        default=600)
 
     return parser.parse_args()
 
