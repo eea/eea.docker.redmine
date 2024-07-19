@@ -209,7 +209,7 @@ def parse_args():
         '-t', '--timeout',
         help="Timeout",
         type=int,
-        default=120)
+        default=600)
 
     return parser.parse_args()
 
