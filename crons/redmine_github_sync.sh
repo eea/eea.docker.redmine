@@ -7,4 +7,4 @@ if [ -e $REDMINE_PATH/.profile ]; then
 fi
 
 cd /var/local/redmine
-python crons/redmine.py -o github
+python3 crons/redmine.py -o github
