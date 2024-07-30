@@ -11,7 +11,7 @@ if [ -e $REDMINE_PATH/.profile ]; then
 fi
 
 
-export GEM_PATH=/usr/local/bundle
+export GEM_HOME=/usr/local/bundle
 export BUNDLE_APP_CONFIG=/usr/local/bundle
 unset BUNDLE_PATH
 
