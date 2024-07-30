@@ -29,7 +29,7 @@ RUN apt-get update -q \
 # Install gems
 RUN echo 'gem "dalli", "~> 2.7.6"' >> ${REDMINE_PATH}/Gemfile \
  && echo 'gem "acts-as-taggable-on", "~> 5.0"' >> ${REDMINE_PATH}/Gemfile \
- && echo 'gem "net-smtp", "~> 0.3.4"' >> ${REDMINE_PATH}/Gemfile \
+ && echo 'gem "net-smtp", "~> 0.3.3"' >> ${REDMINE_PATH}/Gemfile \
  && echo 'gem "net-pop", "~> 0.1.2"' >> ${REDMINE_PATH}/Gemfile
 
 # Install eea cron tools
