@@ -1,4 +1,4 @@
-FROM redmine:latest 
+FROM redmine:5.1.5 
 #5.1.6 put when it's fixed
 
 
