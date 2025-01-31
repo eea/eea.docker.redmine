@@ -1,5 +1,4 @@
-FROM redmine:5.1.5 
-#5.1.6 put when it's fixed
+FROM redmine:5.1.6 
 
 
 LABEL maintainer="EEA: IDM2 A-Team <eea-edw-a-team-alerts@googlegroups.com>"
