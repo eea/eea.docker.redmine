@@ -1,4 +1,4 @@
-FROM redmine:5.1.6 
+FROM redmine:5.1.7
 
 
 LABEL maintainer="EEA: IDM2 A-Team <eea-edw-a-team-alerts@googlegroups.com>"
