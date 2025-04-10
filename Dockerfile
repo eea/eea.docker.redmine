@@ -18,7 +18,7 @@ RUN apt-get update -q \
  && cd .. \
  && git clone -b 0.2.0 https://github.com/eea/redmine_wiki_backlinks.git ${REDMINE_PATH}/plugins/redmine_wiki_backlinks \
  && git clone -b 0.3.5 https://github.com/agileware-jp/redmine_banner.git ${REDMINE_PATH}/plugins/redmine_banner \
- && git clone -b 4.1.0 https://github.com/alphanodes/additionals.git ${REDMINE_PATH}/plugins/additionals \
+ && git clone -b 3.4.0 https://github.com/alphanodes/additionals.git ${REDMINE_PATH}/plugins/additionals \
  && git clone -b v1.5.1 https://github.com/mikitex70/redmine_drawio.git ${REDMINE_PATH}/plugins/redmine_drawio \
  && git clone -b 1.0.7 https://github.com/ncoders/redmine_local_avatars.git ${REDMINE_PATH}/plugins/redmine_local_avatars \
  && git clone -b 2.3.1 https://github.com/eea/redmine_ldap_sync.git ${REDMINE_PATH}/plugins/redmine_ldap_sync \
