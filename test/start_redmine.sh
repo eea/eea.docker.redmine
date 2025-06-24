@@ -73,11 +73,13 @@ sed -i 's/BUNDLE_WITHOUT.*//' /usr/local/bundle/config
 rm -f /usr/src/redmine/config/configuration.yml
 
 echo 'gem "ci_reporter_minitest"' >> Gemfile
+echo 'gem "minitest-reporters"' >> Gemfile
 
 
 
 echo "
 require 'ci/reporter/rake/minitest'
+require 'minitest/reporters'
 
 task :test => 'ci:setup:minitest'
 namespace 'redmine' do
