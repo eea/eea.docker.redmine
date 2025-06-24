@@ -131,3 +131,4 @@ docker exec -i mysql-redmine mysql -h localhost redmine < redmine.sql
   * http://www.redmine.org/projects/redmine/wiki/RedmineInstall
   * https://hub.docker.com/_/redmine
   * https://github.com/eea/eea.rancher.catalog/tree/master/templates/taskman
+ 
