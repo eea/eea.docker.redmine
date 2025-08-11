@@ -8,7 +8,7 @@ crontab /var/redmine_jobs.txt
 chmod 600 /etc/crontab  
 
 
-service rsyslog restart
+systemctl restart rsyslog
 service cron restart
 
 echo "export SYNC_API_KEY=$SYNC_API_KEY"  >> ${REDMINE_PATH}/.profile
