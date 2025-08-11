@@ -17,4 +17,4 @@ unset BUNDLE_PATH
 cd $REDMINE_PATH
 echo "entraiduserssync - "
 
-/usr/local/bin/bundle exec rake -f $REDMINE_PATH/Rakefile redmine:plugins:entra_id:sync:users RAILS_ENV="production"
+/usr/local/bin/bundle exec rake -f $REDMINE_PATH/Rakefile entra_id:sync:users RAILS_ENV="production"
