@@ -15,6 +15,6 @@ export BUNDLE_APP_CONFIG=/usr/local/bundle
 unset BUNDLE_PATH
 
 cd $REDMINE_PATH
-echo "ldapsync - "
+echo "entraidsync - "
 
 /usr/local/bin/bundle exec rake -f $REDMINE_PATH/Rakefile redmine:plugins:entra_id:sync:groups RAILS_ENV="production"
