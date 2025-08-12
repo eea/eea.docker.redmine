@@ -1,13 +1,13 @@
 ### Redmine cron jobs
 # Sync EEA github
-0 6 * * * su redmine -c "/var/local/redmine/crons/redmine_github_sync.sh" 2>&1 | logger
+15 6 * * * su redmine -c "/var/local/redmine/crons/redmine_github_sync.sh" 2>&1 | logger
 # Redmine helpdesk plugin incoming email
 */5 * * * * /var/local/redmine/crons/helpdesk.sh 2>&1  | logger
 # Redmine taskman default email inbox ( reply to default email or new ticket )
 */5 * * * * /var/local/redmine/crons/taskman_email.sh 2>&1 | logger
 # Redmine EIONET LDAP daily syncronization of user accounts
-0 2 * * *  /var/local/redmine/crons/redmine_ldapsync.sh 2>&1 | logger
+15 2 * * *  /var/local/redmine/crons/redmine_ldapsync.sh 2>&1 | logger
 # Redmine EEA Entra ID hourly syncronization of user accounts
 0 * * * *  /var/local/redmine/crons/eea_entra_id_sync_groups.sh 2>&1 | logger
 # Redmine EEA Entra ID daily syncronization of user groups
-0 4 * * *  /var/local/redmine/crons/eea_entra_id_sync_users.sh 2>&1 | logger
+15 4 * * *  /var/local/redmine/crons/eea_entra_id_sync_users.sh 2>&1 | logger
