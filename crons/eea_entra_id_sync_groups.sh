@@ -2,8 +2,8 @@
 
 REDMINE_PATH=/usr/src/redmine
 
-if [ -e /var/local/environment/vars ]; then
-  source /var/local/environment/vars
+if [ -e /etc/environment ]; then
+  source /etc/environment
 fi
 
 if [ -e $REDMINE_PATH/.profile ]; then

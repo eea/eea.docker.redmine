@@ -20,9 +20,7 @@ echo "export PATH=/usr/local/bundle/bin:$PATH"
 
 echo "TZ=$TZ" >> /etc/default/cron
 
-if [ -n "${T_EMAIL_HOST}" ]; then
 
-  mkdir -p /var/local/environment
 
   echo "
 export TZ=${TZ}
@@ -44,8 +42,7 @@ ENTRA_ID_TENANT_ID=${ENTRA_ID_TENANT_ID}
 ENTRA_ID_CLIENT_ID=${ENTRA_ID_CLIENT_ID}
 ENTRA_ID_CLIENT_SECRET=${ENTRA_ID_CLIENT_SECRET}
 
-" > /var/local/environment/vars
-fi
+" > /etc/environment
 
 REDMINE_SMTP_HOST=${REDMINE_SMTP_HOST:-postfix}
 REDMINE_SMTP_PORT=${REDMINE_SMTP_PORT:-25}
