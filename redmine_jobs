@@ -8,6 +8,6 @@
 # Redmine EIONET LDAP daily syncronization of user accounts
 15 2 * * *  /var/local/redmine/crons/redmine_ldapsync.sh 2>&1 | logger
 # Redmine EEA Entra ID hourly syncronization of user accounts
-0 * * * *  /var/local/redmine/crons/eea_entra_id_sync_groups.sh 2>&1 | logger
+0 * * * *  /var/local/redmine/crons/eea_entra_id_sync_users.sh 2>&1 | logger
 # Redmine EEA Entra ID daily syncronization of user groups
-15 4 * * *  /var/local/redmine/crons/eea_entra_id_sync_users.sh 2>&1 | logger
+15 4 * * *  /var/local/redmine/crons/eea_entra_id_sync_groups.sh 2>&1 | logger
