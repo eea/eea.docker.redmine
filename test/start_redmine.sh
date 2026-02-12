@@ -124,11 +124,6 @@ if [ -d /usr/src/redmine/plugins/redmine_contacts_helpdesk ]; then
 fi
 
 
-#remove from testing archived plugin
-rm -rf /usr/src/redmine/plugins/redmine_ldap_sync
-
-
-
 bundle exec rake redmine:plugins:migrate
 
 if [ -d /tmp/redmine_contacts ]; then
