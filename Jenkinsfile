@@ -40,7 +40,8 @@ pipeline {
       steps {
         // Redmine 6 images use /usr/src/redmine/themes (not public/themes).
         // Install A1 from the same WebDAV folder used for plugin archives.
-        sh '''docker exec ${DOCKER_REDMINE} bash -lc '
+        sh '''
+docker exec ${DOCKER_REDMINE} bash -lc '
 set -euo pipefail
 
 THEMES_DIR=/usr/src/redmine/themes
@@ -69,7 +70,8 @@ fi
 
 unzip -q -o "$TMP" -d "$THEMES_DIR"
 rm -f "$TMP"
-'''')
+'
+'''
       }
     }
 
