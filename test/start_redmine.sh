@@ -94,18 +94,41 @@ end
 
 
 #setup for selenium
-mkdir /usr/src/redmine/test/fixtures/files/downloads
-chmod -R 777 /usr/src/redmine/test
-chmod -R 777 /usr/src/redmine/test/fixtures/files/downloads
 
-sed -i "s#Rails.root,.*#Rails.root, 'test/fixtures/files/downloads'))#" test/application_system_test_case.rb 
-sed -i 's#CSV.read.*#CSV.read("/usr/src/redmine/test/fixtures/files/downloads/issues.csv")#' test/system/issues_test.rb
-sed -i '/CSV.read.*/i\    sleep 5' test/system/issues_test.rb
-sed -i 's#sleep 0.2#sleep 1#' test/system/issues_test.rb
-sed -i '/select#time_entry_activity_id/i\    sleep 3' test/system/timelog_test.rb
-sed -i '/.*driven_by :selenium.*/a\      url: "http:\/\/hub:4444\/wd\/hub",' test/application_system_test_case.rb
-sed -i '/.*chromeOptions.*/a\          "args" =>  %w[headless window-size=1024x900],' test/application_system_test_case.rb
-sed -i '/.*setup do.*/a\    Capybara.server_host = "0.0.0.0"\n    Capybara.server = :puma, { Threads: "1:1" }\n    Capybara.app_host = "http:\/\/redmine:#{Capybara.current_session.server.port}"\n    host! "http:\/\/redmine:#{Capybara.current_session.server.port}"' test/application_system_test_case.rb
+# Redmine 6 (Rails 7) ships a different system test harness that already supports
+# remote selenium via ENV['SELENIUM_REMOTE_URL'] and chrome args via ENV.
+# The legacy sed injections below break Ruby syntax on Redmine 6.
+SYSTEM_TEST_CASE="${REDMINE_PATH}/test/application_system_test_case.rb"
+if [ -f "$SYSTEM_TEST_CASE" ] && grep -q "SELENIUM_REMOTE_URL" "$SYSTEM_TEST_CASE"; then
+  echo "Detected Redmine 6 system test case; configuring via environment variables"
+
+  # Ensure Capybara server is reachable from the selenium container
+  export CAPYBARA_SERVER_HOST=${CAPYBARA_SERVER_HOST:-0.0.0.0}
+  export CAPYBARA_SERVER_PORT=${CAPYBARA_SERVER_PORT:-3001}
+  export CAPYBARA_APP_HOST=${CAPYBARA_APP_HOST:-"http://redmine:${CAPYBARA_SERVER_PORT}"}
+
+  # Run chrome headless by default in CI
+  export GOOGLE_CHROME_OPTS_ARGS=${GOOGLE_CHROME_OPTS_ARGS:-"headless,window-size=1024x900"}
+
+  # Ensure downloads directory exists for Redmine 6 (tmp/downloads)
+  mkdir -p /usr/src/redmine/tmp/downloads
+  chmod -R 777 /usr/src/redmine/tmp/downloads
+
+  chmod -R 777 /usr/src/redmine/test
+else
+  mkdir -p /usr/src/redmine/test/fixtures/files/downloads
+  chmod -R 777 /usr/src/redmine/test
+  chmod -R 777 /usr/src/redmine/test/fixtures/files/downloads
+
+  sed -i "s#Rails.root,.*#Rails.root, 'test/fixtures/files/downloads'))#" test/application_system_test_case.rb 
+  sed -i 's#CSV.read.*#CSV.read("/usr/src/redmine/test/fixtures/files/downloads/issues.csv")#' test/system/issues_test.rb
+  sed -i '/CSV.read.*/i\    sleep 5' test/system/issues_test.rb
+  sed -i 's#sleep 0.2#sleep 1#' test/system/issues_test.rb
+  sed -i '/select#time_entry_activity_id/i\    sleep 3' test/system/timelog_test.rb
+  sed -i '/.*driven_by :selenium.*/a\      url: "http:\/\/hub:4444\/wd\/hub",' test/application_system_test_case.rb
+  sed -i '/.*chromeOptions.*/a\          "args" =>  %w[headless window-size=1024x900],' test/application_system_test_case.rb
+  sed -i '/.*setup do.*/a\    Capybara.server_host = "0.0.0.0"\n    Capybara.server = :puma, { Threads: "1:1" }\n    Capybara.app_host = "http:\/\/redmine:#{Capybara.current_session.server.port}"\n    host! "http:\/\/redmine:#{Capybara.current_session.server.port}"' test/application_system_test_case.rb
+fi
 
 
 bundle install
@@ -138,5 +161,4 @@ if [ -d /tmp/redmine_contacts_helpdesk ]; then
       bundle install
       bundle exec rake redmine:plugins:migrate
 fi
-
 
