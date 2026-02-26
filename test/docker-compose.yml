@@ -46,7 +46,8 @@ services:
     - mysql:mysql
 
   memcached:
-    image: memcached:1
+    # Avoid the ambiguous/nonexistent "memcached:1" tag in clean CI environments.
+    image: memcached:1.6
     environment:
       TZ: Europe/Copenhagen
     command:
