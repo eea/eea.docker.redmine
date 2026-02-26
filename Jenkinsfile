@@ -143,11 +143,23 @@ rm -f "$TMP"
     always {
       script {
         if (env.DOCKER_REDMINE) {
-          catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
-            sh '''cp test/merge_junitxml.py .'''
-            sh '''python merge_junitxml.py TEST-*-Result.xml TEST-Result.xml'''
-            junit "TEST-Result.xml"
-          }
+           catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
+             sh '''cp test/merge_junitxml.py .'''
+             // Some Jenkins agents don't have `python` in PATH. Prefer python3, then python.
+             // If neither is available on the agent, run the merge inside the redmine container
+             // which has python3.
+             sh '''
+               if command -v python3 >/dev/null 2>&1; then
+                 python3 merge_junitxml.py TEST-*-Result.xml TEST-Result.xml
+               elif command -v python >/dev/null 2>&1; then
+                 python merge_junitxml.py TEST-*-Result.xml TEST-Result.xml
+               else
+                 docker exec ${DOCKER_REDMINE} bash -lc 'cd /usr/src/redmine/test/reports && python3 /usr/src/redmine/test/merge_junitxml.py TEST-*-Result.xml TEST-Result.xml'
+                 docker cp ${DOCKER_REDMINE}:/usr/src/redmine/test/reports/TEST-Result.xml TEST-Result.xml
+               fi
+             '''
+             junit "TEST-Result.xml"
+           }
 
           catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
             sh '''docker-compose -f test/docker-compose.yml stop'''
