@@ -40,28 +40,36 @@ pipeline {
       steps {
         // Redmine 6 images use /usr/src/redmine/themes (not public/themes).
         // Install A1 from the same WebDAV folder used for plugin archives.
-        sh '''docker exec ${DOCKER_REDMINE} bash -lc "set -euo pipefail; \
-          THEMES_DIR=/usr/src/redmine/themes; \
-          if [ ! -d \"\$THEMES_DIR\" ]; then \
-            echo \"Skipping A1 theme install (\$THEMES_DIR not present)\"; \
-            exit 0; \
-          fi; \
-          : \"\${PLUGINS_URL:?PLUGINS_URL is required}\"; \
-          : \"\${PLUGINS_USER:?PLUGINS_USER is required}\"; \
-          : \"\${PLUGINS_PASSWORD:?PLUGINS_PASSWORD is required}\"; \
-          A1_ZIP=\${A1_ZIP:-a1_theme-4_1_2.zip}; \
-          echo \"Installing A1 theme (\$A1_ZIP) into \$THEMES_DIR\"; \
-          TMP=/tmp/\$A1_ZIP; \
-          if command -v wget >/dev/null 2>&1; then \
-            wget -q --user=\"\$PLUGINS_USER\" --password=\"\$PLUGINS_PASSWORD\" -O \"\$TMP\" \"\$PLUGINS_URL/\$A1_ZIP\"; \
-          elif command -v curl >/dev/null 2>&1; then \
-            curl -fsSL -u \"\$PLUGINS_USER:\$PLUGINS_PASSWORD\" -o \"\$TMP\" \"\$PLUGINS_URL/\$A1_ZIP\"; \
-          else \
-            echo \"Neither wget nor curl is available in the container\"; \
-            exit 1; \
-          fi; \
-          unzip -q -o \"\$TMP\" -d \"\$THEMES_DIR\"; \
-          rm -f \"\$TMP\""'''
+        sh '''docker exec ${DOCKER_REDMINE} bash -lc '
+set -euo pipefail
+
+THEMES_DIR=/usr/src/redmine/themes
+if [ ! -d "$THEMES_DIR" ]; then
+  echo "Skipping A1 theme install ($THEMES_DIR not present)"
+  exit 0
+fi
+
+: "${PLUGINS_URL:?PLUGINS_URL is required}"
+: "${PLUGINS_USER:?PLUGINS_USER is required}"
+: "${PLUGINS_PASSWORD:?PLUGINS_PASSWORD is required}"
+
+A1_ZIP="${A1_ZIP:-a1_theme-4_1_2.zip}"
+TMP="/tmp/${A1_ZIP}"
+
+echo "Installing A1 theme ($A1_ZIP) into $THEMES_DIR"
+
+if command -v wget >/dev/null 2>&1; then
+  wget -q --user="$PLUGINS_USER" --password="$PLUGINS_PASSWORD" -O "$TMP" "$PLUGINS_URL/$A1_ZIP"
+elif command -v curl >/dev/null 2>&1; then
+  curl -fsSL -u "$PLUGINS_USER:$PLUGINS_PASSWORD" -o "$TMP" "$PLUGINS_URL/$A1_ZIP"
+else
+  echo "Neither wget nor curl is available in the container"
+  exit 1
+fi
+
+unzip -q -o "$TMP" -d "$THEMES_DIR"
+rm -f "$TMP"
+'''')
       }
     }
 
