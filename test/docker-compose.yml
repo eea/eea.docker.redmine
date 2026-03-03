@@ -1,4 +1,3 @@
-version: '2'
 services:
   mysql:
     image: mysql:5.7
@@ -27,10 +26,10 @@ services:
   redmine:
     build: ../.
     environment:
-      PLUGINS_PASSWORD: $REDMINE_PLUGINS_PASSWORD 
-      PLUGINS_URL: https://shareit.eea.europa.eu/remote.php/dav/files/${REDMINE_PLUGINS_USER}/Taskman
+      PLUGINS_PASSWORD: ${REDMINE_PLUGINS_PASSWORD:-}
+      PLUGINS_URL: https://cmshare.eea.europa.eu/remote.php/dav/files/${REDMINE_PLUGINS_USER:-}/redmine6-files/plugins
       SELENIUM_REMOTE_URL: http://hub:4444/wd/hub
-      PLUGINS_USER: $REDMINE_PLUGINS_USER
+      PLUGINS_USER: ${REDMINE_PLUGINS_USER:-}
       REDMINE_HOST: redmine:3000
       RAILS_ENV: test
       TZ: Europe/Copenhagen

@@ -1,4 +1,3 @@
-version: '2'
 services:
   mysql:
     platform: linux/amd64
@@ -30,15 +29,21 @@ services:
     build:
       context: ../.
       args:
-        A1_THEME_URL: ${A1_THEME_URL}
-        A1_THEME_SHA256: ${A1_THEME_SHA256}
+        A1_THEME_URL: ${A1_THEME_URL:-}
+        A1_THEME_SHA256: ${A1_THEME_SHA256:-}
     environment:
       # Optional RedmineUP plugin zips download (leave empty to skip)
       PLUGINS_URL: ${PLUGINS_URL:-}
       PLUGINS_USER: ${PLUGINS_USER:-}
       PLUGINS_PASSWORD: ${PLUGINS_PASSWORD:-}
+      REDMINE_DB_MYSQL: mysql
+      REDMINE_DB_DATABASE: redmine_test
+      REDMINE_DB_USERNAME: redmine
+      REDMINE_DB_PASSWORD: password
+      REDMINE_PLUGINS_MIGRATE: "yes"
       # Start Rails server from /start_redmine.sh (for local interactive runs)
       START_SERVER: "1"
+      START_CRON: "0"
       SELENIUM_REMOTE_URL: http://hub:4444/wd/hub
       REDMINE_HOST: redmine:3000
       RAILS_ENV: test
@@ -47,7 +52,7 @@ services:
     - "3000:3000"
     volumes:
     - redmine_files:/usr/src/redmine/test/fixtures/files
-    - ../.local-artifacts/redmineup/plugins:/install_plugins:ro
+    - ../.local-artifacts/redmineup/plugins:/install_plugins
     - ../.local-artifacts/redmineup/themes:/install_themes:ro
     depends_on:
     - mysql

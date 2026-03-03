@@ -39,7 +39,7 @@ pipeline {
       when { not { buildingTag() } }
       steps {
         // Redmine 6 images use /usr/src/redmine/themes (not public/themes).
-        // Install A1 from the same WebDAV folder used for plugin archives.
+        // Install A1 from the sibling themes WebDAV folder.
         sh '''
 docker exec ${DOCKER_REDMINE} bash -lc '
 set -euo pipefail
@@ -56,13 +56,14 @@ fi
 
 A1_ZIP="${A1_ZIP:-a1_theme-4_1_2.zip}"
 TMP="/tmp/${A1_ZIP}"
+THEMES_URL="${A1_THEME_URL:-${PLUGINS_URL%/plugins}/themes}"
 
-echo "Installing A1 theme ($A1_ZIP) into $THEMES_DIR"
+echo "Installing A1 theme ($A1_ZIP) from $THEMES_URL into $THEMES_DIR"
 
 if command -v wget >/dev/null 2>&1; then
-  wget -q --user="$PLUGINS_USER" --password="$PLUGINS_PASSWORD" -O "$TMP" "$PLUGINS_URL/$A1_ZIP"
+  wget -q --user="$PLUGINS_USER" --password="$PLUGINS_PASSWORD" -O "$TMP" "$THEMES_URL/$A1_ZIP"
 elif command -v curl >/dev/null 2>&1; then
-  curl -fsSL -u "$PLUGINS_USER:$PLUGINS_PASSWORD" -o "$TMP" "$PLUGINS_URL/$A1_ZIP"
+  curl -fsSL -u "$PLUGINS_USER:$PLUGINS_PASSWORD" -o "$TMP" "$THEMES_URL/$A1_ZIP"
 else
   echo "Neither wget nor curl is available in the container"
   exit 1
