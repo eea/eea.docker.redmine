@@ -3,8 +3,11 @@
 REDMINE_PATH=${REDMINE_PATH:-/usr/src/redmine}
 PLUGIN_CACHE_DIR=/install_plugins
 PLUGIN_FALLBACK_DIR=/tmp/install_plugins
+THEME_CACHE_DIR=/install_themes
+THEME_FALLBACK_DIR=/tmp/install_themes
 
 mkdir -p "${PLUGIN_FALLBACK_DIR}"
+mkdir -p "${THEME_FALLBACK_DIR}"
 
 if [ "${START_CRON:-1}" = "1" ]; then
 	touch /etc/crontab /etc/cron.*/* 
@@ -130,8 +133,50 @@ if [ -n "${PLUGINS_URL:-}" ]; then
 
 fi
 
+THEMES_DIR="${REDMINE_PATH}/public/themes"
+if [ -d "${REDMINE_PATH}/themes" ]; then
+  THEMES_DIR="${REDMINE_PATH}/themes"
+fi
+
+A1_THEME_ID=${A1_THEME_ID:-a1}
+A1_THEME_ZIP=${A1_THEME_ZIP:-a1_theme-4_1_2.zip}
+A1_THEME_URL=${A1_THEME_URL:-}
+
+if [ -z "${A1_THEME_URL}" ] && [ -n "${PLUGINS_URL:-}" ]; then
+  A1_THEME_URL="${PLUGINS_URL%/plugins}/themes/${A1_THEME_ZIP}"
+fi
+
+if [ -n "${A1_THEME_URL}" ] && [ ! -d "${THEMES_DIR}/${A1_THEME_ID}" ]; then
+  theme_archive=""
+
+  if [ -f "${THEME_CACHE_DIR}/${A1_THEME_ZIP}" ]; then
+    theme_archive="${THEME_CACHE_DIR}/${A1_THEME_ZIP}"
+  elif [ -f "${THEME_FALLBACK_DIR}/${A1_THEME_ZIP}" ]; then
+    theme_archive="${THEME_FALLBACK_DIR}/${A1_THEME_ZIP}"
+  else
+    echo "Found missing theme - ${A1_THEME_ZIP}, will download and install it"
+    theme_archive="${THEME_FALLBACK_DIR}/${A1_THEME_ZIP}"
+
+    if command -v wget >/dev/null 2>&1; then
+      wget -q --user="${PLUGINS_USER}" --password="${PLUGINS_PASSWORD}" -O "${theme_archive}" "${A1_THEME_URL}"
+    elif command -v curl >/dev/null 2>&1; then
+      curl -fsSL -u "${PLUGINS_USER}:${PLUGINS_PASSWORD}" -o "${theme_archive}" "${A1_THEME_URL}"
+    else
+      echo "Neither wget nor curl is available for theme download"
+      exit 1
+    fi
+
+    if [ -n "${A1_THEME_SHA256:-}" ]; then
+      echo "${A1_THEME_SHA256}  ${theme_archive}" | sha256sum -c -
+    fi
+  fi
+
+  unzip -d "${THEMES_DIR}" -o "${theme_archive}"
+fi
+
 #ensure correct permissions
 chown -R redmine:redmine /usr/src/redmine/plugins
+chown -R redmine:redmine "${THEMES_DIR}"
 chown redmine:redmine /usr/src/redmine/tmp
 
 if [ -n "${REDMINE_DB_POOL:-}" ]; then
