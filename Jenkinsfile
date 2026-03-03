@@ -49,6 +49,10 @@ if [ ! -d "$THEMES_DIR" ]; then
   echo "Skipping A1 theme install ($THEMES_DIR not present)"
   exit 0
 fi
+if [ -d "$THEMES_DIR/a1" ]; then
+  echo "A1 theme already installed in $THEMES_DIR"
+  exit 0
+fi
 
 : "${PLUGINS_URL:?PLUGINS_URL is required}"
 : "${PLUGINS_USER:?PLUGINS_USER is required}"
