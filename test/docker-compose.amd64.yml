@@ -1,0 +1,83 @@
+version: '2'
+services:
+  mysql:
+    platform: linux/amd64
+    image: mysql:5.7
+    environment:
+      MYSQL_DATABASE: redmine_test
+      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_USER: redmine
+      TZ: Europe/Copenhagen
+    volumes:
+    - taskman_test_db:/var/lib/mysql
+    command:
+    - --query-cache-size=0
+    - --query-cache-limit=64M
+    - --query-cache-type=0
+    - --innodb-buffer-pool-size=1G
+    - --innodb-buffer-pool-instances=4
+    - --net-read-timeout=7200
+    - --net-write-timeout=7200
+    - --max-allowed-packet=128M
+    - --tmp-table-size=384M
+    - --max-heap-table-size=384M
+    - --join-buffer-size=256M
+    - --character_set_server=utf8mb4
+
+  redmine:
+    platform: linux/amd64
+    build:
+      context: ../.
+      args:
+        A1_THEME_URL: ${A1_THEME_URL}
+        A1_THEME_SHA256: ${A1_THEME_SHA256}
+    environment:
+      # Optional RedmineUP plugin zips download (leave empty to skip)
+      PLUGINS_URL: ${PLUGINS_URL:-}
+      PLUGINS_USER: ${PLUGINS_USER:-}
+      PLUGINS_PASSWORD: ${PLUGINS_PASSWORD:-}
+      # Start Rails server from /start_redmine.sh (for local interactive runs)
+      START_SERVER: "1"
+      SELENIUM_REMOTE_URL: http://hub:4444/wd/hub
+      REDMINE_HOST: redmine:3000
+      RAILS_ENV: test
+      TZ: Europe/Copenhagen
+    ports:
+    - "3000:3000"
+    volumes:
+    - redmine_files:/usr/src/redmine/test/fixtures/files
+    - ../.local-artifacts/redmineup/plugins:/install_plugins:ro
+    - ../.local-artifacts/redmineup/themes:/install_themes:ro
+    depends_on:
+    - mysql
+    links:
+    - mysql:mysql
+
+  memcached:
+    platform: linux/amd64
+    image: memcached:1
+    environment:
+      TZ: Europe/Copenhagen
+    command:
+    - -m
+    - '512'
+
+  postfix:
+    platform: linux/amd64
+    image: eaudeweb/mailtrap:latest
+
+  hub:
+    platform: linux/amd64
+    image: selenium/standalone-chrome:4.0
+    shm_size: 2g
+    depends_on:
+    - redmine
+    volumes:
+      - redmine_files:/usr/src/redmine/test/fixtures/files
+
+volumes:
+  taskman_test_db:
+    driver: local
+  redmine_files:
+    driver: local

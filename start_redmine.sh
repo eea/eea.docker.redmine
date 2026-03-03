@@ -1,123 +1,195 @@
 #!/bin/bash
 
-touch /etc/crontab /etc/cron.*/* 
-if [ -n "$RESTART_CRON" ] && [ $(grep -c 'rails server' /var/redmine_jobs.txt) -eq 0 ] ; then
-	echo "${RESTART_CRON} kill -2 \$(ps -fu redmine | grep 'rails server' | grep -v grep | awk '{print \$2}')" >> /var/redmine_jobs.txt
-fi	
-crontab /var/redmine_jobs.txt 
-chmod 600 /etc/crontab  
+set -euo pipefail
 
+REDMINE_PATH=${REDMINE_PATH:-/usr/src/redmine}
 
-systemctl restart rsyslog
-service cron restart
-
-echo "export SYNC_API_KEY=$SYNC_API_KEY"  >> ${REDMINE_PATH}/.profile
-echo "export SYNC_REDMINE_URL=$SYNC_REDMINE_URL"  >> ${REDMINE_PATH}/.profile 
-echo "export GITHUB_AUTHENTICATION=$GITHUB_AUTHENTICATION"  >> ${REDMINE_PATH}/.profile
-echo "export GEM_HOME=/usr/local/bundle"
-echo "export BUNDLE_APP_CONFIG=/usr/local/bundle"
-echo "export PATH=/usr/local/bundle/bin:$PATH"
-
-echo "TZ=$TZ" >> /etc/default/cron
-
-
-
-  echo "
-export TZ=${TZ}
-
-# Incoming emails API: Administration -> Settings -> Incoming email - API key
-HELPDESK_EMAIL_KEY=${HELPDESK_EMAIL_KEY}
-# Host for the helpdesk api from where to fetch support mails
-TASKMAN_URL=${REDMINE_HOST}
-
-T_EMAIL_HOST=${T_EMAIL_HOST}
-T_EMAIL_PORT=${T_EMAIL_PORT}
-T_EMAIL_USER=${T_EMAIL_USER}
-T_EMAIL_PASS=${T_EMAIL_PASS}
-T_EMAIL_FOLDER=Inbox
-T_EMAIL_SSL=true
-
-# EEA Entra ID application credentials
-ENTRA_ID_TENANT_ID=${ENTRA_ID_TENANT_ID}
-ENTRA_ID_CLIENT_ID=${ENTRA_ID_CLIENT_ID}
-ENTRA_ID_CLIENT_SECRET=${ENTRA_ID_CLIENT_SECRET}
-
-" > /etc/environment
-
-REDMINE_SMTP_HOST=${REDMINE_SMTP_HOST:-postfix}
-REDMINE_SMTP_PORT=${REDMINE_SMTP_PORT:-25}
-REDMINE_SMTP_DOMAIN=${REDMINE_SMTP_DOMAIN:-eionet.europa.eu}
-REDMINE_SMTP_STARTTLSAUTO=${REDMINE_SMTP_STARTTLSAUTO:-true}
-
-first_line=$(awk '/smtp_settings/ {print FNR}' ${REDMINE_PATH}/config/configuration.yml)
-head -n ${first_line} ${REDMINE_PATH}/config/configuration.yml > /tmp/configuration.yml
-if [[ "${REDMINE_SMTP_TLS}" == "false" ]]; then
-  echo "      enable_starttls_auto: ${REDMINE_SMTP_STARTTLSAUTO}
-      address: \"${REDMINE_SMTP_HOST}\"
-      port: ${REDMINE_SMTP_PORT}
-      domain: \"${REDMINE_SMTP_DOMAIN}\"
-      tls: false" >> /tmp/configuration.yml
+# Redmine 6 images may use ${REDMINE_PATH}/themes as the theme directory.
+# Prefer it when present, otherwise fall back to the legacy public/themes path.
+if [ -n "${REDMINE_THEMES_PATH:-}" ]; then
+  REDMINE_THEMES_PATH="${REDMINE_THEMES_PATH}"
+elif [ -d "${REDMINE_PATH}/themes" ]; then
+  REDMINE_THEMES_PATH="${REDMINE_PATH}/themes"
 else
-  echo "      enable_starttls_auto: ${REDMINE_SMTP_STARTTLSAUTO}
-      address: \"${REDMINE_SMTP_HOST}\"
-      port: ${REDMINE_SMTP_PORT}
-      domain: \"${REDMINE_SMTP_DOMAIN}\"
-" >> /tmp/configuration.yml
+  REDMINE_THEMES_PATH="${REDMINE_PATH}/public/themes"
 fi
 
-last_line=$(sed -n '/smtp_settings/,/^$/p' ${REDMINE_PATH}/config/configuration.yml | wc -l )
-let last_part=${first_line}+${last_line}-1
-tail --lines=+$last_part ${REDMINE_PATH}/config/configuration.yml >> /tmp/configuration.yml
-diff /tmp/configuration.yml ${REDMINE_PATH}/config/configuration.yml
-mv /tmp/configuration.yml ${REDMINE_PATH}/config/configuration.yml
+mkdir -p /install_plugins /install_themes
 
-
-#delete empty plugins
-find  /install_plugins -size 0 -type f -exec rm {} \;
-
-if [ ! -z "${PLUGINS_URL}" ]; then
-  full_url=${PLUGINS_URL/https:\/\//https:\/\/$PLUGINS_USER:$PLUGINS_PASSWORD@}
-  for plugin in $(cat ${REDMINE_PATH}/plugins.cfg); do
-      
-      plugin_name=$(echo $plugin | cut -d':' -f1)
-      plugin_file=$(echo $plugin | cut -d':' -f2)
-
-      if [ ! -f /install_plugins/$plugin_file ]; then
-              echo "Found missing plugin - $plugin_file, will download and install it"
-              wget -q -O  /install_plugins/$plugin_file $full_url/$plugin_file
-              unzip -d ${REDMINE_PATH}/plugins -o /install_plugins/$plugin_file
-              REDMINE_PLUGINS_MIGRATE="yes" 
-     fi
-     if [ ! -d ${REDMINE_PATH}/plugins/$plugin_name ]; then
-            echo "Found missing plugin - $plugin_name, will install it"
-            unzip -d ${REDMINE_PATH}/plugins -o /install_plugins/$plugin_file
-            REDMINE_PLUGINS_MIGRATE="yes"
-     fi   
-  done
-
-  #remove old plugins
-  for file in  /install_plugins/*; do 
-    if [ $(grep  ":${file/\/install_plugins\//}" ${REDMINE_PATH}/plugins.cfg | wc -l ) -eq 0 ]; then
-         rm $file
-    fi  
-  done 
-
-  if [[ $REDMINE_PLUGINS_MIGRATE == "yes" ]]; then
-         touch ${REDMINE_PATH}/log/redmine_helpdesk.log
-         chown redmine:redmine ${REDMINE_PATH}/log/redmine_helpdesk.log
-         export REDMINE_PLUGINS_MIGRATE
+install_plugins_from_local_cache() {
+  local cfg_file="${REDMINE_PATH}/plugins.cfg"
+  if [ ! -f "$cfg_file" ]; then
+    echo "plugins.cfg not found at $cfg_file (skipping RedmineUP plugins)"
+    return 0
   fi
 
+  while IFS= read -r plugin || [ -n "$plugin" ]; do
+    [ -z "$plugin" ] && continue
+
+    local plugin_name
+    local plugin_file
+    plugin_name=$(echo "$plugin" | cut -d':' -f1)
+    plugin_file=$(echo "$plugin" | cut -d':' -f2)
+
+    if [ -f "/install_plugins/$plugin_file" ]; then
+      if [ ! -d "${REDMINE_PATH}/plugins/$plugin_name" ]; then
+        echo "Installing plugin $plugin_name from /install_plugins/$plugin_file"
+        unzip -d "${REDMINE_PATH}/plugins" -o "/install_plugins/$plugin_file"
+        REDMINE_PLUGINS_MIGRATE="yes"
+      fi
+      continue
+    fi
+
+    if [ -n "${PLUGINS_URL:-}" ]; then
+      local full_url
+      full_url=${PLUGINS_URL/https:\/\//https:\/\/${PLUGINS_USER:-}:${PLUGINS_PASSWORD:-}@}
+      echo "Missing /install_plugins/$plugin_file; downloading from $PLUGINS_URL"
+      wget -q -O "/install_plugins/$plugin_file" "$full_url/$plugin_file"
+      unzip -d "${REDMINE_PATH}/plugins" -o "/install_plugins/$plugin_file"
+      REDMINE_PLUGINS_MIGRATE="yes"
+      continue
+    fi
+
+    echo "Missing /install_plugins/$plugin_file and PLUGINS_URL is empty; skipping $plugin_name"
+  done < "$cfg_file"
+
+  if [[ "${REDMINE_PLUGINS_MIGRATE:-no}" == "yes" ]]; then
+    touch "${REDMINE_PATH}/log/redmine_helpdesk.log" || true
+    chown redmine:redmine "${REDMINE_PATH}/log/redmine_helpdesk.log" || true
+    export REDMINE_PLUGINS_MIGRATE
+  fi
+
+  # Optional cleanup (disabled by default; also avoids failing on read-only mounts)
+  if [[ "${CLEANUP_INSTALL_PLUGINS:-no}" == "yes" ]] && [ -w /install_plugins ]; then
+    for file in /install_plugins/*; do
+      [ -e "$file" ] || continue
+      if [ "$(grep ":${file/\/install_plugins\//}" "$cfg_file" | wc -l)" -eq 0 ]; then
+        rm -f "$file"
+      fi
+    done
+  fi
+}
+
+install_themes_from_local_cache() {
+  if [ -d "${REDMINE_THEMES_PATH}" ]; then
+    for z in /install_themes/*.zip; do
+      [ -e "$z" ] || continue
+      echo "Installing theme from $z into ${REDMINE_THEMES_PATH}"
+      unzip -d "${REDMINE_THEMES_PATH}" -o "$z"
+    done
+  fi
+}
+
+install_plugins_from_local_cache
+install_themes_from_local_cache
+
+
+#patch
+rm -f /usr/src/redmine/plugins/redmine_checklists/lib/redmine_checklists/patches/compatibility/application_controller_patch.rb
+rm -f /usr/src/redmine/plugins/redmine_agile/lib/redmine_agile/patches/compatibility/application_controller_patch.rb
+
+#patch for avatars_helper & wkhtmltopdf-binary
+# NOTE: Do not delete avatars_helper_patch.rb; the plugin may still require it.
+# If needed, disable it by removing the require line below.
+# rm -f /usr/src/redmine/plugins/redmine_contacts_helpdesk/lib/redmine_helpdesk/patches/avatars_helper_patch.rb
+if [ -f /usr/src/redmine/plugins/redmine_contacts_helpdesk/lib/redmine_helpdesk.rb ]; then
+     sed -i "s#require 'redmine_helpdesk/patches/avatars_helper_patch'##" /usr/src/redmine/plugins/redmine_contacts_helpdesk/lib/redmine_helpdesk.rb
 fi
 
 #ensure correct permissions
-chown -R redmine:redmine /usr/src/redmine/plugins
-chown redmine:redmine /usr/src/redmine/tmp
+chown -R redmine:redmine /usr/src/redmine/tmp /usr/src/redmine/plugins || true
+chown -R redmine:redmine "${REDMINE_THEMES_PATH}" || true
 
-if [ -n "$REDMINE_DB_POOL" ]; then
-    sed -i "/bundle check/a\        echo '  pool: $REDMINE_DB_POOL' >> config\/database.yml"    /docker-entrypoint.sh
+export RAILS_ENV=${RAILS_ENV:-test}
+
+apt-get update -q 
+apt-get install -y --no-install-recommends build-essential 
+apt-get clean
+rm -rf /var/lib/apt/lists/* 
+
+echo 'test:
+  adapter: mysql2
+  database: redmine_test
+  host: mysql
+  username: redmine
+  password: password
+  encoding: utf8mb4
+' > /usr/src/redmine/config/database.yml
+
+
+#prepare configuarion 
+sed -i 's/BUNDLE_WITHOUT.*//' /usr/local/bundle/config
+rm -f /usr/src/redmine/config/configuration.yml
+
+echo 'gem "ci_reporter_minitest"' >> Gemfile
+echo 'gem "minitest-reporters"' >> Gemfile
+
+
+
+echo "
+require 'ci/reporter/rake/minitest'
+require 'minitest/reporters'
+
+task :test => 'ci:setup:minitest'
+namespace 'redmine' do
+  namespace 'plugins' do
+    task :test => 'ci:setup:minitest'
+  end
+end
+namespace 'test' do
+  task :system => 'ci:setup:minitest'
+end
+" >> Rakefile
+
+
+#setup for selenium
+mkdir -p /usr/src/redmine/test/fixtures/files/downloads
+chmod -R 777 /usr/src/redmine/test
+chmod -R 777 /usr/src/redmine/test/fixtures/files/downloads
+
+sed -i "s#Rails.root,.*#Rails.root, 'test/fixtures/files/downloads'))#" test/application_system_test_case.rb 
+sed -i 's#CSV.read.*#CSV.read("/usr/src/redmine/test/fixtures/files/downloads/issues.csv")#' test/system/issues_test.rb
+sed -i '/CSV.read.*/i\    sleep 5' test/system/issues_test.rb
+sed -i 's#sleep 0.2#sleep 1#' test/system/issues_test.rb
+sed -i '/select#time_entry_activity_id/i\    sleep 3' test/system/timelog_test.rb
+sed -i '/.*driven_by :selenium.*/a\      url: "http:\/\/hub:4444\/wd\/hub",' test/application_system_test_case.rb
+sed -i '/.*chromeOptions.*/a\          "args" =>  %w[headless window-size=1024x900],' test/application_system_test_case.rb
+sed -i '/.*setup do.*/a\    Capybara.server_host = "0.0.0.0"\n    Capybara.server = :puma, { Threads: "1:1" }\n    Capybara.app_host = "http:\/\/redmine:#{Capybara.current_session.server.port}"\n    host! "http:\/\/redmine:#{Capybara.current_session.server.port}"' test/application_system_test_case.rb
+
+
+bundle install
+
+mv plugins /tmp
+bundle exec rake db:migrate
+mv /tmp/plugins  /usr/src/redmine/
+
+
+if [ -d /usr/src/redmine/plugins/redmine_contacts ]; then
+        mv /usr/src/redmine/plugins/redmine_contacts /tmp/
 fi
 
-/docker-entrypoint.sh rails server -b 0.0.0.0
+if [ -d /usr/src/redmine/plugins/redmine_contacts_helpdesk ]; then
+        mv /usr/src/redmine/plugins/redmine_contacts_helpdesk /tmp/
+fi
 
 
+bundle exec rake redmine:plugins:migrate
+
+if [ -d /tmp/redmine_contacts ]; then
+      mv /tmp/redmine_contacts /usr/src/redmine/plugins
+      bundle install
+      bundle exec rake redmine:plugins:migrate
+fi
+
+
+if [ -d /tmp/redmine_contacts_helpdesk ]; then
+      mv /tmp/redmine_contacts_helpdesk /usr/src/redmine/plugins
+      bundle install
+      bundle exec rake redmine:plugins:migrate
+fi
+
+# Start a Rails server if requested (useful for local interactive runs)
+if [[ "${START_SERVER:-0}" == "1" ]]; then
+  echo "Starting Redmine (Rails server) on 0.0.0.0:3000 (RAILS_ENV=${RAILS_ENV})"
+  exec bundle exec ruby bin/rails server -b 0.0.0.0 -p 3000
+fi
