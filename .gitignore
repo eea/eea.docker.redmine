@@ -1,3 +1,4 @@
 *.secret
 .local-artifacts
 .ckb
+.env
