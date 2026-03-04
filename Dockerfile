@@ -55,7 +55,8 @@ RUN echo 'gem "dalli", "~> 2.7.6"' >> ${REDMINE_PATH}/Gemfile \
  && echo 'gem "acts-as-taggable-on", "~> 5.0"' >> ${REDMINE_PATH}/Gemfile 
 
 # Install gems at build-time so image ships complete
-RUN /usr/local/bin/bundle install --without development test
+RUN /usr/local/bin/bundle config set without 'development test' \
+ && /usr/local/bin/bundle install
 
 # Install eea cron tools
 COPY crons/ ${REDMINE_LOCAL_PATH}/crons

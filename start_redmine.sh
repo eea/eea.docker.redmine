@@ -1,13 +1,86 @@
 #!/bin/bash
 
 REDMINE_PATH=${REDMINE_PATH:-/usr/src/redmine}
+REDMINE_LOCAL_PATH=${REDMINE_LOCAL_PATH:-/var/local/redmine}
 PLUGIN_CACHE_DIR=/install_plugins
 PLUGIN_FALLBACK_DIR=/tmp/install_plugins
 THEME_CACHE_DIR=/install_themes
 THEME_FALLBACK_DIR=/tmp/install_themes
+RUNTIME_ADDONS_CHANGED=0
 
 mkdir -p "${PLUGIN_FALLBACK_DIR}"
 mkdir -p "${THEME_FALLBACK_DIR}"
+
+is_valid_zip() {
+  unzip -tqq "$1" >/dev/null 2>&1
+}
+
+download_archive() {
+  local url="$1"
+  local destination="$2"
+  local user="${3:-}"
+  local password="${4:-}"
+  local label="$5"
+  local tmp_file="${destination}.partial"
+
+  rm -f "${tmp_file}"
+
+  if command -v wget >/dev/null 2>&1; then
+    if [ -n "${user}" ]; then
+      wget -q --user="${user}" --password="${password}" -O "${tmp_file}" "${url}"
+    else
+      wget -q -O "${tmp_file}" "${url}"
+    fi
+  elif command -v curl >/dev/null 2>&1; then
+    if [ -n "${user}" ]; then
+      curl -fsSL -u "${user}:${password}" -o "${tmp_file}" "${url}"
+    else
+      curl -fsSL -o "${tmp_file}" "${url}"
+    fi
+  else
+    echo "Neither wget nor curl is available for ${label} download"
+    exit 1
+  fi
+
+  mv "${tmp_file}" "${destination}"
+
+  if ! is_valid_zip "${destination}"; then
+    rm -f "${destination}"
+    echo "Downloaded ${label} is not a valid zip archive: ${url}"
+    exit 1
+  fi
+}
+
+resolve_archive() {
+  local preferred_archive="$1"
+  local fallback_archive="$2"
+  local remote_url="$3"
+  local user="${4:-}"
+  local password="${5:-}"
+  local label="$6"
+
+  if [ -f "${preferred_archive}" ]; then
+    if is_valid_zip "${preferred_archive}"; then
+      echo "${preferred_archive}"
+      return 0
+    fi
+    echo "Removing invalid cached ${label}: ${preferred_archive}"
+    rm -f "${preferred_archive}"
+  fi
+
+  if [ -f "${fallback_archive}" ]; then
+    if is_valid_zip "${fallback_archive}"; then
+      echo "${fallback_archive}"
+      return 0
+    fi
+    echo "Removing invalid cached ${label}: ${fallback_archive}"
+    rm -f "${fallback_archive}"
+  fi
+
+  echo "Found missing ${label}, will download and install it"
+  download_archive "${remote_url}" "${fallback_archive}" "${user}" "${password}" "${label}"
+  echo "${fallback_archive}"
+}
 
 if [ "${START_CRON:-1}" = "1" ]; then
 	touch /etc/crontab /etc/cron.*/* 
@@ -90,28 +163,16 @@ if [ -d "${PLUGIN_CACHE_DIR}" ] && [ -w "${PLUGIN_CACHE_DIR}" ]; then
 fi
 
 if [ -n "${PLUGINS_URL:-}" ]; then
-  full_url=${PLUGINS_URL/https:\/\//https:\/\/$PLUGINS_USER:$PLUGINS_PASSWORD@}
   for plugin in $(cat ${REDMINE_PATH}/plugins.cfg); do
       
       plugin_name=$(echo $plugin | cut -d':' -f1)
       plugin_file=$(echo $plugin | cut -d':' -f2)
-      plugin_archive=""
-
-      if [ -f "${PLUGIN_CACHE_DIR}/$plugin_file" ]; then
-              plugin_archive="${PLUGIN_CACHE_DIR}/$plugin_file"
-      elif [ -f "${PLUGIN_FALLBACK_DIR}/$plugin_file" ]; then
-              plugin_archive="${PLUGIN_FALLBACK_DIR}/$plugin_file"
-      else
-              echo "Found missing plugin - $plugin_file, will download and install it"
-              plugin_archive="${PLUGIN_FALLBACK_DIR}/$plugin_file"
-              wget -q -O "$plugin_archive" "$full_url/$plugin_file"
-              unzip -d ${REDMINE_PATH}/plugins -o "$plugin_archive"
-              REDMINE_PLUGINS_MIGRATE="yes" 
-      fi
+      plugin_archive=$(resolve_archive "${PLUGIN_CACHE_DIR}/$plugin_file" "${PLUGIN_FALLBACK_DIR}/$plugin_file" "${PLUGINS_URL}/$plugin_file" "${PLUGINS_USER:-}" "${PLUGINS_PASSWORD:-}" "plugin - $plugin_file")
      if [ ! -d ${REDMINE_PATH}/plugins/$plugin_name ]; then
             echo "Found missing plugin - $plugin_name, will install it"
             unzip -d ${REDMINE_PATH}/plugins -o "$plugin_archive"
             REDMINE_PLUGINS_MIGRATE="yes"
+            RUNTIME_ADDONS_CHANGED=1
      fi   
   done
 
@@ -141,37 +202,28 @@ fi
 A1_THEME_ID=${A1_THEME_ID:-a1}
 A1_THEME_ZIP=${A1_THEME_ZIP:-a1_theme-4_1_2.zip}
 A1_THEME_URL=${A1_THEME_URL:-}
+A1_THEME_USER=${A1_THEME_USER:-${PLUGINS_USER:-}}
+A1_THEME_PASSWORD=${A1_THEME_PASSWORD:-${PLUGINS_PASSWORD:-}}
 
 if [ -z "${A1_THEME_URL}" ] && [ -n "${PLUGINS_URL:-}" ]; then
   A1_THEME_URL="${PLUGINS_URL%/plugins}/themes/${A1_THEME_ZIP}"
 fi
 
 if [ -n "${A1_THEME_URL}" ] && [ ! -d "${THEMES_DIR}/${A1_THEME_ID}" ]; then
-  theme_archive=""
+  theme_archive=$(resolve_archive "${THEME_CACHE_DIR}/${A1_THEME_ZIP}" "${THEME_FALLBACK_DIR}/${A1_THEME_ZIP}" "${A1_THEME_URL}" "${A1_THEME_USER}" "${A1_THEME_PASSWORD}" "theme - ${A1_THEME_ZIP}")
 
-  if [ -f "${THEME_CACHE_DIR}/${A1_THEME_ZIP}" ]; then
-    theme_archive="${THEME_CACHE_DIR}/${A1_THEME_ZIP}"
-  elif [ -f "${THEME_FALLBACK_DIR}/${A1_THEME_ZIP}" ]; then
-    theme_archive="${THEME_FALLBACK_DIR}/${A1_THEME_ZIP}"
-  else
-    echo "Found missing theme - ${A1_THEME_ZIP}, will download and install it"
-    theme_archive="${THEME_FALLBACK_DIR}/${A1_THEME_ZIP}"
-
-    if command -v wget >/dev/null 2>&1; then
-      wget -q --user="${PLUGINS_USER}" --password="${PLUGINS_PASSWORD}" -O "${theme_archive}" "${A1_THEME_URL}"
-    elif command -v curl >/dev/null 2>&1; then
-      curl -fsSL -u "${PLUGINS_USER}:${PLUGINS_PASSWORD}" -o "${theme_archive}" "${A1_THEME_URL}"
-    else
-      echo "Neither wget nor curl is available for theme download"
-      exit 1
-    fi
-
-    if [ -n "${A1_THEME_SHA256:-}" ]; then
-      echo "${A1_THEME_SHA256}  ${theme_archive}" | sha256sum -c -
-    fi
+  if [ -n "${A1_THEME_SHA256:-}" ]; then
+    echo "${A1_THEME_SHA256}  ${theme_archive}" | sha256sum -c -
   fi
 
   unzip -d "${THEMES_DIR}" -o "${theme_archive}"
+  RUNTIME_ADDONS_CHANGED=1
+fi
+
+if [ "${RUNTIME_ADDONS_CHANGED}" = "1" ] || ! bundle check >/dev/null 2>&1; then
+  echo "Installing runtime plugin/theme gem dependencies"
+  bundle config set without 'development test' >/dev/null 2>&1
+  bundle install
 fi
 
 #ensure correct permissions
