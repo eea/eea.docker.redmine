@@ -20,6 +20,8 @@ RUN apt-get update -q \
   && git clone https://github.com/eea/redmine-wiki_graphviz_plugin.git ${REDMINE_PATH}/plugins/wiki_graphviz_plugin \
   && cd ${REDMINE_PATH}/plugins/wiki_graphviz_plugin \
   && git checkout 33c07e45a6da51637418defa6a640acf8ca745d1 \
+  && sed -i "s/^require[[:space:]]*'kconv'$/# Ruby 3.4 removed kconv; use String#encode below instead/" ${REDMINE_PATH}/plugins/wiki_graphviz_plugin/app/helpers/wiki_graphviz_helper.rb \
+  && sed -i "s/t = t.toutf8/t = t.encode('UTF-8', invalid: :replace, undef: :replace, replace: '')/" ${REDMINE_PATH}/plugins/wiki_graphviz_plugin/app/helpers/wiki_graphviz_helper.rb \
   && cd .. \
   && git clone https://github.com/eea/redmine_wiki_backlinks.git ${REDMINE_PATH}/plugins/redmine_wiki_backlinks \
   && cd ${REDMINE_PATH}/plugins/redmine_wiki_backlinks \
