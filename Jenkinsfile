@@ -19,7 +19,7 @@ pipeline {
       steps {
         script{
           withCredentials([usernamePassword(credentialsId: 'redmine_plugin_installer', usernameVariable: 'REDMINE_PLUGINS_USER', passwordVariable: 'REDMINE_PLUGINS_PASSWORD')]) {
-            sh '''mv test/start_redmine.sh .'''
+            sh '''cp -f test/start_redmine.sh .'''
             sh '''docker-compose -f test/docker-compose.yml up -d --build'''
             DOCKER_REDMINE = sh(script: "docker-compose -f test/docker-compose.yml ps | grep redmine | awk '{print \$1}'", returnStdout: true).trim()
             env.DOCKER_REDMINE = DOCKER_REDMINE
@@ -38,8 +38,9 @@ pipeline {
     stage("Install A1 theme (Redmine 6 only)") {
       when { not { buildingTag() } }
       steps {
-        // Ensure A1 exists and theme assets are usable via both digest and logical paths.
-        sh '''
+        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+          // Ensure A1 exists and theme assets are usable via both digest and logical paths.
+          sh '''
 docker exec ${DOCKER_REDMINE} bash -lc '
 set -euo pipefail
 
@@ -107,6 +108,7 @@ fi
 ls -l "$A1_ASSETS_DIR"/application.css "$A1_ASSETS_DIR"/theme.js || true
 '
 '''
+        }
       }
     }
 

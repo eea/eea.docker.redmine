@@ -8,8 +8,16 @@ ENV REDMINE_PATH=/usr/src/redmine \
 
 # Optional: bake RedmineUP A1 theme into the image.
 # Provide A1_THEME_URL at build-time (e.g. via docker-compose build args).
+ARG PLUGINS_URL=
+ARG PLUGINS_USER=
+ARG PLUGINS_PASSWORD=
 ARG A1_THEME_URL=
+ARG A1_THEME_USER=
+ARG A1_THEME_PASSWORD=
 ARG A1_THEME_SHA256=
+ARG A1_THEME_ZIP=a1_theme-4_1_2.zip
+
+COPY plugins.cfg ${REDMINE_PATH}/plugins.cfg
 
 # Install dependencies and plugins
 RUN apt-get update -q \
@@ -35,18 +43,39 @@ RUN apt-get update -q \
   && cd ${REDMINE_PATH}/plugins/redmine_xls_export \
   && git checkout 087afa403b34a32313e7761cd018879f05f19e3c \
   && cd .. \
-  #  && git clone https://github.com/eea/taskman.redmine.theme.git ${REDMINE_PATH}/public/themes/taskman.redmine.theme \
+  && git clone https://github.com/eea/taskman.redmine.theme.git ${REDMINE_PATH}/public/themes/taskman.redmine.theme \
   && git clone -b master https://github.com/eea/redmine_entra_id.git ${REDMINE_PATH}/plugins/entra_id \
-  && git clone -b 1.11.0 https://github.com/haru/redmine_ai_helper.git ${REDMINE_PATH}/plugins/redmine_ai_helper \
-  && if [ -n "$A1_THEME_URL" ]; then \
-  THEMES_DIR="${REDMINE_PATH}/public/themes"; \
-  if [ -d "${REDMINE_PATH}/themes" ]; then THEMES_DIR="${REDMINE_PATH}/themes"; fi; \
-  mkdir -p "$THEMES_DIR"; \
-  echo "Downloading A1 theme into $THEMES_DIR"; \
-  wget -q -O /tmp/a1-theme.zip "$A1_THEME_URL"; \
-  if [ -n "$A1_THEME_SHA256" ]; then echo "$A1_THEME_SHA256  /tmp/a1-theme.zip" | sha256sum -c -; fi; \
-  unzip -q -o /tmp/a1-theme.zip -d "$THEMES_DIR"; \
-  rm -f /tmp/a1-theme.zip; \
+  #&& git clone -b 1.11.0 https://github.com/haru/redmine_ai_helper.git ${REDMINE_PATH}/plugins/redmine_ai_helper \
+  && if [ -n "$PLUGINS_URL" ] && [ -n "$PLUGINS_USER" ] && [ -n "$PLUGINS_PASSWORD" ]; then \
+       mkdir -p /tmp/install_plugins; \
+       while IFS=: read -r plugin_name plugin_file; do \
+         [ -n "$plugin_name" ] || continue; \
+         archive="/tmp/install_plugins/$plugin_file"; \
+         wget -q --user="$PLUGINS_USER" --password="$PLUGINS_PASSWORD" -O "$archive" "$PLUGINS_URL/$plugin_file"; \
+         unzip -tqq "$archive"; \
+         unzip -q -o "$archive" -d "${REDMINE_PATH}/plugins"; \
+       done < "${REDMINE_PATH}/plugins.cfg"; \
+     fi \
+  && THEME_URL="$A1_THEME_URL"; \
+     if [ -z "$THEME_URL" ] && [ -n "$PLUGINS_URL" ] && [ -n "$PLUGINS_USER" ] && [ -n "$PLUGINS_PASSWORD" ]; then \
+       THEME_URL="${PLUGINS_URL%/plugins}/themes/${A1_THEME_ZIP}"; \
+     fi; \
+     if [ -n "$THEME_URL" ]; then \
+       THEMES_DIR="${REDMINE_PATH}/public/themes"; \
+       if [ -d "${REDMINE_PATH}/themes" ]; then THEMES_DIR="${REDMINE_PATH}/themes"; fi; \
+       mkdir -p "$THEMES_DIR"; \
+       echo "Downloading A1 theme into $THEMES_DIR from $THEME_URL"; \
+       if [ -n "$A1_THEME_USER" ]; then \
+         wget -q --user="$A1_THEME_USER" --password="$A1_THEME_PASSWORD" -O /tmp/a1-theme.zip "$THEME_URL"; \
+       elif [ -n "$PLUGINS_USER" ]; then \
+         wget -q --user="$PLUGINS_USER" --password="$PLUGINS_PASSWORD" -O /tmp/a1-theme.zip "$THEME_URL"; \
+       else \
+         wget -q -O /tmp/a1-theme.zip "$THEME_URL"; \
+       fi; \
+       unzip -tqq /tmp/a1-theme.zip; \
+       if [ -n "$A1_THEME_SHA256" ]; then echo "$A1_THEME_SHA256  /tmp/a1-theme.zip" | sha256sum -c -; fi; \
+       unzip -q -o /tmp/a1-theme.zip -d "$THEMES_DIR"; \
+       rm -f /tmp/a1-theme.zip; \
   fi \
   && chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH} 
 
@@ -61,7 +90,6 @@ RUN /usr/local/bin/bundle config set without 'development test' \
 # Install eea cron tools
 COPY crons/ ${REDMINE_LOCAL_PATH}/crons
 COPY config/install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
-COPY plugins.cfg ${REDMINE_PATH}/plugins.cfg
 
 
 
