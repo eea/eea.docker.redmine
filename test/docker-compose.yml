@@ -24,7 +24,16 @@ services:
     - --character_set_server=utf8mb4
 
   redmine:
-    build: ../.
+    build:
+      context: ../.
+      args:
+        PLUGINS_URL: https://cmshare.eea.europa.eu/remote.php/dav/files/${REDMINE_PLUGINS_USER:-}/redmine6-files/plugins
+        PLUGINS_USER: ${REDMINE_PLUGINS_USER:-}
+        PLUGINS_PASSWORD: ${REDMINE_PLUGINS_PASSWORD:-}
+        A1_THEME_URL: ${A1_THEME_URL:-}
+        A1_THEME_USER: ${A1_THEME_USER:-${REDMINE_PLUGINS_USER:-}}
+        A1_THEME_PASSWORD: ${A1_THEME_PASSWORD:-${REDMINE_PLUGINS_PASSWORD:-}}
+        A1_THEME_SHA256: ${A1_THEME_SHA256:-}
     environment:
       PLUGINS_PASSWORD: ${REDMINE_PLUGINS_PASSWORD:-}
       PLUGINS_URL: https://cmshare.eea.europa.eu/remote.php/dav/files/${REDMINE_PLUGINS_USER:-}/redmine6-files/plugins

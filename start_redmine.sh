@@ -7,6 +7,14 @@ PLUGIN_FALLBACK_DIR=/tmp/install_plugins
 THEME_CACHE_DIR=/install_themes
 THEME_FALLBACK_DIR=/tmp/install_themes
 RUNTIME_ADDONS_CHANGED=0
+FAST_BOOT=${FAST_BOOT:-0}
+RUNTIME_PLUGIN_SYNC=${RUNTIME_PLUGIN_SYNC:-1}
+RUNTIME_THEME_SYNC=${RUNTIME_THEME_SYNC:-1}
+
+if [ "${FAST_BOOT}" = "1" ]; then
+  RUNTIME_PLUGIN_SYNC=0
+  RUNTIME_THEME_SYNC=0
+fi
 
 mkdir -p "${PLUGIN_FALLBACK_DIR}"
 mkdir -p "${THEME_FALLBACK_DIR}"
@@ -162,7 +170,7 @@ if [ -d "${PLUGIN_CACHE_DIR}" ] && [ -w "${PLUGIN_CACHE_DIR}" ]; then
   find "${PLUGIN_CACHE_DIR}" -size 0 -type f -exec rm {} \;
 fi
 
-if [ -n "${PLUGINS_URL:-}" ]; then
+if [ "${RUNTIME_PLUGIN_SYNC}" = "1" ] && [ -n "${PLUGINS_URL:-}" ]; then
   for plugin in $(cat ${REDMINE_PATH}/plugins.cfg); do
       
       plugin_name=$(echo $plugin | cut -d':' -f1)
@@ -209,7 +217,7 @@ if [ -z "${A1_THEME_URL}" ] && [ -n "${PLUGINS_URL:-}" ]; then
   A1_THEME_URL="${PLUGINS_URL%/plugins}/themes/${A1_THEME_ZIP}"
 fi
 
-if [ -n "${A1_THEME_URL}" ] && [ ! -d "${THEMES_DIR}/${A1_THEME_ID}" ]; then
+if [ "${RUNTIME_THEME_SYNC}" = "1" ] && [ -n "${A1_THEME_URL}" ] && [ ! -d "${THEMES_DIR}/${A1_THEME_ID}" ]; then
   theme_archive=$(resolve_archive "${THEME_CACHE_DIR}/${A1_THEME_ZIP}" "${THEME_FALLBACK_DIR}/${A1_THEME_ZIP}" "${A1_THEME_URL}" "${A1_THEME_USER}" "${A1_THEME_PASSWORD}" "theme - ${A1_THEME_ZIP}")
 
   if [ -n "${A1_THEME_SHA256:-}" ]; then
@@ -220,7 +228,7 @@ if [ -n "${A1_THEME_URL}" ] && [ ! -d "${THEMES_DIR}/${A1_THEME_ID}" ]; then
   RUNTIME_ADDONS_CHANGED=1
 fi
 
-if [ "${RUNTIME_ADDONS_CHANGED}" = "1" ] || ! bundle check >/dev/null 2>&1; then
+if [ "${FAST_BOOT}" != "1" ] && ( [ "${RUNTIME_ADDONS_CHANGED}" = "1" ] || ! bundle check >/dev/null 2>&1 ); then
   echo "Installing runtime plugin/theme gem dependencies"
   bundle config set without 'development test' >/dev/null 2>&1
   bundle install
