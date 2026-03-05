@@ -57,9 +57,6 @@ RUN apt-get update -q \
        done < "${REDMINE_PATH}/plugins.cfg"; \
      fi \
   && THEME_URL="$A1_THEME_URL"; \
-     if [ -z "$THEME_URL" ] && [ -n "$PLUGINS_URL" ] && [ -n "$PLUGINS_USER" ] && [ -n "$PLUGINS_PASSWORD" ]; then \
-       THEME_URL="${PLUGINS_URL%/plugins}/themes/${A1_THEME_ZIP}"; \
-     fi; \
      if [ -n "$THEME_URL" ]; then \
        THEMES_DIR="${REDMINE_PATH}/public/themes"; \
        if [ -d "${REDMINE_PATH}/themes" ]; then THEMES_DIR="${REDMINE_PATH}/themes"; fi; \
