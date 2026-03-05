@@ -42,10 +42,23 @@ fi
 rm -f /usr/src/redmine/plugins/redmine_checklists/lib/redmine_checklists/patches/compatibility/application_controller_patch.rb
 rm -f /usr/src/redmine/plugins/redmine_agile/lib/redmine_agile/patches/compatibility/application_controller_patch.rb
 
-#patch for avatars_helper & wkhtmltopdf-binary
-rm -f /usr/src/redmine/plugins/redmine_contacts_helpdesk/lib/redmine_helpdesk/patches/avatars_helper_patch.rb
-if [ -f /usr/src/redmine/plugins/redmine_contacts_helpdesk/lib/redmine_helpdesk.rb ]; then
-     sed -i "s#require 'redmine_helpdesk/patches/avatars_helper_patch'##" /usr/src/redmine/plugins/redmine_contacts_helpdesk/lib/redmine_helpdesk.rb
+# Compatibility shim for Redmine Contacts Helpdesk:
+# some packaged versions still require avatars_helper_patch.rb but do not ship it.
+HELPDESK_PATCH_DIR=/usr/src/redmine/plugins/redmine_contacts_helpdesk/lib/redmine_helpdesk/patches
+HELPDESK_PATCH_FILE=${HELPDESK_PATCH_DIR}/avatars_helper_patch.rb
+if [ -d /usr/src/redmine/plugins/redmine_contacts_helpdesk/lib/redmine_helpdesk ]; then
+  mkdir -p "${HELPDESK_PATCH_DIR}"
+  if [ ! -f "${HELPDESK_PATCH_FILE}" ]; then
+    cat > "${HELPDESK_PATCH_FILE}" <<'RUBY'
+module RedmineHelpdesk
+  module Patches
+    module AvatarsHelperPatch
+      def self.included(base); end
+    end
+  end
+end
+RUBY
+  fi
 fi
 
 #ensure correct permissions
@@ -161,4 +174,3 @@ if [ -d /tmp/redmine_contacts_helpdesk ]; then
       bundle install
       bundle exec rake redmine:plugins:migrate
 fi
-

@@ -202,6 +202,26 @@ if [ "${RUNTIME_PLUGIN_SYNC}" = "1" ] && [ -n "${PLUGINS_URL:-}" ]; then
 
 fi
 
+# Compatibility shim for Redmine Contacts Helpdesk:
+# some packaged versions still require avatars_helper_patch.rb but do not ship it.
+HELPDESK_PATCH_DIR="${REDMINE_PATH}/plugins/redmine_contacts_helpdesk/lib/redmine_helpdesk/patches"
+HELPDESK_PATCH_FILE="${HELPDESK_PATCH_DIR}/avatars_helper_patch.rb"
+if [ -d "${REDMINE_PATH}/plugins/redmine_contacts_helpdesk/lib/redmine_helpdesk" ]; then
+  mkdir -p "${HELPDESK_PATCH_DIR}"
+  if [ ! -f "${HELPDESK_PATCH_FILE}" ]; then
+    cat > "${HELPDESK_PATCH_FILE}" <<'RUBY'
+module RedmineHelpdesk
+  module Patches
+    module AvatarsHelperPatch
+      def self.included(base); end
+    end
+  end
+end
+RUBY
+    RUNTIME_ADDONS_CHANGED=1
+  fi
+fi
+
 THEMES_DIR="${REDMINE_PATH}/public/themes"
 if [ -d "${REDMINE_PATH}/themes" ]; then
   THEMES_DIR="${REDMINE_PATH}/themes"
