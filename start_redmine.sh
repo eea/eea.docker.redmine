@@ -85,7 +85,7 @@ resolve_archive() {
     rm -f "${fallback_archive}"
   fi
 
-  echo "Found missing ${label}, will download and install it"
+  echo "Found missing ${label}, will download and install it" >&2
   download_archive "${remote_url}" "${fallback_archive}" "${user}" "${password}" "${label}"
   echo "${fallback_archive}"
 }
@@ -110,6 +110,10 @@ echo "export GITHUB_AUTHENTICATION=$GITHUB_AUTHENTICATION"  >> ${REDMINE_PATH}/.
 echo "export GEM_HOME=/usr/local/bundle" >> ${REDMINE_PATH}/.profile
 echo "export BUNDLE_APP_CONFIG=/usr/local/bundle" >> ${REDMINE_PATH}/.profile
 echo "export PATH=/usr/local/bundle/bin:\$PATH" >> ${REDMINE_PATH}/.profile
+if [ -n "${SECRET_KEY_BASE:-}" ]; then
+  echo "export SECRET_KEY_BASE=$SECRET_KEY_BASE" >> ${REDMINE_PATH}/.profile
+fi
+echo "export RAILS_ENV=${RAILS_ENV:-production}" >> ${REDMINE_PATH}/.profile
 
 echo "TZ=$TZ" >> /etc/default/cron
 
