@@ -7,9 +7,10 @@ PLUGIN_FALLBACK_DIR=/tmp/install_plugins
 THEME_CACHE_DIR=/install_themes
 THEME_FALLBACK_DIR=/tmp/install_themes
 RUNTIME_ADDONS_CHANGED=0
-FAST_BOOT=${FAST_BOOT:-0}
-RUNTIME_PLUGIN_SYNC=${RUNTIME_PLUGIN_SYNC:-1}
-RUNTIME_THEME_SYNC=${RUNTIME_THEME_SYNC:-1}
+FAST_BOOT=${FAST_BOOT:-1}
+RUNTIME_PLUGIN_SYNC=${RUNTIME_PLUGIN_SYNC:-0}
+RUNTIME_THEME_SYNC=${RUNTIME_THEME_SYNC:-0}
+RUNTIME_BUNDLE_INSTALL=${RUNTIME_BUNDLE_INSTALL:-0}
 
 if [ "${FAST_BOOT}" = "1" ]; then
   RUNTIME_PLUGIN_SYNC=0
@@ -261,10 +262,16 @@ if [ "${RUNTIME_THEME_SYNC}" = "1" ] && [ -n "${A1_THEME_URL}" ] && [ ! -d "${TH
   RUNTIME_ADDONS_CHANGED=1
 fi
 
-if [ "${FAST_BOOT}" != "1" ] && ( [ "${RUNTIME_ADDONS_CHANGED}" = "1" ] || ! bundle check >/dev/null 2>&1 ); then
-  echo "Installing runtime plugin/theme gem dependencies"
-  bundle config set without 'development test' >/dev/null 2>&1
-  bundle install
+if [ "${RUNTIME_ADDONS_CHANGED}" = "1" ] || ! bundle check >/dev/null 2>&1; then
+  if [ "${FAST_BOOT}" != "1" ] && [ "${RUNTIME_BUNDLE_INSTALL}" = "1" ]; then
+    echo "Installing runtime plugin/theme gem dependencies"
+    bundle config set without 'development test' >/dev/null 2>&1
+    bundle install
+  else
+    echo "Runtime gem installation is disabled (FAST_BOOT=${FAST_BOOT}, RUNTIME_BUNDLE_INSTALL=${RUNTIME_BUNDLE_INSTALL})."
+    echo "Build a complete image with all gems/plugins/themes baked in, or set RUNTIME_BUNDLE_INSTALL=1 for legacy behavior."
+    exit 1
+  fi
 fi
 
 #ensure correct permissions
