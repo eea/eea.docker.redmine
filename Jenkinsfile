@@ -100,7 +100,16 @@ fi
 chown -R redmine:redmine "$THEMES_DIR/$A1_THEME_ID" || true
 
 echo "Precompiling Redmine assets for A1 theme"
-bundle exec rake assets:precompile RAILS_ENV=production
+ASSETS_ENV="production"
+if [ ! -f "${REDMINE_PATH}/config/database.yml" ] || ! grep -q '^production:' "${REDMINE_PATH}/config/database.yml"; then
+  if grep -q '^test:' "${REDMINE_PATH}/config/database.yml"; then
+    ASSETS_ENV="test"
+  elif grep -q '^development:' "${REDMINE_PATH}/config/database.yml"; then
+    ASSETS_ENV="development"
+  fi
+fi
+echo "Using RAILS_ENV=${ASSETS_ENV} for assets precompile"
+SECRET_KEY_BASE="${SECRET_KEY_BASE:-dummy-secret-for-assets}" bundle exec rake assets:precompile RAILS_ENV="${ASSETS_ENV}"
 
 A1_ASSETS_DIR="${REDMINE_PATH}/public/assets/themes/${A1_THEME_ID}"
 mkdir -p "$A1_ASSETS_DIR"
