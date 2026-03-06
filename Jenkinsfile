@@ -23,6 +23,15 @@ pipeline {
             sh '''A1_THEME_URL="https://cmshare.eea.europa.eu/remote.php/dav/files/${REDMINE_PLUGINS_USER}/redmine6-files/themes/a1_theme-4_1_2.zip" A1_THEME_USER="${REDMINE_PLUGINS_USER}" A1_THEME_PASSWORD="${REDMINE_PLUGINS_PASSWORD}" docker-compose -f test/docker-compose.yml up -d --build'''
             DOCKER_REDMINE = sh(script: "docker-compose -f test/docker-compose.yml ps | grep redmine | awk '{print \$1}'", returnStdout: true).trim()
             env.DOCKER_REDMINE = DOCKER_REDMINE
+            // Fail fast if the image was built without A1 baked in.
+            sh """docker exec ${DOCKER_REDMINE} bash -lc '
+set -euo pipefail
+THEMES_DIR=/usr/src/redmine/themes
+if [ ! -d \"\$THEMES_DIR\" ]; then
+  THEMES_DIR=/usr/src/redmine/public/themes
+fi
+test -d \"\$THEMES_DIR/a1\"
+'"""
           }
         }
       }
