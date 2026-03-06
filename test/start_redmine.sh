@@ -3,7 +3,6 @@
 mkdir -p /install_plugins
 
 if [ ! -z "${PLUGINS_URL}" ]; then
-  full_url=${PLUGINS_URL/https:\/\//https:\/\/$PLUGINS_USER:$PLUGINS_PASSWORD@}
   for plugin in $(cat ${REDMINE_PATH}/plugins.cfg); do
       
       plugin_name=$(echo $plugin | cut -d':' -f1)
@@ -11,7 +10,7 @@ if [ ! -z "${PLUGINS_URL}" ]; then
 
       if [ ! -f /install_plugins/$plugin_file ]; then
               echo "Found missing plugin - $plugin_file, will download and install it"
-              wget -q -O  /install_plugins/$plugin_file $full_url/$plugin_file
+              wget -q --user="$PLUGINS_USER" --password="$PLUGINS_PASSWORD" -O /install_plugins/$plugin_file "${PLUGINS_URL}/$plugin_file"
               unzip -d ${REDMINE_PATH}/plugins -o /install_plugins/$plugin_file
               REDMINE_PLUGINS_MIGRATE="yes" 
      fi
