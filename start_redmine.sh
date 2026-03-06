@@ -18,6 +18,13 @@ fi
 
 mkdir -p "${PLUGIN_FALLBACK_DIR}"
 mkdir -p "${THEME_FALLBACK_DIR}"
+touch "${REDMINE_PATH}/.profile"
+
+append_profile_export() {
+  local key="$1"
+  local value="${2-}"
+  printf 'export %s=%q\n' "${key}" "${value}" >> "${REDMINE_PATH}/.profile"
+}
 
 is_valid_zip() {
   unzip -tqq "$1" >/dev/null 2>&1
@@ -104,16 +111,18 @@ else
 	echo "Skipping cron startup because START_CRON=${START_CRON}"
 fi
 
-echo "export SYNC_API_KEY=$SYNC_API_KEY"  >> ${REDMINE_PATH}/.profile
-echo "export SYNC_REDMINE_URL=$SYNC_REDMINE_URL"  >> ${REDMINE_PATH}/.profile 
-echo "export GITHUB_AUTHENTICATION=$GITHUB_AUTHENTICATION"  >> ${REDMINE_PATH}/.profile
-echo "export GEM_HOME=/usr/local/bundle" >> ${REDMINE_PATH}/.profile
-echo "export BUNDLE_APP_CONFIG=/usr/local/bundle" >> ${REDMINE_PATH}/.profile
-echo "export PATH=/usr/local/bundle/bin:\$PATH" >> ${REDMINE_PATH}/.profile
+append_profile_export "SYNC_API_KEY" "${SYNC_API_KEY:-}"
+append_profile_export "SYNC_REDMINE_URL" "${SYNC_REDMINE_URL:-}"
+append_profile_export "GITHUB_AUTHENTICATION" "${GITHUB_AUTHENTICATION:-}"
+append_profile_export "GEM_HOME" "/usr/local/bundle"
+append_profile_export "BUNDLE_APP_CONFIG" "/usr/local/bundle"
+append_profile_export "PATH" "/usr/local/bundle/bin:${PATH}"
 if [ -n "${SECRET_KEY_BASE:-}" ]; then
-  echo "export SECRET_KEY_BASE=$SECRET_KEY_BASE" >> ${REDMINE_PATH}/.profile
+  append_profile_export "SECRET_KEY_BASE" "${SECRET_KEY_BASE}"
 fi
-echo "export RAILS_ENV=${RAILS_ENV:-production}" >> ${REDMINE_PATH}/.profile
+append_profile_export "RAILS_ENV" "${RAILS_ENV:-production}"
+chown redmine:redmine "${REDMINE_PATH}/.profile" || true
+chmod 600 "${REDMINE_PATH}/.profile" || true
 
 echo "TZ=$TZ" >> /etc/default/cron
 
