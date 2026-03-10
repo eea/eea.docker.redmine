@@ -8,7 +8,11 @@ LABEL maintainer="EEA: IDM2 A-Team <eea-edw-a-team-alerts@googlegroups.com>"
 
 ENV REDMINE_PATH=/usr/src/redmine \
   REDMINE_LOCAL_PATH=/var/local/redmine \
-  RUBY_YJIT_ENABLE=1
+  RUBY_YJIT_ENABLE=1 \
+  FAST_BOOT=1 \
+  RUNTIME_PLUGIN_SYNC=0 \
+  RUNTIME_THEME_SYNC=0 \
+  RUNTIME_BUNDLE_INSTALL=0
 
 # Fail build if upstream base drifts away from Ruby 3.4.x.
 RUN ruby -e 'abort("Ruby 3.4.x is required, got #{RUBY_VERSION}") unless RUBY_VERSION.start_with?("3.4.")'
@@ -22,6 +26,8 @@ ARG A1_THEME_USER=
 ARG A1_THEME_PASSWORD=
 ARG A1_THEME_SHA256=
 ARG A1_THEME_ZIP=a1_theme-4_1_2.zip
+ARG REQUIRE_PRO_PLUGINS=1
+ARG REQUIRE_A1_THEME=1
 
 COPY plugins.cfg ${REDMINE_PATH}/plugins.cfg
 
@@ -62,7 +68,17 @@ RUN apt-get update -q \
   unzip -q -o "$archive" -d "${REDMINE_PATH}/plugins"; \
   rm -f "${REDMINE_PATH}/plugins/${plugin_name}/Gemfile"; \
   done < "${REDMINE_PATH}/plugins.cfg"; \
+  elif [ "$REQUIRE_PRO_PLUGINS" = "1" ]; then \
+  echo "REQUIRE_PRO_PLUGINS=1 but PLUGINS_URL/PLUGINS_USER/PLUGINS_PASSWORD are missing"; \
+  exit 1; \
   fi \
+  && while IFS=: read -r plugin_name plugin_file; do \
+  [ -n "$plugin_name" ] || continue; \
+  if [ ! -d "${REDMINE_PATH}/plugins/${plugin_name}" ]; then \
+  echo "Missing required plugin in built image: ${plugin_name} (${plugin_file})"; \
+  exit 1; \
+  fi; \
+  done < "${REDMINE_PATH}/plugins.cfg" \
   && THEME_URL="$A1_THEME_URL"; \
   if [ -z "$THEME_URL" ] && [ -n "$PLUGINS_URL" ]; then \
   THEME_URL="${PLUGINS_URL%/plugins}/themes/$A1_THEME_ZIP"; \
@@ -83,6 +99,14 @@ RUN apt-get update -q \
   if [ -n "$A1_THEME_SHA256" ]; then echo "$A1_THEME_SHA256  /tmp/a1-theme.zip" | sha256sum -c -; fi; \
   unzip -q -o /tmp/a1-theme.zip -d "$THEMES_DIR"; \
   rm -f /tmp/a1-theme.zip; \
+  elif [ "$REQUIRE_A1_THEME" = "1" ]; then \
+  echo "REQUIRE_A1_THEME=1 but A1 theme URL/credentials are missing"; \
+  exit 1; \
+  fi \
+  && if [ "$REQUIRE_A1_THEME" = "1" ]; then \
+  THEMES_DIR="${REDMINE_PATH}/public/themes"; \
+  if [ -d "${REDMINE_PATH}/themes" ]; then THEMES_DIR="${REDMINE_PATH}/themes"; fi; \
+  test -d "${THEMES_DIR}/a1"; \
   fi
 
 # Make sure plugin gems and mysql adapter gems are resolved at build-time.

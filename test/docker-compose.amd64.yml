@@ -52,7 +52,7 @@ services:
       SELENIUM_REMOTE_URL: http://hub:4444/wd/hub
       REDMINE_HOST: redmine:3000
       RAILS_ENV: production
-      RAILS_LOG_LEVEL: warn
+      RAILS_LOG_LEVEL: info
       MEMCACHE_SERVERS: memcached:11211
       MEMCACHE_NAMESPACE: redmine-prod
       MEMCACHE_EXPIRES_IN: "3600"

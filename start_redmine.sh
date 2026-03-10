@@ -330,19 +330,37 @@ if [ -d "${PLUGIN_CACHE_DIR}" ] && [ -w "${PLUGIN_CACHE_DIR}" ]; then
   find "${PLUGIN_CACHE_DIR}" -size 0 -type f -exec rm {} \;
 fi
 
+for plugin in $(cat "${REDMINE_PATH}/plugins.cfg"); do
+  plugin_name=$(echo "${plugin}" | cut -d':' -f1)
+  plugin_file=$(echo "${plugin}" | cut -d':' -f2)
+  plugin_archive=""
+
+  if [ ! -d "${REDMINE_PATH}/plugins/${plugin_name}" ]; then
+    # Always prefer already-mounted local caches (e.g. /install_plugins) so boot
+    # works without remote credentials. Only download when runtime sync is enabled.
+    if [ -f "${PLUGIN_CACHE_DIR}/${plugin_file}" ]; then
+      plugin_archive="${PLUGIN_CACHE_DIR}/${plugin_file}"
+    elif [ -f "${PLUGIN_FALLBACK_DIR}/${plugin_file}" ]; then
+      plugin_archive="${PLUGIN_FALLBACK_DIR}/${plugin_file}"
+    elif [ "${RUNTIME_PLUGIN_SYNC}" = "1" ] && [ -n "${PLUGINS_URL:-}" ]; then
+      plugin_archive=$(resolve_archive "${PLUGIN_CACHE_DIR}/${plugin_file}" "${PLUGIN_FALLBACK_DIR}/${plugin_file}" "${PLUGINS_URL}/${plugin_file}" "${PLUGINS_USER:-}" "${PLUGINS_PASSWORD:-}" "plugin - ${plugin_file}")
+    fi
+
+    if [ -n "${plugin_archive}" ]; then
+      echo "Found missing plugin - ${plugin_name}, will install it"
+      unzip -d "${REDMINE_PATH}/plugins" -o "${plugin_archive}"
+      REDMINE_PLUGINS_MIGRATE="yes"
+      RUNTIME_ADDONS_CHANGED=1
+    elif [ "${RUNTIME_PLUGIN_SYNC}" = "1" ] && [ -n "${PLUGINS_URL:-}" ]; then
+      echo "Missing plugin archive for ${plugin_name} (${plugin_file}) even after sync attempt"
+      exit 1
+    else
+      echo "Missing plugin ${plugin_name} (${plugin_file}) and runtime sync is disabled; keeping current startup mode."
+    fi
+  fi
+done
+
 if [ "${RUNTIME_PLUGIN_SYNC}" = "1" ] && [ -n "${PLUGINS_URL:-}" ]; then
-  for plugin in $(cat ${REDMINE_PATH}/plugins.cfg); do
-      
-      plugin_name=$(echo $plugin | cut -d':' -f1)
-      plugin_file=$(echo $plugin | cut -d':' -f2)
-      plugin_archive=$(resolve_archive "${PLUGIN_CACHE_DIR}/$plugin_file" "${PLUGIN_FALLBACK_DIR}/$plugin_file" "${PLUGINS_URL}/$plugin_file" "${PLUGINS_USER:-}" "${PLUGINS_PASSWORD:-}" "plugin - $plugin_file")
-     if [ ! -d ${REDMINE_PATH}/plugins/$plugin_name ]; then
-            echo "Found missing plugin - $plugin_name, will install it"
-            unzip -d ${REDMINE_PATH}/plugins -o "$plugin_archive"
-            REDMINE_PLUGINS_MIGRATE="yes"
-            RUNTIME_ADDONS_CHANGED=1
-     fi   
-  done
 
   #remove old plugins only from writable caches
   if [ -d "${PLUGIN_CACHE_DIR}" ] && [ -w "${PLUGIN_CACHE_DIR}" ]; then
