@@ -6,15 +6,18 @@ class WikiLinksController < ApplicationController
   default_search_scope :wiki_pages
   menu_item :wiki
 
-  before_action :find_wiki, :except => [:index, :parse]
-  before_action :find_existing_page, :only => [:links_from, :links_to]
-  before_action :authorize, :except => [:index, :parse]
-  before_action :require_admin, :only => [:index, :parse]
+  before_action :find_wiki, except: %i[index parse]
+  before_action :find_existing_page, only: %i[links_from links_to]
+  before_action :authorize, except: %i[index parse]
+  before_action :require_admin, only: %i[index parse]
 
   def index
     @project_wikis = Wiki.joins(:project)
-      .select(["wikis.id", "projects.name"])
-      .collect{|x| {"wiki_id" => x.id, "project_name" => x.name}}
+                         .select(['wikis.id', 'projects.name'])
+                         .collect do |x|
+      { 'wiki_id' => x.id,
+        'project_name' => x.name }
+    end
   end
 
   def parse
@@ -24,14 +27,14 @@ class WikiLinksController < ApplicationController
         w.parse_all_pages
       end
 
-      flash[:notice] = l(:flash_parse_ok, :nwikis => wikis.size)
+      flash[:notice] = l(:flash_parse_ok, nwikis: wikis.size)
     else
       flash[:warning] = l(:flash_parse_none)
     end
   rescue ActiveRecord::RecordNotFound
     flash[:error] = l(:flash_parse_notfound)
   ensure
-    redirect_to url_for(:action => 'index')
+    redirect_to url_for(action: 'index')
   end
 
   def links_from
@@ -47,7 +50,7 @@ class WikiLinksController < ApplicationController
       @link_pages = WikiPage.find(ids_to).map(&:title)
     rescue StandardError => e
       @link_pages = []
-       puts e.message
+      puts e.message
     end
   end
 
@@ -79,17 +82,16 @@ class WikiLinksController < ApplicationController
       render_404
       return
     end
-    if @wiki.page_found_with_redirect?
-      redirect_to params.update(:page_id => @page.title)
-    end
+    return unless @wiki.page_found_with_redirect?
+
+    redirect_to params.update(page_id: @page.title)
   end
 
   def available_pages(wiki)
-    wiki.pages.select("DISTINCT title").map(&:title).to_set
+    wiki.pages.select('DISTINCT title').map(&:title).to_set
   end
 
   def existing_targets(wiki)
     wiki.links.select(:to_page_title).uniq.map(&:to_page_title).to_set
   end
-
 end

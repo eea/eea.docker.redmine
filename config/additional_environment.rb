@@ -1,4 +1,4 @@
-log_level_name = ENV.fetch('RAILS_LOG_LEVEL', 'warn').upcase
+log_level_name = ENV.fetch('RAILS_LOG_LEVEL', 'info').upcase
 log_level = Logger.const_get(log_level_name)
 cache_servers = ENV.fetch('MEMCACHE_SERVERS', 'memcached:11211').split(',')
 cache_options = {
