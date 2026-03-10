@@ -1,7 +1,7 @@
 services:
   mysql:
     platform: linux/amd64
-    image: mysql:5.7
+    image: mysql:8.4
     environment:
       MYSQL_DATABASE: redmine_test
       MYSQL_PASSWORD: password
@@ -9,13 +9,11 @@ services:
       MYSQL_USER: redmine
       TZ: Europe/Copenhagen
     volumes:
-    - taskman_test_db:/var/lib/mysql
+    - taskman_test_db_mysql84:/var/lib/mysql
     command:
-    - --query-cache-size=0
-    - --query-cache-limit=64M
-    - --query-cache-type=0
     - --innodb-buffer-pool-size=1G
     - --innodb-buffer-pool-instances=4
+    - --innodb-redo-log-capacity=2G
     - --net-read-timeout=7200
     - --net-write-timeout=7200
     - --max-allowed-packet=128M
@@ -23,6 +21,7 @@ services:
     - --max-heap-table-size=384M
     - --join-buffer-size=256M
     - --character_set_server=utf8mb4
+    - --collation_server=utf8mb4_0900_ai_ci
 
   redmine:
     platform: linux/amd64
@@ -32,7 +31,7 @@ services:
         PLUGINS_URL: ${PLUGINS_URL:-}
         PLUGINS_USER: ${PLUGINS_USER:-}
         PLUGINS_PASSWORD: ${PLUGINS_PASSWORD:-}
-        A1_THEME_URL: ${A1_THEME_URL:-https://cmshare.eea.europa.eu/remote.php/dav/files/${PLUGINS_USER:-}/redmine6-files/themes/a1_theme-4_1_2.zip}
+        A1_THEME_URL: ${A1_THEME_URL:-}
         A1_THEME_USER: ${A1_THEME_USER:-${PLUGINS_USER:-}}
         A1_THEME_PASSWORD: ${A1_THEME_PASSWORD:-${PLUGINS_PASSWORD:-}}
         A1_THEME_SHA256: ${A1_THEME_SHA256:-}
@@ -49,10 +48,16 @@ services:
       # Start Rails server from /start_redmine.sh (for local interactive runs)
       START_SERVER: "1"
       START_CRON: "0"
-      FAST_BOOT: ${FAST_BOOT:-0}
+      FAST_BOOT: ${FAST_BOOT:-1}
       SELENIUM_REMOTE_URL: http://hub:4444/wd/hub
       REDMINE_HOST: redmine:3000
-      RAILS_ENV: test
+      RAILS_ENV: production
+      RAILS_LOG_LEVEL: warn
+      MEMCACHE_SERVERS: memcached:11211
+      MEMCACHE_NAMESPACE: redmine-prod
+      MEMCACHE_EXPIRES_IN: "3600"
+      RAILS_SERVE_STATIC_FILES: "1"
+      AGILE_BOARD_PROFILE: ${AGILE_BOARD_PROFILE:-0}
       TZ: Europe/Copenhagen
     ports:
     - "3000:3000"
@@ -67,7 +72,7 @@ services:
 
   memcached:
     platform: linux/amd64
-    image: memcached:1
+    image: memcached:1.6
     environment:
       TZ: Europe/Copenhagen
     command:
@@ -88,7 +93,7 @@ services:
       - redmine_files:/usr/src/redmine/test/fixtures/files
 
 volumes:
-  taskman_test_db:
+  taskman_test_db_mysql84:
     driver: local
   redmine_files:
     driver: local

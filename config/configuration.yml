@@ -89,7 +89,7 @@ default:
   # You can use `rake redmine:plugins:assets` to manually mirror assets
   # to public/plugin_assets when you install/upgrade a Redmine plugin.
   #
-  mirror_plugins_assets_on_startup: true
+  mirror_plugins_assets_on_startup: false
 
   # Your secret key for verifying cookie session data integrity. If you
   # change this key, all old sessions will become invalid! Make sure the
