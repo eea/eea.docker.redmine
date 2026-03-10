@@ -2,6 +2,152 @@
 
 REDMINE_PATH=${REDMINE_PATH:-/usr/src/redmine}
 REDMINE_LOCAL_PATH=${REDMINE_LOCAL_PATH:-/var/local/redmine}
+MIGRATIONS_ONLY_STARTUP=${MIGRATIONS_ONLY_STARTUP:-1}
+
+prepare_asset_warning_fixes() {
+  local jquery_ui_css="${REDMINE_PATH}/app/assets/stylesheets/jquery/jquery-ui-1.13.2.css"
+  local app_images_dir="${REDMINE_PATH}/app/assets/images"
+  local ai_helper_config_dir="${REDMINE_PATH}/config/ai_helper"
+  local ai_helper_config_file="${ai_helper_config_dir}/config.json"
+
+  ensure_asset_file() {
+    local destination="$1"
+    shift
+    local source
+
+    mkdir -p "$(dirname "${destination}")"
+    if [ -f "${destination}" ]; then
+      return 0
+    fi
+
+    for source in "$@"; do
+      if [ -f "${source}" ]; then
+        cp "${source}" "${destination}"
+        return 0
+      fi
+    done
+
+    : > "${destination}"
+  }
+
+  # Drop broken ThemeRoller metadata URL encodings that Sprockets tries to resolve.
+  if [ -f "${jquery_ui_css}" ] && grep -q '%22images%2Fui-icons_' "${jquery_ui_css}"; then
+    sed -i '/%22images%2Fui-icons_/d' "${jquery_ui_css}"
+  fi
+
+  # Normalize plugin css paths that use unresolved relative URLs.
+  for css in \
+    "${REDMINE_PATH}/plugins/redmine_contacts/assets/stylesheets/money.css" \
+    "${REDMINE_PATH}/plugins/redmineup/assets/stylesheets/money.css"; do
+    if [ -f "${css}" ]; then
+      sed -i \
+        -e 's#\.\./images/money\.png#money.png#g' \
+        -e 's#\.\./images/bullet_go\.png#bullet_go.png#g' \
+        -e 's#\.\./images/bullet_end\.png#bullet_end.png#g' \
+        -e 's#\.\./images/bullet_diamond\.png#bullet_diamond.png#g' \
+        "${css}"
+    fi
+  done
+
+  for css in \
+    "${REDMINE_PATH}/plugins/redmine_contacts/assets/stylesheets/select2.css" \
+    "${REDMINE_PATH}/plugins/redmine_contacts/assets/stylesheets/calendars.css" \
+    "${REDMINE_PATH}/plugins/redmine_contacts_helpdesk/assets/stylesheets/helpdesk.css"; do
+    if [ -f "${css}" ]; then
+      sed -i \
+        -e 's#\.\./images/vcard\.png#vcard.png#g' \
+        -e 's#\.\./\.\./\.\./images/bullet_go\.png#bullet_go.png#g' \
+        -e 's#\.\./\.\./\.\./images/bullet_end\.png#bullet_end.png#g' \
+        -e 's#\.\./\.\./\.\./images/bullet_diamond\.png#bullet_diamond.png#g' \
+        -e 's#\.\./\.\./\.\./loading\.gif#loading.gif#g' \
+        "${css}"
+    fi
+  done
+
+  for theme_css in \
+    "${REDMINE_PATH}/themes/a1/stylesheets/application.css" \
+    "${REDMINE_PATH}/public/themes/a1/stylesheets/application.css"; do
+    if [ -f "${theme_css}" ]; then
+      sed -i 's#/stylesheets/jquery/images/#jquery/#g' "${theme_css}"
+    fi
+  done
+
+  # Provide canonical assets for css references used by bundled plugins/themes.
+  mkdir -p "${app_images_dir}"
+  ensure_asset_file "${app_images_dir}/img/resizer.png" \
+    "${REDMINE_PATH}/app/assets/images/resizer.png"
+  ensure_asset_file "${app_images_dir}/money.png" \
+    "${REDMINE_PATH}/plugins/redmine_contacts/assets/images/money.png" \
+    "${REDMINE_PATH}/plugins/redmineup/assets/images/money.png"
+  ensure_asset_file "${app_images_dir}/bullet_go.png" \
+    "${REDMINE_PATH}/plugins/redmine_contacts/assets/images/bullet_go.png" \
+    "${REDMINE_PATH}/plugins/redmineup/assets/images/bullet_go.png"
+  ensure_asset_file "${app_images_dir}/bullet_end.png" \
+    "${REDMINE_PATH}/plugins/redmine_contacts/assets/images/bullet_end.png" \
+    "${REDMINE_PATH}/plugins/redmineup/assets/images/bullet_end.png"
+  ensure_asset_file "${app_images_dir}/bullet_diamond.png" \
+    "${REDMINE_PATH}/plugins/redmine_contacts/assets/images/bullet_diamond.png" \
+    "${REDMINE_PATH}/plugins/redmineup/assets/images/bullet_diamond.png"
+  ensure_asset_file "${app_images_dir}/vcard.png" \
+    "${REDMINE_PATH}/plugins/redmine_contacts/assets/images/vcard.png" \
+    "${REDMINE_PATH}/plugins/redmineup/assets/images/vcard.png"
+  ensure_asset_file "${app_images_dir}/loading.gif" \
+    "${REDMINE_PATH}/plugins/redmine_contacts_helpdesk/assets/images/loading.gif"
+
+  # Silence ai helper warning when external MCP config is intentionally unset.
+  if [ ! -f "${ai_helper_config_file}" ]; then
+    mkdir -p "${ai_helper_config_dir}"
+    printf "{}\n" > "${ai_helper_config_file}"
+  fi
+}
+
+if [ "${MIGRATIONS_ONLY_STARTUP}" = "1" ]; then
+  # Keep startup minimal for k8s: initialize app env via upstream entrypoint,
+  # run migrations/bootstrap once, then boot the server directly.
+  set -euo pipefail
+  prepare_asset_warning_fixes
+  export ADMIN_BOOTSTRAP_PASSWORD=${ADMIN_BOOTSTRAP_PASSWORD:-Admin123!}
+  export DEFAULT_THEME=${DEFAULT_THEME:-a1}
+  export REDMINE_PLUGINS_MIGRATE=${REDMINE_PLUGINS_MIGRATE:-yes}
+  BOOTSTRAP_RAILS_LOG_LEVEL=${BOOTSTRAP_RAILS_LOG_LEVEL:-error}
+  BOOTSTRAP_RETRIES=${BOOTSTRAP_RETRIES:-30}
+  BOOTSTRAP_RETRY_DELAY=${BOOTSTRAP_RETRY_DELAY:-2}
+  bootstrap_ok=0
+  for attempt in $(seq 1 "${BOOTSTRAP_RETRIES}"); do
+    if RAILS_LOG_LEVEL="${BOOTSTRAP_RAILS_LOG_LEVEL}" /docker-entrypoint.sh rails runner "
+    password = ENV.fetch('ADMIN_BOOTSTRAP_PASSWORD', 'Admin123!')
+    theme = ENV.fetch('DEFAULT_THEME', 'a1')
+    admin = User.find_by(login: 'admin')
+    if admin
+      admin.auth_source_id = nil if admin.respond_to?(:auth_source_id=)
+      admin.password = password
+      admin.password_confirmation = password
+      admin.must_change_passwd = false if admin.respond_to?(:must_change_passwd=)
+      admin.twofa_required = false if admin.respond_to?(:twofa_required=)
+      admin.twofa_scheme = nil if admin.respond_to?(:twofa_scheme=)
+      admin.twofa_totp_key = nil if admin.respond_to?(:twofa_totp_key=)
+      admin.twofa_totp_last_used_at = nil if admin.respond_to?(:twofa_totp_last_used_at=)
+      admin.save!
+      Token.where(user_id: admin.id).where('action LIKE ?', 'twofa%').delete_all
+    end
+    Setting['ui_theme'] = theme
+  "; then
+      bootstrap_ok=1
+      break
+    fi
+    echo "Bootstrap attempt ${attempt}/${BOOTSTRAP_RETRIES} failed; retrying in ${BOOTSTRAP_RETRY_DELAY}s..."
+    sleep "${BOOTSTRAP_RETRY_DELAY}"
+  done
+  if [ "${bootstrap_ok}" != "1" ]; then
+    echo "Bootstrap failed after ${BOOTSTRAP_RETRIES} attempts"
+    exit 1
+  fi
+  rm -f ${REDMINE_PATH}/tmp/pids/server.pid
+  exec gosu redmine bundle exec rails server -b 0.0.0.0
+fi
+
+prepare_asset_warning_fixes
+
 PLUGIN_CACHE_DIR=/install_plugins
 PLUGIN_FALLBACK_DIR=/tmp/install_plugins
 THEME_CACHE_DIR=/install_themes
