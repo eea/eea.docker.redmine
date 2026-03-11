@@ -5,9 +5,107 @@ REDMINE_LOCAL_PATH=${REDMINE_LOCAL_PATH:-/var/local/redmine}
 MIGRATIONS_ONLY_STARTUP=${MIGRATIONS_ONLY_STARTUP:-1}
 START_SERVER=${START_SERVER:-1}
 START_CRON=${START_CRON:-1}
+CRON_IN_ASYNC_JOBS_ONLY=${CRON_IN_ASYNC_JOBS_ONLY:-1}
 RAILS_MAX_THREADS=${RAILS_MAX_THREADS:-5}
 WEB_CONCURRENCY=${WEB_CONCURRENCY:-1}
 export RAILS_MAX_THREADS WEB_CONCURRENCY
+
+if [ "${CRON_IN_ASYNC_JOBS_ONLY}" = "1" ] && [ "${START_SERVER}" = "1" ] && [ "${START_CRON}" = "1" ]; then
+  echo "CRON_IN_ASYNC_JOBS_ONLY=1: disabling cron in web container, use async-jobs container for cron execution"
+  START_CRON=0
+fi
+
+resolve_taskman_url() {
+  local configured="${TASKMAN_URL:-${REDMINE_HOST:-}}"
+
+  if [ -z "${configured}" ]; then
+    echo "http://127.0.0.1:3000"
+    return 0
+  fi
+
+  if [[ "${configured}" == http://* || "${configured}" == https://* ]]; then
+    echo "${configured}"
+    return 0
+  fi
+
+  echo "http://${configured}"
+}
+
+resolve_secret_key_base() {
+  local token_file="${REDMINE_PATH}/config/initializers/secret_token.rb"
+  local extracted=""
+
+  if [ -n "${SECRET_KEY_BASE:-}" ]; then
+    echo "${SECRET_KEY_BASE}"
+    return 0
+  fi
+
+  if [ -f "${token_file}" ]; then
+    extracted=$(sed -n "s/.*secret_key_base *= *'\\([^']\\+\\)'.*/\\1/p" "${token_file}" | tail -n1)
+  fi
+
+  if [ -n "${extracted}" ]; then
+    echo "${extracted}"
+    return 0
+  fi
+
+  ruby -rsecurerandom -e 'puts SecureRandom.hex(64)'
+}
+
+setup_runtime_environment() {
+  local taskman_url_value
+  local secret_key_base_value
+
+  taskman_url_value="$(resolve_taskman_url)"
+  secret_key_base_value="$(resolve_secret_key_base)"
+
+  export TASKMAN_URL="${taskman_url_value}"
+  export SECRET_KEY_BASE="${secret_key_base_value}"
+
+  mkdir -p "${REDMINE_PATH}"
+  : > "${REDMINE_PATH}/.profile"
+
+  append_profile_export() {
+    local key="$1"
+    local value="${2-}"
+    printf 'export %s=%q\n' "${key}" "${value}" >> "${REDMINE_PATH}/.profile"
+  }
+
+  append_profile_export "SYNC_API_KEY" "${SYNC_API_KEY:-}"
+  append_profile_export "SYNC_REDMINE_URL" "${SYNC_REDMINE_URL:-}"
+  append_profile_export "GITHUB_AUTHENTICATION" "${GITHUB_AUTHENTICATION:-}"
+  append_profile_export "GEM_HOME" "/usr/local/bundle"
+  append_profile_export "BUNDLE_APP_CONFIG" "/usr/local/bundle"
+  append_profile_export "PATH" "/usr/local/bundle/bin:${PATH}"
+  append_profile_export "SECRET_KEY_BASE" "${secret_key_base_value}"
+  append_profile_export "RAILS_ENV" "${RAILS_ENV:-production}"
+  chown redmine:redmine "${REDMINE_PATH}/.profile" || true
+  chmod 600 "${REDMINE_PATH}/.profile" || true
+
+  echo "TZ=${TZ:-UTC}" >> /etc/default/cron
+
+  cat > /etc/environment <<EOF
+export TZ=${TZ:-UTC}
+
+# Incoming emails API: Administration -> Settings -> Incoming email - API key
+HELPDESK_EMAIL_KEY=${HELPDESK_EMAIL_KEY:-}
+# Host for the helpdesk api from where to fetch support mails
+TASKMAN_URL=${taskman_url_value}
+SECRET_KEY_BASE=${secret_key_base_value}
+
+T_EMAIL_HOST=${T_EMAIL_HOST:-}
+T_EMAIL_PORT=${T_EMAIL_PORT:-}
+T_EMAIL_USER=${T_EMAIL_USER:-}
+T_EMAIL_PASS=${T_EMAIL_PASS:-}
+T_EMAIL_FOLDER=Inbox
+T_EMAIL_SSL=true
+
+# EEA Entra ID application credentials
+ENTRA_ID_TENANT_ID=${ENTRA_ID_TENANT_ID:-}
+ENTRA_ID_CLIENT_ID=${ENTRA_ID_CLIENT_ID:-}
+ENTRA_ID_CLIENT_SECRET=${ENTRA_ID_CLIENT_SECRET:-}
+EOF
+}
 
 prepare_asset_warning_fixes() {
   local jquery_ui_css="${REDMINE_PATH}/app/assets/stylesheets/jquery/jquery-ui-1.13.2.css"
@@ -167,6 +265,7 @@ if [ "${MIGRATIONS_ONLY_STARTUP}" = "1" ]; then
   # run migrations/bootstrap once, then boot the server directly.
   set -euo pipefail
   prepare_asset_warning_fixes
+  setup_runtime_environment
   export ADMIN_BOOTSTRAP_PASSWORD=${ADMIN_BOOTSTRAP_PASSWORD:-Admin123!}
   export DEFAULT_THEME=${DEFAULT_THEME:-a1}
   export REDMINE_PLUGINS_MIGRATE=${REDMINE_PLUGINS_MIGRATE:-yes}
@@ -232,13 +331,6 @@ fi
 
 mkdir -p "${PLUGIN_FALLBACK_DIR}"
 mkdir -p "${THEME_FALLBACK_DIR}"
-touch "${REDMINE_PATH}/.profile"
-
-append_profile_export() {
-  local key="$1"
-  local value="${2-}"
-  printf 'export %s=%q\n' "${key}" "${value}" >> "${REDMINE_PATH}/.profile"
-}
 
 is_valid_zip() {
   unzip -tqq "$1" >/dev/null 2>&1
@@ -311,46 +403,8 @@ resolve_archive() {
   echo "${fallback_archive}"
 }
 
+setup_runtime_environment
 start_cron_background
-
-append_profile_export "SYNC_API_KEY" "${SYNC_API_KEY:-}"
-append_profile_export "SYNC_REDMINE_URL" "${SYNC_REDMINE_URL:-}"
-append_profile_export "GITHUB_AUTHENTICATION" "${GITHUB_AUTHENTICATION:-}"
-append_profile_export "GEM_HOME" "/usr/local/bundle"
-append_profile_export "BUNDLE_APP_CONFIG" "/usr/local/bundle"
-append_profile_export "PATH" "/usr/local/bundle/bin:${PATH}"
-if [ -n "${SECRET_KEY_BASE:-}" ]; then
-  append_profile_export "SECRET_KEY_BASE" "${SECRET_KEY_BASE}"
-fi
-append_profile_export "RAILS_ENV" "${RAILS_ENV:-production}"
-chown redmine:redmine "${REDMINE_PATH}/.profile" || true
-chmod 600 "${REDMINE_PATH}/.profile" || true
-
-echo "TZ=$TZ" >> /etc/default/cron
-
-
-
-  echo "
-export TZ=${TZ}
-
-# Incoming emails API: Administration -> Settings -> Incoming email - API key
-HELPDESK_EMAIL_KEY=${HELPDESK_EMAIL_KEY}
-# Host for the helpdesk api from where to fetch support mails
-TASKMAN_URL=${REDMINE_HOST}
-
-T_EMAIL_HOST=${T_EMAIL_HOST}
-T_EMAIL_PORT=${T_EMAIL_PORT}
-T_EMAIL_USER=${T_EMAIL_USER}
-T_EMAIL_PASS=${T_EMAIL_PASS}
-T_EMAIL_FOLDER=Inbox
-T_EMAIL_SSL=true
-
-# EEA Entra ID application credentials
-ENTRA_ID_TENANT_ID=${ENTRA_ID_TENANT_ID}
-ENTRA_ID_CLIENT_ID=${ENTRA_ID_CLIENT_ID}
-ENTRA_ID_CLIENT_SECRET=${ENTRA_ID_CLIENT_SECRET}
-
-" > /etc/environment
 
 REDMINE_SMTP_HOST=${REDMINE_SMTP_HOST:-postfix}
 REDMINE_SMTP_PORT=${REDMINE_SMTP_PORT:-25}

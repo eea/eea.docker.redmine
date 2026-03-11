@@ -51,6 +51,7 @@ services:
       # Start Rails server from /start_redmine.sh (for local interactive runs)
       START_SERVER: "1"
       START_CRON: "0"
+      CRON_IN_ASYNC_JOBS_ONLY: "1"
       FAST_BOOT: ${FAST_BOOT:-1}
       ACTIVE_JOB_QUEUE_ADAPTER: ${ACTIVE_JOB_QUEUE_ADAPTER:-async}
       RAILS_PULSE_AUTH_ENABLED: "0"
@@ -94,6 +95,7 @@ services:
       ADMIN_BOOTSTRAP_ENABLE: "0"
       START_SERVER: "0"
       START_CRON: "1"
+      CRON_IN_ASYNC_JOBS_ONLY: "1"
       FAST_BOOT: ${FAST_BOOT:-1}
       ACTIVE_JOB_QUEUE_ADAPTER: ${ACTIVE_JOB_QUEUE_ADAPTER:-async}
       RAILS_PULSE_AUTH_ENABLED: "0"
