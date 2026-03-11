@@ -45,6 +45,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       ACTIVE_JOB_QUEUE_ADAPTER: ${ACTIVE_JOB_QUEUE_ADAPTER:-async}
       RAILS_PULSE_AUTH_ENABLED: "0"
+      CRON_IN_ASYNC_JOBS_ONLY: "1"
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
       RAILS_MAX_THREADS: ${RAILS_MAX_THREADS:-5}
       REDMINE_HOST: redmine:3000
@@ -81,6 +82,7 @@ services:
       ADMIN_BOOTSTRAP_ENABLE: "0"
       START_SERVER: "0"
       START_CRON: "1"
+      CRON_IN_ASYNC_JOBS_ONLY: "1"
       REDMINE_HOST: redmine:3000
       RAILS_ENV: production
       TZ: Europe/Copenhagen
