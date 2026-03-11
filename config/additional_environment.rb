@@ -33,6 +33,13 @@ config.action_controller.perform_caching = true
 config.cache_classes = true
 config.eager_load = true
 config.action_view.cache_template_loading = true
+config.active_record.default_timezone = :utc if config.respond_to?(:active_record)
+
+# Keep job backend explicit and configurable across web/cron containers.
+if config.respond_to?(:active_job)
+  adapter_name = ENV.fetch('ACTIVE_JOB_QUEUE_ADAPTER', 'async')
+  config.active_job.queue_adapter = adapter_name.to_sym
+end
 
 # Rails 7.2+ can raise ArgumentError inside connection_pool when MemCacheStore
 # is initialized with pooling enabled. Disable pooling to keep startup/migrations working.

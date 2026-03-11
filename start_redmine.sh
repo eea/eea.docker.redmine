@@ -3,6 +3,11 @@
 REDMINE_PATH=${REDMINE_PATH:-/usr/src/redmine}
 REDMINE_LOCAL_PATH=${REDMINE_LOCAL_PATH:-/var/local/redmine}
 MIGRATIONS_ONLY_STARTUP=${MIGRATIONS_ONLY_STARTUP:-1}
+START_SERVER=${START_SERVER:-1}
+START_CRON=${START_CRON:-1}
+RAILS_MAX_THREADS=${RAILS_MAX_THREADS:-5}
+WEB_CONCURRENCY=${WEB_CONCURRENCY:-1}
+export RAILS_MAX_THREADS WEB_CONCURRENCY
 
 prepare_asset_warning_fixes() {
   local jquery_ui_css="${REDMINE_PATH}/app/assets/stylesheets/jquery/jquery-ui-1.13.2.css"
@@ -101,6 +106,62 @@ prepare_asset_warning_fixes() {
   fi
 }
 
+start_cron_background() {
+  if [ "${START_CRON}" = "1" ]; then
+    touch /etc/crontab /etc/cron.*/*
+    if [ -n "${RESTART_CRON:-}" ] && [ "$(grep -c 'rails server' /var/redmine_jobs.txt)" -eq 0 ] ; then
+      echo "${RESTART_CRON} kill -2 \$(ps -fu redmine | grep 'rails server' | grep -v grep | awk '{print \$2}')" >> /var/redmine_jobs.txt
+    fi
+    crontab /var/redmine_jobs.txt
+    chmod 600 /etc/crontab
+
+    systemctl restart rsyslog
+    service cron restart
+  else
+    echo "Skipping cron startup because START_CRON=${START_CRON}"
+  fi
+}
+
+run_jobs_only_foreground() {
+  if [ "${START_CRON}" != "1" ]; then
+    echo "START_SERVER=0 requires START_CRON=1"
+    exit 1
+  fi
+
+  touch /etc/crontab /etc/cron.*/*
+  crontab /var/redmine_jobs.txt
+  chmod 600 /etc/crontab
+  echo "TZ=$TZ" >> /etc/default/cron
+  echo "Starting cron in foreground (jobs-only mode)"
+  exec cron -f
+}
+
+run_db_migrate_with_retry() {
+  local retries="${MIGRATION_RETRIES:-30}"
+  local delay="${MIGRATION_RETRY_DELAY:-2}"
+  local attempt output
+
+  for attempt in $(seq 1 "${retries}"); do
+    if output=$(/docker-entrypoint.sh rake db:migrate 2>&1); then
+      printf "%s\n" "${output}"
+      return 0
+    fi
+
+    printf "%s\n" "${output}"
+    if printf "%s" "${output}" | grep -q 'ConcurrentMigrationError'; then
+      echo "db:migrate locked by another container (${attempt}/${retries}), retrying in ${delay}s..."
+      sleep "${delay}"
+      continue
+    fi
+
+    echo "db:migrate failed with non-retryable error"
+    return 1
+  done
+
+  echo "db:migrate failed after ${retries} retries"
+  return 1
+}
+
 if [ "${MIGRATIONS_ONLY_STARTUP}" = "1" ]; then
   # Keep startup minimal for k8s: initialize app env via upstream entrypoint,
   # run migrations/bootstrap once, then boot the server directly.
@@ -110,40 +171,46 @@ if [ "${MIGRATIONS_ONLY_STARTUP}" = "1" ]; then
   export DEFAULT_THEME=${DEFAULT_THEME:-a1}
   export REDMINE_PLUGINS_MIGRATE=${REDMINE_PLUGINS_MIGRATE:-yes}
   BOOTSTRAP_RAILS_LOG_LEVEL=${BOOTSTRAP_RAILS_LOG_LEVEL:-error}
-  BOOTSTRAP_RETRIES=${BOOTSTRAP_RETRIES:-30}
-  BOOTSTRAP_RETRY_DELAY=${BOOTSTRAP_RETRY_DELAY:-2}
-  bootstrap_ok=0
-  for attempt in $(seq 1 "${BOOTSTRAP_RETRIES}"); do
-    if RAILS_LOG_LEVEL="${BOOTSTRAP_RAILS_LOG_LEVEL}" /docker-entrypoint.sh rails runner "
-    password = ENV.fetch('ADMIN_BOOTSTRAP_PASSWORD', 'Admin123!')
-    theme = ENV.fetch('DEFAULT_THEME', 'a1')
-    admin = User.find_by(login: 'admin')
-    if admin
-      admin.auth_source_id = nil if admin.respond_to?(:auth_source_id=)
-      admin.password = password
-      admin.password_confirmation = password
-      admin.must_change_passwd = false if admin.respond_to?(:must_change_passwd=)
-      admin.twofa_required = false if admin.respond_to?(:twofa_required=)
-      admin.twofa_scheme = nil if admin.respond_to?(:twofa_scheme=)
-      admin.twofa_totp_key = nil if admin.respond_to?(:twofa_totp_key=)
-      admin.twofa_totp_last_used_at = nil if admin.respond_to?(:twofa_totp_last_used_at=)
-      admin.save!
-      Token.where(user_id: admin.id).where('action LIKE ?', 'twofa%').delete_all
-    end
-    Setting['ui_theme'] = theme
-  "; then
-      bootstrap_ok=1
-      break
+  ADMIN_BOOTSTRAP_ENABLE=${ADMIN_BOOTSTRAP_ENABLE:-1}
+  ADMIN_BOOTSTRAP_TIMEOUT=${ADMIN_BOOTSTRAP_TIMEOUT:-90}
+
+  run_db_migrate_with_retry
+  if [ "${REDMINE_PLUGINS_MIGRATE}" = "yes" ]; then
+    /docker-entrypoint.sh rake redmine:plugins:migrate
+  fi
+
+  if [ "${ADMIN_BOOTSTRAP_ENABLE}" = "1" ]; then
+    if ! timeout "${ADMIN_BOOTSTRAP_TIMEOUT}" /docker-entrypoint.sh rails runner "
+      password = ENV.fetch('ADMIN_BOOTSTRAP_PASSWORD', 'Admin123!')
+      theme = ENV.fetch('DEFAULT_THEME', 'a1')
+      admin = User.find_by(login: 'admin')
+      if admin
+        admin.auth_source_id = nil if admin.respond_to?(:auth_source_id=)
+        admin.password = password
+        admin.password_confirmation = password
+        admin.must_change_passwd = false if admin.respond_to?(:must_change_passwd=)
+        admin.twofa_required = false if admin.respond_to?(:twofa_required=)
+        admin.twofa_scheme = nil if admin.respond_to?(:twofa_scheme=)
+        admin.twofa_totp_key = nil if admin.respond_to?(:twofa_totp_key=)
+        admin.twofa_totp_last_used_at = nil if admin.respond_to?(:twofa_totp_last_used_at=)
+        admin.save!
+        Token.where(user_id: admin.id).where('action LIKE ?', 'twofa%').delete_all
+      end
+      Setting['ui_theme'] = theme
+    "; then
+      echo "Admin/theme bootstrap failed or timed out; continuing startup"
     fi
-    echo "Bootstrap attempt ${attempt}/${BOOTSTRAP_RETRIES} failed; retrying in ${BOOTSTRAP_RETRY_DELAY}s..."
-    sleep "${BOOTSTRAP_RETRY_DELAY}"
-  done
-  if [ "${bootstrap_ok}" != "1" ]; then
-    echo "Bootstrap failed after ${BOOTSTRAP_RETRIES} attempts"
-    exit 1
   fi
   rm -f ${REDMINE_PATH}/tmp/pids/server.pid
-  exec gosu redmine bundle exec rails server -b 0.0.0.0
+
+  if [ "${START_SERVER}" = "1" ]; then
+    start_cron_background
+    export REDMINE_NO_DB_MIGRATE=1
+    export REDMINE_PLUGINS_MIGRATE=
+    exec /docker-entrypoint.sh rails server -b 0.0.0.0
+  fi
+
+  run_jobs_only_foreground
 fi
 
 prepare_asset_warning_fixes
@@ -244,19 +311,7 @@ resolve_archive() {
   echo "${fallback_archive}"
 }
 
-if [ "${START_CRON:-1}" = "1" ]; then
-	touch /etc/crontab /etc/cron.*/* 
-	if [ -n "${RESTART_CRON:-}" ] && [ "$(grep -c 'rails server' /var/redmine_jobs.txt)" -eq 0 ] ; then
-		echo "${RESTART_CRON} kill -2 \$(ps -fu redmine | grep 'rails server' | grep -v grep | awk '{print \$2}')" >> /var/redmine_jobs.txt
-	fi	
-	crontab /var/redmine_jobs.txt 
-	chmod 600 /etc/crontab  
-
-	systemctl restart rsyslog
-	service cron restart
-else
-	echo "Skipping cron startup because START_CRON=${START_CRON}"
-fi
+start_cron_background
 
 append_profile_export "SYNC_API_KEY" "${SYNC_API_KEY:-}"
 append_profile_export "SYNC_REDMINE_URL" "${SYNC_REDMINE_URL:-}"
@@ -447,4 +502,8 @@ if [ -n "${REDMINE_DB_POOL:-}" ]; then
     sed -i "/bundle check/a\        echo '  pool: $REDMINE_DB_POOL' >> config\/database.yml"    /docker-entrypoint.sh
 fi
 
-/docker-entrypoint.sh rails server -b 0.0.0.0
+if [ "${START_SERVER}" = "1" ]; then
+  /docker-entrypoint.sh rails server -b 0.0.0.0
+else
+  run_jobs_only_foreground
+fi
