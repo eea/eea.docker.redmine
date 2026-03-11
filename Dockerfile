@@ -26,8 +26,8 @@ ARG A1_THEME_USER=
 ARG A1_THEME_PASSWORD=
 ARG A1_THEME_SHA256=
 ARG A1_THEME_ZIP=a1_theme-4_1_2.zip
-ARG REQUIRE_PRO_PLUGINS=1
-ARG REQUIRE_A1_THEME=1
+ARG REQUIRE_PRO_PLUGINS=0
+ARG REQUIRE_A1_THEME=0
 
 COPY plugins.cfg ${REDMINE_PATH}/plugins.cfg
 
@@ -71,14 +71,25 @@ RUN apt-get update -q \
   elif [ "$REQUIRE_PRO_PLUGINS" = "1" ]; then \
   echo "REQUIRE_PRO_PLUGINS=1 but PLUGINS_URL/PLUGINS_USER/PLUGINS_PASSWORD are missing"; \
   exit 1; \
+  else \
+  echo "Skipping pro plugins download at build-time (credentials not provided)"; \
   fi \
-  && while IFS=: read -r plugin_name plugin_file; do \
+  && if [ "$REQUIRE_PRO_PLUGINS" = "1" ]; then \
+  while IFS=: read -r plugin_name plugin_file; do \
   [ -n "$plugin_name" ] || continue; \
   if [ ! -d "${REDMINE_PATH}/plugins/${plugin_name}" ]; then \
   echo "Missing required plugin in built image: ${plugin_name} (${plugin_file})"; \
   exit 1; \
   fi; \
-  done < "${REDMINE_PATH}/plugins.cfg" \
+  done < "${REDMINE_PATH}/plugins.cfg"; \
+  else \
+  while IFS=: read -r plugin_name plugin_file; do \
+  [ -n "$plugin_name" ] || continue; \
+  if [ ! -d "${REDMINE_PATH}/plugins/${plugin_name}" ]; then \
+  echo "Optional plugin not present in image: ${plugin_name} (${plugin_file})"; \
+  fi; \
+  done < "${REDMINE_PATH}/plugins.cfg"; \
+  fi \
   && THEME_URL="$A1_THEME_URL"; \
   if [ -z "$THEME_URL" ] && [ -n "$PLUGINS_URL" ]; then \
   THEME_URL="${PLUGINS_URL%/plugins}/themes/$A1_THEME_ZIP"; \
@@ -102,6 +113,8 @@ RUN apt-get update -q \
   elif [ "$REQUIRE_A1_THEME" = "1" ]; then \
   echo "REQUIRE_A1_THEME=1 but A1 theme URL/credentials are missing"; \
   exit 1; \
+  else \
+  echo "Skipping A1 theme download at build-time (URL/credentials not provided)"; \
   fi \
   && if [ "$REQUIRE_A1_THEME" = "1" ]; then \
   THEMES_DIR="${REDMINE_PATH}/public/themes"; \
