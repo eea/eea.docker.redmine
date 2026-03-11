@@ -24,6 +24,7 @@ services:
     - --character_set_server=utf8mb4
 
   redmine:
+    image: test-redmine:latest
     build:
       context: ../.
       args:
@@ -39,6 +40,11 @@ services:
       PLUGINS_URL: https://cmshare.eea.europa.eu/remote.php/dav/files/${REDMINE_PLUGINS_USER:-}/redmine6-files/plugins
       SELENIUM_REMOTE_URL: http://hub:4444/wd/hub
       PLUGINS_USER: ${REDMINE_PLUGINS_USER:-}
+      REDIS_URL: redis://redis:6379/0
+      ACTIVE_JOB_QUEUE_ADAPTER: ${ACTIVE_JOB_QUEUE_ADAPTER:-async}
+      RAILS_PULSE_AUTH_ENABLED: "0"
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
+      RAILS_MAX_THREADS: ${RAILS_MAX_THREADS:-5}
       REDMINE_HOST: redmine:3000
       RAILS_ENV: test
       TZ: Europe/Copenhagen
@@ -50,6 +56,37 @@ services:
     - redmine_files:/usr/src/redmine/test/fixtures/files  
     depends_on:
     - mysql  
+    - redis
+    links:
+    - mysql:mysql
+
+  active-jobs:
+    image: test-redmine:latest
+    environment:
+      PLUGINS_URL: https://cmshare.eea.europa.eu/remote.php/dav/files/${REDMINE_PLUGINS_USER:-}/redmine6-files/plugins
+      PLUGINS_USER: ${REDMINE_PLUGINS_USER:-}
+      PLUGINS_PASSWORD: ${REDMINE_PLUGINS_PASSWORD:-}
+      REDIS_URL: redis://redis:6379/0
+      ACTIVE_JOB_QUEUE_ADAPTER: ${ACTIVE_JOB_QUEUE_ADAPTER:-async}
+      RAILS_PULSE_AUTH_ENABLED: "0"
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
+      RAILS_MAX_THREADS: ${RAILS_MAX_THREADS:-5}
+      REDMINE_DB_MYSQL: mysql
+      REDMINE_DB_DATABASE: redmine_test
+      REDMINE_DB_USERNAME: redmine
+      REDMINE_DB_PASSWORD: password
+      REDMINE_PLUGINS_MIGRATE: "no"
+      ADMIN_BOOTSTRAP_ENABLE: "0"
+      START_SERVER: "0"
+      START_CRON: "1"
+      REDMINE_HOST: redmine:3000
+      RAILS_ENV: production
+      TZ: Europe/Copenhagen
+    volumes:
+    - redmine_files:/usr/src/redmine/test/fixtures/files
+    depends_on:
+    - mysql
+    - redis
     links:
     - mysql:mysql
 
@@ -61,6 +98,11 @@ services:
     command:
     - -m
     - '512'
+
+  redis:
+    image: redis:7-alpine
+    environment:
+      TZ: Europe/Copenhagen
 
   postfix:
     image: eaudeweb/mailtrap:latest
