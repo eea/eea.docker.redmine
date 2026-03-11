@@ -21,7 +21,10 @@ pipeline {
           withCredentials([usernamePassword(credentialsId: '28f3ae32-6a71-4b8e-8a3e-6191620a0492', usernameVariable: 'REDMINE_PLUGINS_USER', passwordVariable: 'REDMINE_PLUGINS_PASSWORD')]) {
             sh '''cp -f test/start_redmine.sh .'''
             sh '''A1_THEME_URL="https://cmshare.eea.europa.eu/remote.php/dav/files/${REDMINE_PLUGINS_USER}/redmine6-files/themes/a1_theme-4_1_2.zip" A1_THEME_USER="${REDMINE_PLUGINS_USER}" A1_THEME_PASSWORD="${REDMINE_PLUGINS_PASSWORD}" docker-compose -f test/docker-compose.yml up -d --build'''
-            DOCKER_REDMINE = sh(script: "docker-compose -f test/docker-compose.yml ps | grep redmine | awk '{print \$1}'", returnStdout: true).trim()
+            DOCKER_REDMINE = sh(script: "docker-compose -f test/docker-compose.yml ps -q redmine", returnStdout: true).trim()
+            if (!DOCKER_REDMINE) {
+              error("Unable to resolve redmine container id from docker-compose")
+            }
             env.DOCKER_REDMINE = DOCKER_REDMINE
             // Fail fast if the image was built without A1 baked in.
             sh """docker exec ${DOCKER_REDMINE} bash -lc '
