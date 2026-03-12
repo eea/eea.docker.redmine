@@ -12,22 +12,24 @@ download_plugins() {
 
   if [ -n "$plugins_url" ] && [ -n "$plugins_user" ] && [ -n "$plugins_password" ]; then
     mkdir -p /tmp/install_plugins
-    local plugins_host plugins_netrc
+    local plugins_host plugins_home plugins_netrc
     plugins_host="$(echo "$plugins_url" | awk -F/ '{print $3}')"
-    plugins_netrc="/tmp/plugins.netrc"
+    plugins_home="$(mktemp -d /tmp/plugins-auth.XXXXXX)"
+    plugins_netrc="${plugins_home}/.netrc"
     printf "machine %s login %s password %s\n" "$plugins_host" "$plugins_user" "$plugins_password" > "$plugins_netrc"
     chmod 600 "$plugins_netrc"
 
     while IFS=: read -r plugin_name plugin_file; do
       [ -n "$plugin_name" ] || continue
       archive="/tmp/install_plugins/$plugin_file"
-      wget -q --auth-no-challenge --netrc-file="$plugins_netrc" -O "$archive" "$plugins_url/$plugin_file"
+      HOME="$plugins_home" wget -q --auth-no-challenge --netrc -O "$archive" "$plugins_url/$plugin_file"
       unzip -tqq "$archive"
       unzip -q -o "$archive" -d "${REDMINE_PATH}/plugins"
       rm -f "${REDMINE_PATH}/plugins/${plugin_name}/Gemfile"
     done < "$PLUGINS_CFG"
 
     rm -f "$plugins_netrc"
+    rmdir "$plugins_home"
   elif [ "$require_pro_plugins" = "1" ]; then
     echo "REQUIRE_PRO_PLUGINS=1 but PLUGINS_URL/PLUGINS_USER/PLUGINS_PASSWORD are missing"
     exit 1
@@ -75,7 +77,7 @@ download_theme() {
   fi
 
   if [ -n "$theme_url" ]; then
-    local themes_dir theme_host theme_netrc
+    local themes_dir theme_host theme_home theme_netrc
     themes_dir="${REDMINE_PATH}/public/themes"
     if [ -d "${REDMINE_PATH}/themes" ]; then
       themes_dir="${REDMINE_PATH}/themes"
@@ -85,18 +87,22 @@ download_theme() {
 
     if [ -n "$a1_theme_user" ] && [ -n "$a1_theme_password" ]; then
       theme_host="$(echo "$theme_url" | awk -F/ '{print $3}')"
-      theme_netrc="/tmp/theme.netrc"
+      theme_home="$(mktemp -d /tmp/theme-auth.XXXXXX)"
+      theme_netrc="${theme_home}/.netrc"
       printf "machine %s login %s password %s\n" "$theme_host" "$a1_theme_user" "$a1_theme_password" > "$theme_netrc"
       chmod 600 "$theme_netrc"
-      wget -q --auth-no-challenge --netrc-file="$theme_netrc" -O /tmp/a1-theme.zip "$theme_url"
+      HOME="$theme_home" wget -q --auth-no-challenge --netrc -O /tmp/a1-theme.zip "$theme_url"
       rm -f "$theme_netrc"
+      rmdir "$theme_home"
     elif [ -n "$plugins_user" ] && [ -n "$plugins_password" ]; then
       theme_host="$(echo "$theme_url" | awk -F/ '{print $3}')"
-      theme_netrc="/tmp/theme.netrc"
+      theme_home="$(mktemp -d /tmp/theme-auth.XXXXXX)"
+      theme_netrc="${theme_home}/.netrc"
       printf "machine %s login %s password %s\n" "$theme_host" "$plugins_user" "$plugins_password" > "$theme_netrc"
       chmod 600 "$theme_netrc"
-      wget -q --auth-no-challenge --netrc-file="$theme_netrc" -O /tmp/a1-theme.zip "$theme_url"
+      HOME="$theme_home" wget -q --auth-no-challenge --netrc -O /tmp/a1-theme.zip "$theme_url"
       rm -f "$theme_netrc"
+      rmdir "$theme_home"
     else
       wget -q -O /tmp/a1-theme.zip "$theme_url"
     fi
