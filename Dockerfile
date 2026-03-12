@@ -30,6 +30,7 @@ ARG REQUIRE_PRO_PLUGINS=0
 ARG REQUIRE_A1_THEME=0
 
 COPY plugins.cfg ${REDMINE_PATH}/plugins.cfg
+COPY config/install_pro_assets.sh /usr/local/bin/install_pro_assets.sh
 
 # Install dependencies and plugins
 RUN apt-get update -q \
@@ -58,69 +59,8 @@ RUN apt-get update -q \
   && cd .. \
   && git clone -b master https://github.com/eea/redmine_entra_id.git ${REDMINE_PATH}/plugins/entra_id \
   && git clone -b 1.11.0 https://github.com/haru/redmine_ai_helper.git ${REDMINE_PATH}/plugins/redmine_ai_helper \
-  && if [ -n "$PLUGINS_URL" ] && [ -n "$PLUGINS_USER" ] && [ -n "$PLUGINS_PASSWORD" ]; then \
-  mkdir -p /tmp/install_plugins; \
-  while IFS=: read -r plugin_name plugin_file; do \
-  [ -n "$plugin_name" ] || continue; \
-  archive="/tmp/install_plugins/$plugin_file"; \
-  wget -q --user="$PLUGINS_USER" --password="$PLUGINS_PASSWORD" -O "$archive" "$PLUGINS_URL/$plugin_file"; \
-  unzip -tqq "$archive"; \
-  unzip -q -o "$archive" -d "${REDMINE_PATH}/plugins"; \
-  rm -f "${REDMINE_PATH}/plugins/${plugin_name}/Gemfile"; \
-  done < "${REDMINE_PATH}/plugins.cfg"; \
-  elif [ "$REQUIRE_PRO_PLUGINS" = "1" ]; then \
-  echo "REQUIRE_PRO_PLUGINS=1 but PLUGINS_URL/PLUGINS_USER/PLUGINS_PASSWORD are missing"; \
-  exit 1; \
-  else \
-  echo "Skipping pro plugins download at build-time (credentials not provided)"; \
-  fi \
-  && if [ "$REQUIRE_PRO_PLUGINS" = "1" ]; then \
-  while IFS=: read -r plugin_name plugin_file; do \
-  [ -n "$plugin_name" ] || continue; \
-  if [ ! -d "${REDMINE_PATH}/plugins/${plugin_name}" ]; then \
-  echo "Missing required plugin in built image: ${plugin_name} (${plugin_file})"; \
-  exit 1; \
-  fi; \
-  done < "${REDMINE_PATH}/plugins.cfg"; \
-  else \
-  while IFS=: read -r plugin_name plugin_file; do \
-  [ -n "$plugin_name" ] || continue; \
-  if [ ! -d "${REDMINE_PATH}/plugins/${plugin_name}" ]; then \
-  echo "Optional plugin not present in image: ${plugin_name} (${plugin_file})"; \
-  fi; \
-  done < "${REDMINE_PATH}/plugins.cfg"; \
-  fi \
-  && THEME_URL="$A1_THEME_URL"; \
-  if [ -z "$THEME_URL" ] && [ -n "$PLUGINS_URL" ]; then \
-  THEME_URL="${PLUGINS_URL%/plugins}/themes/$A1_THEME_ZIP"; \
-  fi; \
-  if [ -n "$THEME_URL" ]; then \
-  THEMES_DIR="${REDMINE_PATH}/public/themes"; \
-  if [ -d "${REDMINE_PATH}/themes" ]; then THEMES_DIR="${REDMINE_PATH}/themes"; fi; \
-  mkdir -p "$THEMES_DIR"; \
-  echo "Downloading A1 theme into $THEMES_DIR from $THEME_URL"; \
-  if [ -n "$A1_THEME_USER" ]; then \
-  wget -q --user="$A1_THEME_USER" --password="$A1_THEME_PASSWORD" -O /tmp/a1-theme.zip "$THEME_URL"; \
-  elif [ -n "$PLUGINS_USER" ]; then \
-  wget -q --user="$PLUGINS_USER" --password="$PLUGINS_PASSWORD" -O /tmp/a1-theme.zip "$THEME_URL"; \
-  else \
-  wget -q -O /tmp/a1-theme.zip "$THEME_URL"; \
-  fi; \
-  unzip -tqq /tmp/a1-theme.zip; \
-  if [ -n "$A1_THEME_SHA256" ]; then echo "$A1_THEME_SHA256  /tmp/a1-theme.zip" | sha256sum -c -; fi; \
-  unzip -q -o /tmp/a1-theme.zip -d "$THEMES_DIR"; \
-  rm -f /tmp/a1-theme.zip; \
-  elif [ "$REQUIRE_A1_THEME" = "1" ]; then \
-  echo "REQUIRE_A1_THEME=1 but A1 theme URL/credentials are missing"; \
-  exit 1; \
-  else \
-  echo "Skipping A1 theme download at build-time (URL/credentials not provided)"; \
-  fi \
-  && if [ "$REQUIRE_A1_THEME" = "1" ]; then \
-  THEMES_DIR="${REDMINE_PATH}/public/themes"; \
-  if [ -d "${REDMINE_PATH}/themes" ]; then THEMES_DIR="${REDMINE_PATH}/themes"; fi; \
-  test -d "${THEMES_DIR}/a1"; \
-  fi
+  && chmod 700 /usr/local/bin/install_pro_assets.sh \
+  && /usr/local/bin/install_pro_assets.sh
 
 # Make sure plugin gems and mysql adapter gems are resolved at build-time.
 RUN echo 'gem "dalli", "~> 2.7.6"' >> ${REDMINE_PATH}/Gemfile \
