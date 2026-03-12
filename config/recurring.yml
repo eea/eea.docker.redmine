@@ -1,0 +1,22 @@
+production:
+  rails_pulse_summary:
+    class: RailsPulse::SummaryJob
+    schedule: every 5 minutes
+  rails_pulse_cleanup:
+    class: RailsPulse::CleanupJob
+    schedule: 17 3 * * *
+  helpdesk_mail_fetch:
+    command: "system('/var/local/redmine/crons/helpdesk.sh')"
+    schedule: every 5 minutes
+  taskman_default_mailbox:
+    command: "system('/var/local/redmine/crons/taskman_email.sh')"
+    schedule: every 5 minutes
+  entra_users_sync:
+    command: "system('/var/local/redmine/crons/eea_entra_id_sync_users.sh')"
+    schedule: 0 * * * *
+  entra_groups_sync:
+    command: "system('/var/local/redmine/crons/eea_entra_id_sync_groups.sh')"
+    schedule: 15 4 * * *
+  github_sync:
+    command: "system('su redmine -c /var/local/redmine/crons/redmine_github_sync.sh')"
+    schedule: 15 6 * * *
