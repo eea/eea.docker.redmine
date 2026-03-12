@@ -68,12 +68,13 @@ RUN echo 'gem "dalli", "~> 2.7.6"' >> ${REDMINE_PATH}/Gemfile \
   && echo 'gem "redmineup"' >> ${REDMINE_PATH}/Gemfile \
   && echo 'gem "redmine_plugin_kit"' >> ${REDMINE_PATH}/Gemfile \
   && echo 'gem "rails_pulse"' >> ${REDMINE_PATH}/Gemfile \
+  && echo 'gem "solid_queue"' >> ${REDMINE_PATH}/Gemfile \
   && echo 'gem "vcard"' >> ${REDMINE_PATH}/Gemfile \
   && echo 'gem "wicked_pdf", "~> 1.1.0"' >> ${REDMINE_PATH}/Gemfile \
   && echo 'gem "wkhtmltopdf-binary"' >> ${REDMINE_PATH}/Gemfile \
   && echo 'gem "ostruct"' >> ${REDMINE_PATH}/Gemfile \
   && printf "\ngem 'puma'\n" >> ${REDMINE_PATH}/Gemfile \
-  && ruby -e "path='${REDMINE_PATH}/Gemfile'; targets=%w[oauth2 puma redmineup redmine_plugin_kit rails-controller-testing wicked_pdf wkhtmltopdf-binary liquid vcard ostruct rails_pulse]; lines=File.readlines(path); keep_last={}; lines.each_with_index { |line, idx| name = line[/^\\s*gem ['\\\"]([^'\\\"]+)['\\\"]/, 1]; keep_last[name] = idx if name && targets.include?(name) }; filtered = lines.each_with_index.filter_map { |line, idx| name = line[/^\\s*gem ['\\\"]([^'\\\"]+)['\\\"]/, 1]; next if name && targets.include?(name) && keep_last[name] != idx; line }; File.write(path, filtered.join)"
+  && ruby -e "path='${REDMINE_PATH}/Gemfile'; targets=%w[oauth2 puma redmineup redmine_plugin_kit rails-controller-testing wicked_pdf wkhtmltopdf-binary liquid vcard ostruct rails_pulse solid_queue]; lines=File.readlines(path); keep_last={}; lines.each_with_index { |line, idx| name = line[/^\\s*gem ['\\\"]([^'\\\"]+)['\\\"]/, 1]; keep_last[name] = idx if name && targets.include?(name) }; filtered = lines.each_with_index.filter_map { |line, idx| name = line[/^\\s*gem ['\\\"]([^'\\\"]+)['\\\"]/, 1]; next if name && targets.include?(name) && keep_last[name] != idx; line }; File.write(path, filtered.join)"
 
 RUN chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH}
 
@@ -118,12 +119,14 @@ COPY config/additional_environment.rb ${REDMINE_PATH}/config/additional_environm
 # Add email configuration
 COPY config/configuration.yml ${REDMINE_PATH}/config/configuration.yml
 COPY config/rails_pulse.rb ${REDMINE_PATH}/config/initializers/rails_pulse.rb
+COPY config/recurring.yml ${REDMINE_PATH}/config/recurring.yml
 COPY config/rails_pulse_migrations/20260310221000_expand_rails_pulse_columns.rb ${REDMINE_PATH}/db/migrate/20260310221000_expand_rails_pulse_columns.rb
 
 # Install Rails Pulse into the image: engine route, initializer, and migrations.
 RUN set -euo pipefail \
   && cd ${REDMINE_PATH} \
   && ruby -e "require 'fileutils'; spec = Gem::Specification.find_by_name('rails_pulse'); src = File.join(spec.gem_dir, 'db', 'migrate'); dst = File.join('${REDMINE_PATH}', 'db', 'migrate'); Dir.mkdir(dst) unless Dir.exist?(dst); Dir.glob(File.join(src, '*.rb')).sort.each do |path| base = File.basename(path); suffix = base.sub(/^\\d+_/, ''); exists = File.exist?(File.join(dst, base)) || !Dir.glob(File.join(dst, \"*_#{suffix}\")).empty?; FileUtils.cp(path, File.join(dst, base)) unless exists; end" \
+  && ruby -e "require 'fileutils'; spec = Gem::Specification.find_by_name('solid_queue'); src = File.join(spec.gem_dir, 'db', 'migrate'); dst = File.join('${REDMINE_PATH}', 'db', 'migrate'); Dir.mkdir(dst) unless Dir.exist?(dst); Dir.glob(File.join(src, '*.rb')).sort.each do |path| base = File.basename(path); suffix = base.sub(/^\\d+_/, ''); exists = File.exist?(File.join(dst, base)) || !Dir.glob(File.join(dst, \"*_#{suffix}\")).empty?; FileUtils.cp(path, File.join(dst, base)) unless exists; end" \
   && ruby -e "require 'fileutils'; spec = Gem::Specification.find_by_name('rails_pulse'); src = File.join(spec.gem_dir, 'db', 'rails_pulse_schema.rb'); dst = File.join('${REDMINE_PATH}', 'db', 'rails_pulse_schema.rb'); FileUtils.cp(src, dst) unless File.exist?(dst)" \
   && ruby -e "routes='${REDMINE_PATH}/config/routes.rb'; mount_line=\"  mount RailsPulse::Engine, at: '/rails_pulse'\\n\"; content=File.read(routes); unless content.include?('RailsPulse::Engine'); updated = content.sub(/\\nend\\s*\\z/, \"\\n#{mount_line}end\\n\"); raise 'Could not locate routes.rb closing end' if updated == content; File.write(routes, updated); end"
 

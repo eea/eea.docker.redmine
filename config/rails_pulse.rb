@@ -1,12 +1,33 @@
 RailsPulse.configure do |config|
   config.enabled = ENV.fetch("RAILS_PULSE_ENABLED", "1") == "1"
 
-  auth_enabled_default = "0"
+  auth_enabled_default = "1"
   config.authentication_enabled = ENV.fetch("RAILS_PULSE_AUTH_ENABLED", auth_enabled_default) == "1"
   config.authentication_redirect_path = "/login"
 
-  # Reuse Redmine session auth instead of HTTP basic auth prompts.
+  auth_mode = ENV.fetch("RAILS_PULSE_AUTH_MODE", "basic")
+
+  # HTTP basic auth can be enabled for external operators.
+  # Fallback mode keeps existing Redmine session-based admin auth.
   config.authentication_method = proc do
+    if auth_mode == "basic"
+      expected_user = ENV.fetch("RAILS_PULSE_BASIC_AUTH_USERNAME", "")
+      expected_pass = ENV.fetch("RAILS_PULSE_BASIC_AUTH_PASSWORD", "")
+
+      if expected_user.empty? || expected_pass.empty?
+        render plain: "Rails Pulse auth credentials are not configured", status: :service_unavailable
+        next
+      end
+
+      authenticated = authenticate_with_http_basic do |username, password|
+        ActiveSupport::SecurityUtils.secure_compare(username.to_s, expected_user) &&
+          ActiveSupport::SecurityUtils.secure_compare(password.to_s, expected_pass)
+      end
+
+      request_http_basic_authentication("Rails Pulse") unless authenticated
+      next
+    end
+
     user = nil
 
     if defined?(User) && respond_to?(:session, true)

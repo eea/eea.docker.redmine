@@ -37,7 +37,7 @@ config.active_record.default_timezone = :utc if config.respond_to?(:active_recor
 
 # Keep job backend explicit and configurable across web/cron containers.
 if config.respond_to?(:active_job)
-  adapter_name = ENV.fetch('ACTIVE_JOB_QUEUE_ADAPTER', 'async')
+  adapter_name = ENV.fetch('ACTIVE_JOB_QUEUE_ADAPTER', 'solid_queue')
   config.active_job.queue_adapter = adapter_name.to_sym
 end
 
