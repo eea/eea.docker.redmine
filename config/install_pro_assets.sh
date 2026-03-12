@@ -29,7 +29,7 @@ download_plugins() {
     done < "$PLUGINS_CFG"
 
     rm -f "$plugins_netrc"
-    rmdir "$plugins_home"
+    rm -rf "$plugins_home"
   elif [ "$require_pro_plugins" = "1" ]; then
     echo "REQUIRE_PRO_PLUGINS=1 but PLUGINS_URL/PLUGINS_USER/PLUGINS_PASSWORD are missing"
     exit 1
@@ -93,7 +93,7 @@ download_theme() {
       chmod 600 "$theme_netrc"
       HOME="$theme_home" wget -q --auth-no-challenge --netrc -O /tmp/a1-theme.zip "$theme_url"
       rm -f "$theme_netrc"
-      rmdir "$theme_home"
+      rm -rf "$theme_home"
     elif [ -n "$plugins_user" ] && [ -n "$plugins_password" ]; then
       theme_host="$(echo "$theme_url" | awk -F/ '{print $3}')"
       theme_home="$(mktemp -d /tmp/theme-auth.XXXXXX)"
@@ -102,7 +102,7 @@ download_theme() {
       chmod 600 "$theme_netrc"
       HOME="$theme_home" wget -q --auth-no-challenge --netrc -O /tmp/a1-theme.zip "$theme_url"
       rm -f "$theme_netrc"
-      rmdir "$theme_home"
+      rm -rf "$theme_home"
     else
       wget -q -O /tmp/a1-theme.zip "$theme_url"
     fi
