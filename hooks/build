@@ -1,0 +1,22 @@
+#!/bin/bash
+set -euo pipefail
+
+DOCKERFILE_PATH="${DOCKERFILE_PATH:-Dockerfile}"
+IMAGE_NAME="${IMAGE_NAME:?IMAGE_NAME is required}"
+
+echo "Building ${IMAGE_NAME} using ${DOCKERFILE_PATH}"
+
+docker build \
+  -f "${DOCKERFILE_PATH}" \
+  -t "${IMAGE_NAME}" \
+  --build-arg PLUGINS_URL \
+  --build-arg PLUGINS_USER \
+  --build-arg PLUGINS_PASSWORD \
+  --build-arg A1_THEME_URL \
+  --build-arg A1_THEME_USER \
+  --build-arg A1_THEME_PASSWORD \
+  --build-arg A1_THEME_SHA256 \
+  --build-arg "A1_THEME_ZIP=${A1_THEME_ZIP:-a1_theme-4_1_2.zip}" \
+  --build-arg "REQUIRE_PRO_PLUGINS=${REQUIRE_PRO_PLUGINS:-1}" \
+  --build-arg "REQUIRE_A1_THEME=${REQUIRE_A1_THEME:-1}" \
+  .
