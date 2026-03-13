@@ -2,3 +2,4 @@
 .local-artifacts
 .ckb
 .env
+output/playwright

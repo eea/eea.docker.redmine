@@ -8,18 +8,12 @@ cache_options = {
   expires_in: ENV.fetch('MEMCACHE_EXPIRES_IN', '3600').to_i
 }
 
-config.logger = ActiveSupport::Logger.new(STDOUT)
-config.logger.level = log_level
-config.log_level = log_level_name.downcase
-config.active_support.report_deprecations = false if config.respond_to?(:active_support)
-
 asset_warning_filters = [
   /MCP config file not found:/,
   /Unable to resolve .* for missing asset /,
   /Removed sourceMappingURL comment for missing asset /
 ]
-
-config.logger.formatter = proc do |severity, timestamp, progname, msg|
+log_formatter = proc do |severity, timestamp, progname, msg|
   message = msg.to_s
   if severity == 'WARN' && asset_warning_filters.any? { |pattern| pattern.match?(message) }
     ''
@@ -27,6 +21,35 @@ config.logger.formatter = proc do |severity, timestamp, progname, msg|
     prog = progname ? " #{progname}" : ''
     "#{severity[0]}, [#{timestamp.utc.strftime('%Y-%m-%dT%H:%M:%S.%6NZ')} ##{Process.pid}] #{severity} --#{prog}: #{message}\n"
   end
+end
+
+stdout_logger = ActiveSupport::Logger.new(STDOUT)
+stdout_logger.level = log_level
+stdout_logger.formatter = log_formatter
+
+stderr_logger = ActiveSupport::Logger.new(STDERR)
+stderr_logger.level = [log_level, Logger::ERROR].max
+stderr_logger.formatter = log_formatter
+
+config.logger = ActiveSupport::BroadcastLogger.new(stdout_logger, stderr_logger)
+config.log_level = log_level_name.downcase
+config.active_support.report_deprecations = false if config.respond_to?(:active_support)
+
+Thread.abort_on_exception = false
+Thread.report_on_exception = true if Thread.respond_to?(:report_on_exception=)
+
+if defined?(Rails) && Rails.respond_to?(:error)
+  rails_stderr_subscriber = Object.new
+  rails_stderr_subscriber.define_singleton_method(:report) do |error, handled:, severity:, context:, source:|
+    next if handled
+
+    STDERR.puts("[rails-error] source=#{source} severity=#{severity} #{error.class}: #{error.message}")
+    Array(error.backtrace).first(10).each { |line| STDERR.puts(line) }
+  rescue StandardError => subscribe_error
+    STDERR.puts("[rails-error] subscriber-failure #{subscribe_error.class}: #{subscribe_error.message}")
+  end
+
+  Rails.error.subscribe(rails_stderr_subscriber)
 end
 
 config.action_controller.perform_caching = true
