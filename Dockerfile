@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-ARG REDMINE_BASE=redmine:6.1.1
+ARG REDMINE_BASE=redmine:6.1.1@sha256:a97aaee22fb7ff9d0ed691e11f5ad01c6e1dceaae63275fd6a96ac30f76aebfa
 
 FROM ${REDMINE_BASE} AS base
 
@@ -28,12 +28,15 @@ ARG A1_THEME_SHA256=
 ARG A1_THEME_ZIP=a1_theme-4_1_2.zip
 ARG REQUIRE_PRO_PLUGINS=0
 ARG REQUIRE_A1_THEME=0
+ARG EMBED_PRO_ASSETS=0
 
 COPY plugins.cfg ${REDMINE_PATH}/plugins.cfg
 COPY config/install_pro_assets.sh /usr/local/bin/install_pro_assets.sh
 
-# Install dependencies and plugins
-RUN apt-get update -q \
+# Install dependencies and plugins. Keep this layer stable and cacheable.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,target=/var/lib/apt,sharing=locked \
+  apt-get update -q \
   && apt-get install -y --no-install-recommends build-essential unzip graphviz vim python3-pip cron rsyslog python3-setuptools systemctl default-libmysqlclient-dev \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/* \
@@ -60,7 +63,11 @@ RUN apt-get update -q \
   && git clone -b master https://github.com/eea/redmine_entra_id.git ${REDMINE_PATH}/plugins/entra_id \
   && git clone -b 1.11.0 https://github.com/haru/redmine_ai_helper.git ${REDMINE_PATH}/plugins/redmine_ai_helper \
   && chmod 700 /usr/local/bin/install_pro_assets.sh \
-  && /usr/local/bin/install_pro_assets.sh
+  && if [ "${EMBED_PRO_ASSETS}" = "1" ]; then \
+       /usr/local/bin/install_pro_assets.sh; \
+     else \
+       echo "Skipping build-time install of paid plugins/themes (EMBED_PRO_ASSETS=${EMBED_PRO_ASSETS})"; \
+     fi
 
 # Make sure plugin gems and mysql adapter gems are resolved at build-time.
 RUN echo 'gem "dalli", "~> 2.7.6"' >> ${REDMINE_PATH}/Gemfile \
@@ -68,13 +75,14 @@ RUN echo 'gem "dalli", "~> 2.7.6"' >> ${REDMINE_PATH}/Gemfile \
   && echo 'gem "redmineup"' >> ${REDMINE_PATH}/Gemfile \
   && echo 'gem "redmine_plugin_kit"' >> ${REDMINE_PATH}/Gemfile \
   && echo 'gem "rails_pulse"' >> ${REDMINE_PATH}/Gemfile \
+  && echo 'gem "mission_control-jobs"' >> ${REDMINE_PATH}/Gemfile \
   && echo 'gem "solid_queue"' >> ${REDMINE_PATH}/Gemfile \
   && echo 'gem "vcard"' >> ${REDMINE_PATH}/Gemfile \
   && echo 'gem "wicked_pdf", "~> 1.1.0"' >> ${REDMINE_PATH}/Gemfile \
   && echo 'gem "wkhtmltopdf-binary"' >> ${REDMINE_PATH}/Gemfile \
   && echo 'gem "ostruct"' >> ${REDMINE_PATH}/Gemfile \
   && printf "\ngem 'puma'\n" >> ${REDMINE_PATH}/Gemfile \
-  && ruby -e "path='${REDMINE_PATH}/Gemfile'; targets=%w[oauth2 puma redmineup redmine_plugin_kit rails-controller-testing wicked_pdf wkhtmltopdf-binary liquid vcard ostruct rails_pulse solid_queue]; lines=File.readlines(path); keep_last={}; lines.each_with_index { |line, idx| name = line[/^\\s*gem ['\\\"]([^'\\\"]+)['\\\"]/, 1]; keep_last[name] = idx if name && targets.include?(name) }; filtered = lines.each_with_index.filter_map { |line, idx| name = line[/^\\s*gem ['\\\"]([^'\\\"]+)['\\\"]/, 1]; next if name && targets.include?(name) && keep_last[name] != idx; line }; File.write(path, filtered.join)"
+  && ruby -e "path='${REDMINE_PATH}/Gemfile'; targets=%w[oauth2 puma redmineup redmine_plugin_kit rails-controller-testing wicked_pdf wkhtmltopdf-binary liquid vcard ostruct rails_pulse mission_control-jobs solid_queue]; lines=File.readlines(path); keep_last={}; lines.each_with_index { |line, idx| name = line[/^\\s*gem ['\\\"]([^'\\\"]+)['\\\"]/, 1]; keep_last[name] = idx if name && targets.include?(name) }; filtered = lines.each_with_index.filter_map { |line, idx| name = line[/^\\s*gem ['\\\"]([^'\\\"]+)['\\\"]/, 1]; next if name && targets.include?(name) && keep_last[name] != idx; line }; File.write(path, filtered.join)"
 
 RUN chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH}
 
@@ -118,9 +126,15 @@ COPY config/additional_environment.rb ${REDMINE_PATH}/config/additional_environm
 
 # Add email configuration
 COPY config/configuration.yml ${REDMINE_PATH}/config/configuration.yml
+COPY config/queue.yml ${REDMINE_PATH}/config/queue.yml
 COPY config/rails_pulse.rb ${REDMINE_PATH}/config/initializers/rails_pulse.rb
+COPY config/mission_control_jobs.rb ${REDMINE_PATH}/config/initializers/mission_control_jobs.rb
 COPY config/recurring.yml ${REDMINE_PATH}/config/recurring.yml
+COPY config/solid_queue_migrations/20260313123000_install_solid_queue_tables.rb ${REDMINE_PATH}/db/migrate/20260313123000_install_solid_queue_tables.rb
 COPY config/rails_pulse_migrations/20260310221000_expand_rails_pulse_columns.rb ${REDMINE_PATH}/db/migrate/20260310221000_expand_rails_pulse_columns.rb
+COPY config/apply_a1_theme_overrides.sh /usr/local/bin/apply_a1_theme_overrides.sh
+COPY config/sync_addons_bundle.sh /usr/local/bin/sync_addons_bundle.sh
+COPY config/sync_addons_from_dir.sh /usr/local/bin/sync_addons_from_dir.sh
 
 # Install Rails Pulse into the image: engine route, initializer, and migrations.
 RUN set -euo pipefail \
@@ -128,8 +142,18 @@ RUN set -euo pipefail \
   && ruby -e "require 'fileutils'; spec = Gem::Specification.find_by_name('rails_pulse'); src = File.join(spec.gem_dir, 'db', 'migrate'); dst = File.join('${REDMINE_PATH}', 'db', 'migrate'); Dir.mkdir(dst) unless Dir.exist?(dst); Dir.glob(File.join(src, '*.rb')).sort.each do |path| base = File.basename(path); suffix = base.sub(/^\\d+_/, ''); exists = File.exist?(File.join(dst, base)) || !Dir.glob(File.join(dst, \"*_#{suffix}\")).empty?; FileUtils.cp(path, File.join(dst, base)) unless exists; end" \
   && ruby -e "require 'fileutils'; spec = Gem::Specification.find_by_name('solid_queue'); src = File.join(spec.gem_dir, 'db', 'migrate'); dst = File.join('${REDMINE_PATH}', 'db', 'migrate'); Dir.mkdir(dst) unless Dir.exist?(dst); Dir.glob(File.join(src, '*.rb')).sort.each do |path| base = File.basename(path); suffix = base.sub(/^\\d+_/, ''); exists = File.exist?(File.join(dst, base)) || !Dir.glob(File.join(dst, \"*_#{suffix}\")).empty?; FileUtils.cp(path, File.join(dst, base)) unless exists; end" \
   && ruby -e "require 'fileutils'; spec = Gem::Specification.find_by_name('rails_pulse'); src = File.join(spec.gem_dir, 'db', 'rails_pulse_schema.rb'); dst = File.join('${REDMINE_PATH}', 'db', 'rails_pulse_schema.rb'); FileUtils.cp(src, dst) unless File.exist?(dst)" \
-  && ruby -e "routes='${REDMINE_PATH}/config/routes.rb'; mount_line=\"  mount RailsPulse::Engine, at: '/rails_pulse'\\n\"; content=File.read(routes); unless content.include?('RailsPulse::Engine'); updated = content.sub(/\\nend\\s*\\z/, \"\\n#{mount_line}end\\n\"); raise 'Could not locate routes.rb closing end' if updated == content; File.write(routes, updated); end"
+  && ruby -e "routes='${REDMINE_PATH}/config/routes.rb'; content=File.read(routes); mounts=[]; mounts << \"  mount RailsPulse::Engine, at: '/rails_pulse'\\n\" unless content.include?('RailsPulse::Engine'); mounts << \"  mount MissionControl::Jobs::Engine, at: '/jobs'\\n\" unless content.include?('MissionControl::Jobs::Engine'); unless mounts.empty?; updated = content.sub(/\\nend\\s*\\z/, \"\\n#{mounts.join}end\\n\"); raise 'Could not locate routes.rb closing end' if updated == content; File.write(routes, updated); end"
 
+COPY theme_overrides/ ${REDMINE_PATH}/theme_overrides/
+RUN set -euo pipefail \
+  && chmod 0755 /usr/local/bin/apply_a1_theme_overrides.sh \
+  && chmod 0755 /usr/local/bin/sync_addons_bundle.sh \
+  && chmod 0755 /usr/local/bin/sync_addons_from_dir.sh \
+  && /usr/local/bin/apply_a1_theme_overrides.sh \
+  && install -d ${REDMINE_PATH}/plugins/additionals/assets/images \
+  && install -d ${REDMINE_PATH}/plugins/redmine_contacts_helpdesk/assets/images \
+  && install -m 0644 ${REDMINE_PATH}/theme_overrides/a1/images/icons.svg ${REDMINE_PATH}/plugins/additionals/assets/images/icons.svg \
+  && install -m 0644 ${REDMINE_PATH}/theme_overrides/a1/images/loading.gif ${REDMINE_PATH}/plugins/redmine_contacts_helpdesk/assets/images/loading.gif
 COPY start_redmine.sh /start_redmine.sh
 RUN chmod 0766 /start_redmine.sh
 

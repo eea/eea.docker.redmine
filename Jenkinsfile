@@ -18,24 +18,27 @@ pipeline {
       when { not { buildingTag() } }
       steps {
         script{
-          withCredentials([usernamePassword(credentialsId: '28f3ae32-6a71-4b8e-8a3e-6191620a0492', usernameVariable: 'REDMINE_PLUGINS_USER', passwordVariable: 'REDMINE_PLUGINS_PASSWORD')]) {
-            sh '''cp -f test/start_redmine.sh .'''
-            sh '''A1_THEME_URL="https://cmshare.eea.europa.eu/remote.php/dav/files/${REDMINE_PLUGINS_USER}/redmine6-files/themes/a1_theme-4_1_2.zip" A1_THEME_USER="${REDMINE_PLUGINS_USER}" A1_THEME_PASSWORD="${REDMINE_PLUGINS_PASSWORD}" docker-compose -f test/docker-compose.yml up -d --build'''
-            DOCKER_REDMINE = sh(script: "docker-compose -f test/docker-compose.yml ps -q redmine", returnStdout: true).trim()
-            if (!DOCKER_REDMINE) {
-              error("Unable to resolve redmine container id from docker-compose")
-            }
-            env.DOCKER_REDMINE = DOCKER_REDMINE
-            // Fail fast if the image was built without A1 baked in.
-            sh """docker exec ${DOCKER_REDMINE} bash -lc '
-set -euo pipefail
-THEMES_DIR=/usr/src/redmine/themes
-if [ ! -d \"\$THEMES_DIR\" ]; then
-  THEMES_DIR=/usr/src/redmine/public/themes
-fi
-test -d \"\$THEMES_DIR/a1\"
-'"""
+          sh '''cp -f test/start_redmine.sh .'''
+          sh '''docker-compose -f test/docker-compose.yml up -d --build'''
+          DOCKER_REDMINE = sh(script: "docker-compose -f test/docker-compose.yml ps -q redmine", returnStdout: true).trim()
+          if (!DOCKER_REDMINE) {
+            error("Unable to resolve redmine container id from docker-compose")
           }
+          env.DOCKER_REDMINE = DOCKER_REDMINE
+          // Enforce policy: paid addons must not be baked into the published image.
+          sh """docker exec ${DOCKER_REDMINE} bash -lc '
+set -euo pipefail
+for plugin in redmine_agile redmine_checklists redmine_contacts_helpdesk redmine_contacts redmine_reporter redmine_zenedit redmine_resources; do
+  if [ -d "/usr/src/redmine/plugins/${plugin}" ]; then
+    echo "Paid plugin is embedded in image but should be mounted at runtime: ${plugin}" >&2
+    exit 1
+  fi
+done
+if [ -d /usr/src/redmine/themes/a1 ] || [ -d /usr/src/redmine/public/themes/a1 ]; then
+  echo "A1 theme is embedded in image but should be mounted at runtime" >&2
+  exit 1
+fi
+'"""
         }
       }
     }
@@ -51,82 +54,20 @@ test -d \"\$THEMES_DIR/a1\"
       when { not { buildingTag() } }
       steps {
         catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-          // Ensure A1 exists and theme assets are usable via both digest and logical paths.
+          // In this pipeline, A1 is provided as mounted addon data, not baked into image.
           sh '''
 docker exec ${DOCKER_REDMINE} bash -lc '
 set -euo pipefail
 
-REDMINE_PATH=/usr/src/redmine
-THEMES_DIR="${REDMINE_PATH}/themes"
-A1_THEME_ID="${A1_THEME_ID:-a1}"
-A1_ZIP="${A1_ZIP:-a1_theme-4_1_2.zip}"
-TMP="/tmp/${A1_ZIP}"
-THEME_CACHE="/install_themes/${A1_ZIP}"
-
-is_valid_zip() {
-  unzip -tqq "$1" >/dev/null 2>&1
-}
-
+THEMES_DIR=/usr/src/redmine/themes
 if [ ! -d "$THEMES_DIR" ]; then
-  echo "Skipping A1 theme install ($THEMES_DIR not present)"
-  exit 0
+  THEMES_DIR=/usr/src/redmine/public/themes
 fi
-
-if [ ! -d "$THEMES_DIR/$A1_THEME_ID" ]; then
-  if [ -f "$THEME_CACHE" ] && is_valid_zip "$THEME_CACHE"; then
-    echo "Installing A1 theme from local cache: $THEME_CACHE"
-    cp "$THEME_CACHE" "$TMP"
-  else
-    : "${PLUGINS_URL:?PLUGINS_URL is required when A1 cache is missing}"
-    : "${PLUGINS_USER:?PLUGINS_USER is required when A1 cache is missing}"
-    : "${PLUGINS_PASSWORD:?PLUGINS_PASSWORD is required when A1 cache is missing}"
-    THEMES_URL="${A1_THEME_URL:-${PLUGINS_URL%/plugins}/themes}"
-    echo "Installing A1 theme ($A1_ZIP) from $THEMES_URL into $THEMES_DIR"
-    if command -v wget >/dev/null 2>&1; then
-      wget -q --user="$PLUGINS_USER" --password="$PLUGINS_PASSWORD" -O "$TMP" "$THEMES_URL/$A1_ZIP"
-    elif command -v curl >/dev/null 2>&1; then
-      curl -fsSL -u "$PLUGINS_USER:$PLUGINS_PASSWORD" -o "$TMP" "$THEMES_URL/$A1_ZIP"
-    else
-      echo "Neither wget nor curl is available in the container"
-      exit 1
-    fi
-    if ! is_valid_zip "$TMP"; then
-      echo "Downloaded A1 archive is invalid: $THEMES_URL/$A1_ZIP"
-      exit 1
-    fi
-  fi
-
-  unzip -q -o "$TMP" -d "$THEMES_DIR"
-  rm -f "$TMP"
+if [ ! -d "$THEMES_DIR/a1" ]; then
+  echo "A1 theme is not available in mounted addons runtime path: $THEMES_DIR/a1" >&2
+  exit 1
 fi
-
-chown -R redmine:redmine "$THEMES_DIR/$A1_THEME_ID" || true
-
-echo "Precompiling Redmine assets for A1 theme"
-ASSETS_ENV="production"
-if [ ! -f "${REDMINE_PATH}/config/database.yml" ] || ! grep -q '^production:' "${REDMINE_PATH}/config/database.yml"; then
-  if grep -q '^test:' "${REDMINE_PATH}/config/database.yml"; then
-    ASSETS_ENV="test"
-  elif grep -q '^development:' "${REDMINE_PATH}/config/database.yml"; then
-    ASSETS_ENV="development"
-  fi
-fi
-echo "Using RAILS_ENV=${ASSETS_ENV} for assets precompile"
-SECRET_KEY_BASE="${SECRET_KEY_BASE:-dummy-secret-for-assets}" bundle exec rake assets:precompile RAILS_ENV="${ASSETS_ENV}"
-
-A1_ASSETS_DIR="${REDMINE_PATH}/public/assets/themes/${A1_THEME_ID}"
-mkdir -p "$A1_ASSETS_DIR"
-CSS_FILE="$(ls -1t "$A1_ASSETS_DIR"/application-*.css 2>/dev/null | head -n1 || true)"
-JS_FILE="$(ls -1t "$A1_ASSETS_DIR"/theme-*.js 2>/dev/null | head -n1 || true)"
-
-if [ -n "$CSS_FILE" ]; then
-  ln -sfn "$(basename "$CSS_FILE")" "$A1_ASSETS_DIR/application.css"
-fi
-if [ -n "$JS_FILE" ]; then
-  ln -sfn "$(basename "$JS_FILE")" "$A1_ASSETS_DIR/theme.js"
-fi
-
-ls -l "$A1_ASSETS_DIR"/application.css "$A1_ASSETS_DIR"/theme.js || true
+ls -la "$THEMES_DIR/a1" | head -n 20
 '
 '''
         }
