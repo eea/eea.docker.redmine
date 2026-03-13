@@ -1,0 +1,134 @@
+/* Taskman backports for A1 theme (kept isolated from upstream A1 assets). */
+
+/* 117676: editor-role / checkbox block labels */
+form label.block {
+  display: block;
+  width: auto;
+  margin-left: 0;
+  padding-left: 20px;
+  float: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* 117950: hide issue next/previous navigation links */
+.issue.details .next-prev-links {
+  display: none;
+}
+
+/* 106078 / 29395: repository preview container height fix */
+.filecontent-container {
+  height: auto !important;
+  position: relative;
+  min-height: 200px;
+  margin-bottom: 20px;
+}
+
+.filecontent-container > .filecontent {
+  max-width: 100%;
+}
+
+/* issue contacts delete icon alignment */
+#issue_contacts a.delete {
+  float: right;
+}
+
+/* wiki table width/scroll behavior */
+div.wiki table {
+  display: block;
+  margin-bottom: 20px;
+  overflow: auto;
+  width: auto;
+  word-break: normal;
+  word-break: keep-all;
+}
+
+/* WIP overload indicator */
+.ui-widget-content .overloaded-user-link {
+  color: #0065ff;
+}
+
+.overloaded-user-body {
+  margin: 1em 0;
+  text-align: center;
+}
+
+.overloaded-user-warning {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin-left: 0.2em;
+  vertical-align: bottom;
+  color: #e5123d;
+  background: url("../svg/stop-hand.svg") no-repeat center center;
+}
+
+#issue_assigned_to_id + .overloaded-user-warning {
+  vertical-align: middle;
+}
+
+.overloaded-user-issue-category {
+  margin-bottom: 0;
+}
+
+/* EEA header/top-menu branding adjustments */
+#top-menu {
+  background: #004b87;
+}
+
+#header {
+  border-bottom: 1px solid #ddd;
+  background-color: #fff;
+}
+
+#header h1 {
+  background: url("./logo/logo.png") no-repeat left center !important;
+  background-size: 143px 50px !important;
+  display: block !important;
+  min-height: 54px !important;
+  min-width: 230px !important;
+  padding-left: 152px !important;
+  text-indent: 0 !important;
+  overflow: hidden !important;
+  color: #3e425a !important;
+}
+
+#header h1 > a {
+  display: block !important;
+  min-height: 54px !important;
+  line-height: 54px !important;
+  text-indent: 0 !important;
+  overflow: hidden !important;
+  color: #3e425a !important;
+}
+
+#header h1 .breadcrumbs,
+#header h1 .breadcrumbs a,
+#header h1 .breadcrumbs .separator,
+#header h1 .current-project {
+  display: inline !important;
+  float: none !important;
+  line-height: 54px !important;
+  white-space: nowrap !important;
+}
+
+#header h1,
+#header h1 a,
+#header #logo a {
+  color: #3e425a !important;
+  text-shadow: none !important;
+}
+
+/* simplify project listing cards/text (Redmine 6 markup) */
+.controller-projects.action-index #projects-index .wiki.description,
+.controller-projects.action-index #projects-index ul.projects > li > p,
+.controller-projects.action-index #projects-index ul.projects > li > div > p {
+  display: none;
+}
+
+/* admin wiki links icon fallback */
+.icon.icon-wiki-page::before,
+.icon-wiki-page::before {
+  content: "\f0f6";
+  font-family: FontAwesome;
+}
