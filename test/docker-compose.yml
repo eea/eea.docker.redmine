@@ -67,12 +67,17 @@ services:
       START_CRON: "0"
       START_SOLID_QUEUE: "0"
       RUN_DB_MIGRATE: "1"
+      ASSETS_PRECOMPILE: "1"
+      ASSETS_PRECOMPILE_FORCE: "${ASSETS_PRECOMPILE_FORCE:-0}"
       FAST_BOOT: ${FAST_BOOT:-1}
+      STARTUP_ASSET_FIXES: "0"
+      APPLY_A1_THEME_OVERRIDES_ON_BOOT: "0"
       RAILS_ENV: production
       RAILS_LOG_LEVEL: info
       TZ: Europe/Copenhagen
     volumes:
     - addons_data:/addons:ro
+    - redmine_assets:/usr/src/redmine/public/assets
     - redmine_files:/usr/src/redmine/test/fixtures/files
     depends_on:
       addons-sync:
@@ -94,6 +99,7 @@ services:
       REDMINE_DB_PASSWORD: password
       REDMINE_PLUGINS_MIGRATE: "no"
       RUN_DB_MIGRATE: "0"
+      ASSETS_PRECOMPILE: "0"
       SELENIUM_REMOTE_URL: http://hub:4444/wd/hub
       ACTIVE_JOB_QUEUE_ADAPTER: ${ACTIVE_JOB_QUEUE_ADAPTER:-solid_queue}
       MISSION_CONTROL_JOBS_AUTH_ENABLED: "1"
@@ -106,6 +112,8 @@ services:
       START_SERVER: "1"
       START_CRON: "0"
       FAST_BOOT: ${FAST_BOOT:-1}
+      STARTUP_ASSET_FIXES: "0"
+      APPLY_A1_THEME_OVERRIDES_ON_BOOT: "0"
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
       RAILS_MAX_THREADS: ${RAILS_MAX_THREADS:-5}
       REDMINE_HOST: redmine:3000
@@ -118,6 +126,7 @@ services:
       TZ: Europe/Copenhagen
     volumes:
     - addons_data:/addons:ro
+    - redmine_assets:/usr/src/redmine/public/assets
     - redmine_files:/usr/src/redmine/test/fixtures/files
     depends_on:
       migrate:
@@ -141,12 +150,15 @@ services:
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
       RAILS_MAX_THREADS: ${RAILS_MAX_THREADS:-5}
       FAST_BOOT: ${FAST_BOOT:-1}
+      STARTUP_ASSET_FIXES: "0"
+      APPLY_A1_THEME_OVERRIDES_ON_BOOT: "0"
       REDMINE_DB_MYSQL: mysql
       REDMINE_DB_DATABASE: redmine_test
       REDMINE_DB_USERNAME: redmine
       REDMINE_DB_PASSWORD: password
       REDMINE_PLUGINS_MIGRATE: "no"
       RUN_DB_MIGRATE: "0"
+      ASSETS_PRECOMPILE: "0"
       ADMIN_BOOTSTRAP_ENABLE: "0"
       START_SERVER: "0"
       START_CRON: "0"
@@ -163,6 +175,7 @@ services:
       TZ: Europe/Copenhagen
     volumes:
     - addons_data:/addons:ro
+    - redmine_assets:/usr/src/redmine/public/assets
     - redmine_files:/usr/src/redmine/test/fixtures/files
     depends_on:
       migrate:
@@ -197,5 +210,7 @@ volumes:
     driver: local
   addons_data:
     driver: local
+  redmine_assets:
+    driver: local
   redmine_files:
-    driver: local  
+    driver: local

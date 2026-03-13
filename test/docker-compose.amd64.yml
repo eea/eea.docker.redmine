@@ -70,12 +70,17 @@ services:
       START_CRON: "0"
       START_SOLID_QUEUE: "0"
       RUN_DB_MIGRATE: "1"
+      ASSETS_PRECOMPILE: "1"
+      ASSETS_PRECOMPILE_FORCE: "${ASSETS_PRECOMPILE_FORCE:-0}"
       FAST_BOOT: ${FAST_BOOT:-1}
+      STARTUP_ASSET_FIXES: "0"
+      APPLY_A1_THEME_OVERRIDES_ON_BOOT: "0"
       RAILS_ENV: production
       RAILS_LOG_LEVEL: info
       TZ: Europe/Copenhagen
     volumes:
     - addons_data:/addons:ro
+    - redmine_assets:/usr/src/redmine/public/assets
     - redmine_files:/usr/src/redmine/test/fixtures/files
     depends_on:
       addons-sync:
@@ -99,6 +104,7 @@ services:
       REDMINE_DB_POOL: "12"
       REDMINE_PLUGINS_MIGRATE: "no"
       RUN_DB_MIGRATE: "0"
+      ASSETS_PRECOMPILE: "0"
       REQUIRE_MOUNTED_ADDONS: "1"
       MOUNTED_ADDONS_ROOT: /addons/current
       # Start Rails server from /start_redmine.sh (for local interactive runs)
@@ -106,6 +112,8 @@ services:
       START_CRON: "0"
       CRON_IN_ASYNC_JOBS_ONLY: "1"
       FAST_BOOT: ${FAST_BOOT:-1}
+      STARTUP_ASSET_FIXES: "0"
+      APPLY_A1_THEME_OVERRIDES_ON_BOOT: "0"
       ACTIVE_JOB_QUEUE_ADAPTER: ${ACTIVE_JOB_QUEUE_ADAPTER:-solid_queue}
       MISSION_CONTROL_JOBS_AUTH_ENABLED: "1"
       MISSION_CONTROL_JOBS_BASIC_AUTH_USERNAME: admin
@@ -127,6 +135,7 @@ services:
     - "3000:3000"
     volumes:
     - addons_data:/addons:ro
+    - redmine_assets:/usr/src/redmine/public/assets
     - redmine_files:/usr/src/redmine/test/fixtures/files
     depends_on:
       migrate:
@@ -148,6 +157,7 @@ services:
       REDMINE_DB_POOL: "12"
       REDMINE_PLUGINS_MIGRATE: "no"
       RUN_DB_MIGRATE: "0"
+      ASSETS_PRECOMPILE: "0"
       REQUIRE_MOUNTED_ADDONS: "1"
       MOUNTED_ADDONS_ROOT: /addons/current
       WAIT_FOR_DB_TABLES: solid_queue_jobs,solid_queue_recurring_tasks
@@ -157,6 +167,8 @@ services:
       START_SOLID_QUEUE: "1"
       CRON_IN_ASYNC_JOBS_ONLY: "1"
       FAST_BOOT: ${FAST_BOOT:-1}
+      STARTUP_ASSET_FIXES: "0"
+      APPLY_A1_THEME_OVERRIDES_ON_BOOT: "0"
       ACTIVE_JOB_QUEUE_ADAPTER: ${ACTIVE_JOB_QUEUE_ADAPTER:-solid_queue}
       MISSION_CONTROL_JOBS_AUTH_ENABLED: "1"
       MISSION_CONTROL_JOBS_BASIC_AUTH_USERNAME: admin
@@ -174,6 +186,7 @@ services:
       TZ: Europe/Copenhagen
     volumes:
     - addons_data:/addons:ro
+    - redmine_assets:/usr/src/redmine/public/assets
     - redmine_files:/usr/src/redmine/test/fixtures/files
     depends_on:
       migrate:
@@ -209,6 +222,8 @@ volumes:
   taskman_test_db_mysql84:
     driver: local
   addons_data:
+    driver: local
+  redmine_assets:
     driver: local
   redmine_files:
     driver: local

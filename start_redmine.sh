@@ -15,7 +15,23 @@ RUN_DB_MIGRATE=${RUN_DB_MIGRATE:-1}
 WAIT_FOR_DB_TABLES=${WAIT_FOR_DB_TABLES:-}
 DB_TABLE_WAIT_TIMEOUT=${DB_TABLE_WAIT_TIMEOUT:-180}
 DB_TABLE_WAIT_INTERVAL=${DB_TABLE_WAIT_INTERVAL:-3}
+FAST_BOOT=${FAST_BOOT:-1}
+RUNTIME_PLUGIN_SYNC=${RUNTIME_PLUGIN_SYNC:-0}
+RUNTIME_THEME_SYNC=${RUNTIME_THEME_SYNC:-0}
+RUNTIME_BUNDLE_INSTALL=${RUNTIME_BUNDLE_INSTALL:-0}
+STARTUP_ASSET_FIXES=${STARTUP_ASSET_FIXES:-0}
+APPLY_A1_THEME_OVERRIDES_ON_BOOT=${APPLY_A1_THEME_OVERRIDES_ON_BOOT:-0}
+ASSETS_PRECOMPILE=${ASSETS_PRECOMPILE:-0}
+ASSETS_PRECOMPILE_FORCE=${ASSETS_PRECOMPILE_FORCE:-0}
+ASSETS_PRECOMPILE_TIMEOUT=${ASSETS_PRECOMPILE_TIMEOUT:-1200}
 export RAILS_MAX_THREADS WEB_CONCURRENCY
+
+if [ "${FAST_BOOT}" = "1" ]; then
+  RUNTIME_PLUGIN_SYNC=0
+  RUNTIME_THEME_SYNC=0
+  STARTUP_ASSET_FIXES=0
+  APPLY_A1_THEME_OVERRIDES_ON_BOOT=0
+fi
 
 if [ "${CRON_IN_ASYNC_JOBS_ONLY}" = "1" ] && [ "${START_SERVER}" = "1" ] && [ "${START_CRON}" = "1" ]; then
   echo "CRON_IN_ASYNC_JOBS_ONLY=1: disabling cron in web container, use async-jobs container for cron execution"
@@ -232,6 +248,55 @@ ${rails_env}:
 EOF
 }
 
+ensure_runtime_compat_assets() {
+  local public_dir="${REDMINE_PATH}/public"
+
+  ensure_public_file() {
+    local destination="$1"
+    shift
+    local source
+
+    mkdir -p "$(dirname "${destination}")"
+    if [ -f "${destination}" ]; then
+      return 0
+    fi
+
+    for source in "$@"; do
+      if [ -f "${source}" ]; then
+        cp "${source}" "${destination}"
+        return 0
+      fi
+    done
+
+    return 0
+  }
+
+  ensure_public_file \
+    "${public_dir}/plugin_assets/additionals/images/icons.svg" \
+    "${REDMINE_PATH}/plugins/additionals/assets/images/icons.svg" \
+    "${REDMINE_PATH}/theme_overrides/a1/images/icons.svg"
+
+  ensure_public_file \
+    "${public_dir}/plugin_assets/redmine_contacts_helpdesk/loading.gif" \
+    "${REDMINE_PATH}/plugins/redmine_contacts_helpdesk/assets/images/loading.gif" \
+    "${REDMINE_PATH}/theme_overrides/a1/images/loading.gif"
+
+  ensure_public_file \
+    "${public_dir}/plugin_assets/redmineup/bullet_go.png" \
+    "${REDMINE_PATH}/plugins/redmineup/assets/images/bullet_go.png" \
+    "${REDMINE_PATH}/plugins/redmine_contacts/assets/images/bullet_go.png"
+
+  ensure_public_file \
+    "${public_dir}/plugin_assets/redmineup/bullet_end.png" \
+    "${REDMINE_PATH}/plugins/redmineup/assets/images/bullet_end.png" \
+    "${REDMINE_PATH}/plugins/redmine_contacts/assets/images/bullet_end.png"
+
+  ensure_public_file \
+    "${public_dir}/plugin_assets/redmineup/bullet_diamond.png" \
+    "${REDMINE_PATH}/plugins/redmineup/assets/images/bullet_diamond.png" \
+    "${REDMINE_PATH}/plugins/redmine_contacts/assets/images/bullet_diamond.png"
+}
+
 prepare_asset_warning_fixes() {
   local jquery_ui_css="${REDMINE_PATH}/app/assets/stylesheets/jquery/jquery-ui-1.13.2.css"
   local app_images_dir="${REDMINE_PATH}/app/assets/images"
@@ -425,6 +490,31 @@ run_db_migrate_with_retry() {
   return 1
 }
 
+assets_manifest_exists() {
+  local assets_dir="${REDMINE_PATH}/public/assets"
+  compgen -G "${assets_dir}/.sprockets-manifest-*.json" >/dev/null 2>&1
+}
+
+run_assets_precompile_if_enabled() {
+  if [ "${ASSETS_PRECOMPILE}" != "1" ]; then
+    echo "Skipping assets:precompile because ASSETS_PRECOMPILE=${ASSETS_PRECOMPILE}"
+    return 0
+  fi
+
+  if [ "${ASSETS_PRECOMPILE_FORCE}" != "1" ] && assets_manifest_exists; then
+    echo "Skipping assets:precompile because sprockets manifest already exists"
+    return 0
+  fi
+
+  echo "Running assets:precompile (ASSETS_PRECOMPILE_FORCE=${ASSETS_PRECOMPILE_FORCE})"
+  if ! timeout "${ASSETS_PRECOMPILE_TIMEOUT}" /docker-entrypoint.sh rake assets:precompile; then
+    echo "assets:precompile failed or timed out after ${ASSETS_PRECOMPILE_TIMEOUT}s"
+    return 1
+  fi
+
+  return 0
+}
+
 wait_for_db_tables() {
   if [ -z "${WAIT_FOR_DB_TABLES}" ]; then
     return 0
@@ -477,7 +567,11 @@ if [ "${MIGRATIONS_ONLY_STARTUP}" = "1" ]; then
   # Keep startup minimal for k8s: initialize app env via upstream entrypoint,
   # run migrations/bootstrap once, then boot the server directly.
   set -euo pipefail
-  prepare_asset_warning_fixes
+  if [ "${STARTUP_ASSET_FIXES}" = "1" ]; then
+    prepare_asset_warning_fixes
+  else
+    echo "Skipping startup asset warning fixes (STARTUP_ASSET_FIXES=${STARTUP_ASSET_FIXES})"
+  fi
   setup_runtime_environment
   ensure_database_yml
   export ADMIN_BOOTSTRAP_PASSWORD=${ADMIN_BOOTSTRAP_PASSWORD:-Admin123!}
@@ -493,13 +587,19 @@ if [ "${MIGRATIONS_ONLY_STARTUP}" = "1" ]; then
   A1_THEME_ID=${A1_THEME_ID:-a1}
   validate_mounted_addons
   link_mounted_addons
-  apply_a1_theme_backport_overrides
+  ensure_runtime_compat_assets
+  if [ "${APPLY_A1_THEME_OVERRIDES_ON_BOOT}" = "1" ]; then
+    apply_a1_theme_backport_overrides
+  else
+    echo "Skipping A1 runtime override patching (APPLY_A1_THEME_OVERRIDES_ON_BOOT=${APPLY_A1_THEME_OVERRIDES_ON_BOOT})"
+  fi
 
   if [ "${RUN_DB_MIGRATE}" = "1" ]; then
     run_db_migrate_with_retry
   else
     echo "Skipping db:migrate because RUN_DB_MIGRATE=${RUN_DB_MIGRATE}"
   fi
+  run_assets_precompile_if_enabled
   if [ "${REDMINE_PLUGINS_MIGRATE}" = "yes" ]; then
     /docker-entrypoint.sh rake redmine:plugins:migrate
   fi
@@ -544,22 +644,17 @@ if [ "${MIGRATIONS_ONLY_STARTUP}" = "1" ]; then
   run_jobs_only_foreground
 fi
 
-prepare_asset_warning_fixes
+if [ "${STARTUP_ASSET_FIXES}" = "1" ]; then
+  prepare_asset_warning_fixes
+else
+  echo "Skipping startup asset warning fixes (STARTUP_ASSET_FIXES=${STARTUP_ASSET_FIXES})"
+fi
 
 PLUGIN_CACHE_DIR=/install_plugins
 PLUGIN_FALLBACK_DIR=/tmp/install_plugins
 THEME_CACHE_DIR=/install_themes
 THEME_FALLBACK_DIR=/tmp/install_themes
 RUNTIME_ADDONS_CHANGED=0
-FAST_BOOT=${FAST_BOOT:-1}
-RUNTIME_PLUGIN_SYNC=${RUNTIME_PLUGIN_SYNC:-0}
-RUNTIME_THEME_SYNC=${RUNTIME_THEME_SYNC:-0}
-RUNTIME_BUNDLE_INSTALL=${RUNTIME_BUNDLE_INSTALL:-0}
-
-if [ "${FAST_BOOT}" = "1" ]; then
-  RUNTIME_PLUGIN_SYNC=0
-  RUNTIME_THEME_SYNC=0
-fi
 
 mkdir -p "${PLUGIN_FALLBACK_DIR}"
 mkdir -p "${THEME_FALLBACK_DIR}"
