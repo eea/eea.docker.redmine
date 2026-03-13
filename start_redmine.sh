@@ -5,9 +5,16 @@ REDMINE_LOCAL_PATH=${REDMINE_LOCAL_PATH:-/var/local/redmine}
 MIGRATIONS_ONLY_STARTUP=${MIGRATIONS_ONLY_STARTUP:-1}
 START_SERVER=${START_SERVER:-1}
 START_CRON=${START_CRON:-1}
+START_SOLID_QUEUE=${START_SOLID_QUEUE:-0}
 CRON_IN_ASYNC_JOBS_ONLY=${CRON_IN_ASYNC_JOBS_ONLY:-1}
 RAILS_MAX_THREADS=${RAILS_MAX_THREADS:-5}
 WEB_CONCURRENCY=${WEB_CONCURRENCY:-1}
+REQUIRE_MOUNTED_ADDONS=${REQUIRE_MOUNTED_ADDONS:-0}
+MOUNTED_ADDONS_ROOT=${MOUNTED_ADDONS_ROOT:-/addons/current}
+RUN_DB_MIGRATE=${RUN_DB_MIGRATE:-1}
+WAIT_FOR_DB_TABLES=${WAIT_FOR_DB_TABLES:-}
+DB_TABLE_WAIT_TIMEOUT=${DB_TABLE_WAIT_TIMEOUT:-180}
+DB_TABLE_WAIT_INTERVAL=${DB_TABLE_WAIT_INTERVAL:-3}
 export RAILS_MAX_THREADS WEB_CONCURRENCY
 
 if [ "${CRON_IN_ASYNC_JOBS_ONLY}" = "1" ] && [ "${START_SERVER}" = "1" ] && [ "${START_CRON}" = "1" ]; then
@@ -50,6 +57,96 @@ resolve_secret_key_base() {
   fi
 
   ruby -rsecurerandom -e 'puts SecureRandom.hex(64)'
+}
+
+safe_chown_tree() {
+  local target="$1"
+
+  if [ ! -e "${target}" ]; then
+    return 0
+  fi
+
+  if [ -w "${target}" ]; then
+    chown -R redmine:redmine "${target}" || true
+    return 0
+  fi
+
+  echo "Skipping chown for ${target} (not writable, likely read-only mount)"
+}
+
+safe_chown_path() {
+  local target="$1"
+
+  if [ ! -e "${target}" ]; then
+    return 0
+  fi
+
+  if [ -w "${target}" ]; then
+    chown redmine:redmine "${target}" || true
+    return 0
+  fi
+
+  echo "Skipping chown for ${target} (not writable, likely read-only mount)"
+}
+
+validate_mounted_addons() {
+  if [ "${REQUIRE_MOUNTED_ADDONS}" != "1" ]; then
+    return 0
+  fi
+
+  local missing=0
+
+  if [ ! -d "${MOUNTED_ADDONS_ROOT}/plugins" ]; then
+    echo "Missing mounted addons plugins directory: ${MOUNTED_ADDONS_ROOT}/plugins" >&2
+    missing=1
+  fi
+
+  if [ ! -d "${MOUNTED_ADDONS_ROOT}/themes/${A1_THEME_ID}" ]; then
+    echo "Missing mounted A1 theme directory: ${MOUNTED_ADDONS_ROOT}/themes/${A1_THEME_ID}" >&2
+    missing=1
+  fi
+
+  if [ "${missing}" = "1" ]; then
+    exit 1
+  fi
+}
+
+link_mounted_addons() {
+  if [ "${REQUIRE_MOUNTED_ADDONS}" != "1" ]; then
+    return 0
+  fi
+
+  local source
+  local name
+  local dest
+
+  if [ -d "${MOUNTED_ADDONS_ROOT}/plugins" ]; then
+    for source in "${MOUNTED_ADDONS_ROOT}"/plugins/*; do
+      [ -e "${source}" ] || continue
+      name="$(basename "${source}")"
+      dest="${REDMINE_PATH}/plugins/${name}"
+      if [ -L "${dest}" ]; then
+        rm -f "${dest}"
+      fi
+      if [ ! -e "${dest}" ]; then
+        ln -s "${source}" "${dest}"
+      fi
+    done
+  fi
+
+  if [ -d "${MOUNTED_ADDONS_ROOT}/themes" ]; then
+    for source in "${MOUNTED_ADDONS_ROOT}"/themes/*; do
+      [ -e "${source}" ] || continue
+      name="$(basename "${source}")"
+      dest="${THEMES_DIR}/${name}"
+      if [ -L "${dest}" ]; then
+        rm -f "${dest}"
+      fi
+      if [ ! -e "${dest}" ]; then
+        ln -s "${source}" "${dest}"
+      fi
+    done
+  fi
 }
 
 setup_runtime_environment() {
@@ -107,9 +204,38 @@ ENTRA_ID_CLIENT_SECRET=${ENTRA_ID_CLIENT_SECRET:-}
 EOF
 }
 
+ensure_database_yml() {
+  local db_file="${REDMINE_PATH}/config/database.yml"
+  local rails_env="${RAILS_ENV:-production}"
+  local db_host="${REDMINE_DB_MYSQL:-mysql}"
+  local db_port="${REDMINE_DB_PORT:-3306}"
+  local db_name="${REDMINE_DB_DATABASE:-redmine}"
+  local db_user="${REDMINE_DB_USERNAME:-redmine}"
+  local db_pass="${REDMINE_DB_PASSWORD:-}"
+  local db_pool="${REDMINE_DB_POOL:-${RAILS_MAX_THREADS:-5}}"
+
+  if [ -f "${db_file}" ]; then
+    return 0
+  fi
+
+  mkdir -p "$(dirname "${db_file}")"
+  cat > "${db_file}" <<EOF
+${rails_env}:
+  adapter: mysql2
+  host: "${db_host}"
+  port: "${db_port}"
+  database: "${db_name}"
+  username: "${db_user}"
+  password: "${db_pass}"
+  pool: ${db_pool}
+  encoding: utf8mb4
+EOF
+}
+
 prepare_asset_warning_fixes() {
   local jquery_ui_css="${REDMINE_PATH}/app/assets/stylesheets/jquery/jquery-ui-1.13.2.css"
   local app_images_dir="${REDMINE_PATH}/app/assets/images"
+  local public_dir="${REDMINE_PATH}/public"
   local ai_helper_config_dir="${REDMINE_PATH}/config/ai_helper"
   local ai_helper_config_file="${ai_helper_config_dir}/config.json"
 
@@ -197,10 +323,36 @@ prepare_asset_warning_fixes() {
   ensure_asset_file "${app_images_dir}/loading.gif" \
     "${REDMINE_PATH}/plugins/redmine_contacts_helpdesk/assets/images/loading.gif"
 
+  # Publish compatibility files for legacy non-digested plugin asset URLs that
+  # some themes/plugins still reference directly.
+  ensure_asset_file "${public_dir}/plugin_assets/additionals/images/icons.svg" \
+    "${REDMINE_PATH}/plugins/additionals/assets/images/icons.svg" \
+    "${REDMINE_PATH}/theme_overrides/a1/images/icons.svg"
+  ensure_asset_file "${public_dir}/plugin_assets/redmine_contacts_helpdesk/loading.gif" \
+    "${REDMINE_PATH}/plugins/redmine_contacts_helpdesk/assets/images/loading.gif" \
+    "${REDMINE_PATH}/theme_overrides/a1/images/loading.gif"
+  ensure_asset_file "${public_dir}/plugin_assets/redmineup/bullet_go.png" \
+    "${REDMINE_PATH}/plugins/redmineup/assets/images/bullet_go.png" \
+    "${REDMINE_PATH}/plugins/redmine_contacts/assets/images/bullet_go.png"
+  ensure_asset_file "${public_dir}/plugin_assets/redmineup/bullet_end.png" \
+    "${REDMINE_PATH}/plugins/redmineup/assets/images/bullet_end.png" \
+    "${REDMINE_PATH}/plugins/redmine_contacts/assets/images/bullet_end.png"
+  ensure_asset_file "${public_dir}/plugin_assets/redmineup/bullet_diamond.png" \
+    "${REDMINE_PATH}/plugins/redmineup/assets/images/bullet_diamond.png" \
+    "${REDMINE_PATH}/plugins/redmine_contacts/assets/images/bullet_diamond.png"
+
   # Silence ai helper warning when external MCP config is intentionally unset.
   if [ ! -f "${ai_helper_config_file}" ]; then
     mkdir -p "${ai_helper_config_dir}"
     printf "{}\n" > "${ai_helper_config_file}"
+  fi
+}
+
+apply_a1_theme_backport_overrides() {
+  if [ -x /usr/local/bin/apply_a1_theme_overrides.sh ] && [ -w "${THEMES_DIR}/${A1_THEME_ID}" ]; then
+    THEMES_DIR="${THEMES_DIR}" A1_THEME_ID="${A1_THEME_ID}" /usr/local/bin/apply_a1_theme_overrides.sh || true
+  elif [ -d "${THEMES_DIR}/${A1_THEME_ID}" ]; then
+    echo "Skipping runtime A1 override application for ${THEMES_DIR}/${A1_THEME_ID} (not writable)"
   fi
 }
 
@@ -221,17 +373,30 @@ start_cron_background() {
 }
 
 run_jobs_only_foreground() {
-  if [ "${START_CRON}" != "1" ]; then
-    echo "START_SERVER=0 requires START_CRON=1"
-    exit 1
+  if [ "${START_CRON}" = "1" ] && [ "${START_SOLID_QUEUE}" = "1" ]; then
+    start_cron_background
+    echo "Starting Solid Queue supervisor in foreground with cron in background"
+    cd "${REDMINE_PATH}"
+    exec /docker-entrypoint.sh rake solid_queue:start
   fi
 
-  touch /etc/crontab /etc/cron.*/*
-  crontab /var/redmine_jobs.txt
-  chmod 600 /etc/crontab
-  echo "TZ=$TZ" >> /etc/default/cron
-  echo "Starting cron in foreground (jobs-only mode)"
-  exec cron -f
+  if [ "${START_SOLID_QUEUE}" = "1" ]; then
+    echo "Starting Solid Queue supervisor in foreground"
+    cd "${REDMINE_PATH}"
+    exec /docker-entrypoint.sh rake solid_queue:start
+  fi
+
+  if [ "${START_CRON}" = "1" ]; then
+    touch /etc/crontab /etc/cron.*/*
+    crontab /var/redmine_jobs.txt
+    chmod 600 /etc/crontab
+    echo "TZ=$TZ" >> /etc/default/cron
+    echo "Starting cron in foreground (jobs-only mode)"
+    exec cron -f
+  fi
+
+  echo "START_SERVER=0 requires START_CRON=1 or START_SOLID_QUEUE=1"
+  exit 1
 }
 
 run_db_migrate_with_retry() {
@@ -260,20 +425,81 @@ run_db_migrate_with_retry() {
   return 1
 }
 
+wait_for_db_tables() {
+  if [ -z "${WAIT_FOR_DB_TABLES}" ]; then
+    return 0
+  fi
+
+  WAIT_FOR_DB_TABLES="${WAIT_FOR_DB_TABLES}" \
+  DB_TABLE_WAIT_TIMEOUT="${DB_TABLE_WAIT_TIMEOUT}" \
+  DB_TABLE_WAIT_INTERVAL="${DB_TABLE_WAIT_INTERVAL}" \
+  REDMINE_DB_MYSQL="${REDMINE_DB_MYSQL:-mysql}" \
+  REDMINE_DB_DATABASE="${REDMINE_DB_DATABASE:-redmine}" \
+  REDMINE_DB_USERNAME="${REDMINE_DB_USERNAME:-redmine}" \
+  REDMINE_DB_PASSWORD="${REDMINE_DB_PASSWORD:-}" \
+  ruby <<'RUBY'
+require "mysql2"
+
+tables = ENV.fetch("WAIT_FOR_DB_TABLES").split(",").map(&:strip).reject(&:empty?)
+timeout = ENV.fetch("DB_TABLE_WAIT_TIMEOUT", "180").to_i
+interval = ENV.fetch("DB_TABLE_WAIT_INTERVAL", "3").to_i
+deadline = Time.now + timeout
+
+connection_args = {
+  host: ENV.fetch("REDMINE_DB_MYSQL"),
+  username: ENV.fetch("REDMINE_DB_USERNAME"),
+  password: ENV.fetch("REDMINE_DB_PASSWORD", ""),
+  database: ENV.fetch("REDMINE_DB_DATABASE"),
+  reconnect: true,
+  connect_timeout: 5
+}
+
+loop do
+  begin
+    client = Mysql2::Client.new(**connection_args)
+    found = client.query("SHOW TABLES").map { |row| row.values.first }
+    missing = tables - found
+    exit 0 if missing.empty?
+    warn "Waiting for database tables: #{missing.join(', ')}"
+  rescue StandardError => e
+    warn "Waiting for database tables failed: #{e.class}: #{e.message}"
+  ensure
+    client&.close
+  end
+
+  exit 1 if Time.now >= deadline
+  sleep interval
+end
+RUBY
+}
+
 if [ "${MIGRATIONS_ONLY_STARTUP}" = "1" ]; then
   # Keep startup minimal for k8s: initialize app env via upstream entrypoint,
   # run migrations/bootstrap once, then boot the server directly.
   set -euo pipefail
   prepare_asset_warning_fixes
   setup_runtime_environment
+  ensure_database_yml
   export ADMIN_BOOTSTRAP_PASSWORD=${ADMIN_BOOTSTRAP_PASSWORD:-Admin123!}
   export DEFAULT_THEME=${DEFAULT_THEME:-a1}
-  export REDMINE_PLUGINS_MIGRATE=${REDMINE_PLUGINS_MIGRATE:-yes}
+  export REDMINE_PLUGINS_MIGRATE=${REDMINE_PLUGINS_MIGRATE:-no}
   BOOTSTRAP_RAILS_LOG_LEVEL=${BOOTSTRAP_RAILS_LOG_LEVEL:-error}
-  ADMIN_BOOTSTRAP_ENABLE=${ADMIN_BOOTSTRAP_ENABLE:-1}
+  ADMIN_BOOTSTRAP_ENABLE=${ADMIN_BOOTSTRAP_ENABLE:-0}
   ADMIN_BOOTSTRAP_TIMEOUT=${ADMIN_BOOTSTRAP_TIMEOUT:-90}
+  THEMES_DIR="${REDMINE_PATH}/public/themes"
+  if [ -d "${REDMINE_PATH}/themes" ]; then
+    THEMES_DIR="${REDMINE_PATH}/themes"
+  fi
+  A1_THEME_ID=${A1_THEME_ID:-a1}
+  validate_mounted_addons
+  link_mounted_addons
+  apply_a1_theme_backport_overrides
 
-  run_db_migrate_with_retry
+  if [ "${RUN_DB_MIGRATE}" = "1" ]; then
+    run_db_migrate_with_retry
+  else
+    echo "Skipping db:migrate because RUN_DB_MIGRATE=${RUN_DB_MIGRATE}"
+  fi
   if [ "${REDMINE_PLUGINS_MIGRATE}" = "yes" ]; then
     /docker-entrypoint.sh rake redmine:plugins:migrate
   fi
@@ -302,6 +528,11 @@ if [ "${MIGRATIONS_ONLY_STARTUP}" = "1" ]; then
   fi
   rm -f ${REDMINE_PATH}/tmp/pids/server.pid
 
+  if [ "${START_SERVER}" != "1" ] && [ "${START_CRON}" != "1" ] && [ "${START_SOLID_QUEUE}" != "1" ]; then
+    echo "Migration-only startup completed"
+    exit 0
+  fi
+
   if [ "${START_SERVER}" = "1" ]; then
     start_cron_background
     export REDMINE_NO_DB_MIGRATE=1
@@ -309,6 +540,7 @@ if [ "${MIGRATIONS_ONLY_STARTUP}" = "1" ]; then
     exec /docker-entrypoint.sh rails server -b 0.0.0.0
   fi
 
+  wait_for_db_tables
   run_jobs_only_foreground
 fi
 
@@ -404,6 +636,7 @@ resolve_archive() {
 }
 
 setup_runtime_environment
+ensure_database_yml
 start_cron_background
 
 REDMINE_SMTP_HOST=${REDMINE_SMTP_HOST:-postfix}
@@ -524,6 +757,9 @@ if [ -z "${A1_THEME_URL}" ] && [ -n "${PLUGINS_URL:-}" ]; then
   A1_THEME_URL="${PLUGINS_URL%/plugins}/themes/${A1_THEME_ZIP}"
 fi
 
+validate_mounted_addons
+link_mounted_addons
+
 if [ "${RUNTIME_THEME_SYNC}" = "1" ] && [ -n "${A1_THEME_URL}" ] && [ ! -d "${THEMES_DIR}/${A1_THEME_ID}" ]; then
   theme_archive=$(resolve_archive "${THEME_CACHE_DIR}/${A1_THEME_ZIP}" "${THEME_FALLBACK_DIR}/${A1_THEME_ZIP}" "${A1_THEME_URL}" "${A1_THEME_USER}" "${A1_THEME_PASSWORD}" "theme - ${A1_THEME_ZIP}")
 
@@ -534,6 +770,8 @@ if [ "${RUNTIME_THEME_SYNC}" = "1" ] && [ -n "${A1_THEME_URL}" ] && [ ! -d "${TH
   unzip -d "${THEMES_DIR}" -o "${theme_archive}"
   RUNTIME_ADDONS_CHANGED=1
 fi
+
+apply_a1_theme_backport_overrides
 
 if [ "${RUNTIME_ADDONS_CHANGED}" = "1" ] || ! bundle check >/dev/null 2>&1; then
   if [ "${FAST_BOOT}" != "1" ] && [ "${RUNTIME_BUNDLE_INSTALL}" = "1" ]; then
@@ -548,9 +786,9 @@ if [ "${RUNTIME_ADDONS_CHANGED}" = "1" ] || ! bundle check >/dev/null 2>&1; then
 fi
 
 #ensure correct permissions
-chown -R redmine:redmine /usr/src/redmine/plugins
-chown -R redmine:redmine "${THEMES_DIR}"
-chown redmine:redmine /usr/src/redmine/tmp
+safe_chown_tree /usr/src/redmine/plugins
+safe_chown_tree "${THEMES_DIR}"
+safe_chown_path /usr/src/redmine/tmp
 
 if [ -n "${REDMINE_DB_POOL:-}" ]; then
     sed -i "/bundle check/a\        echo '  pool: $REDMINE_DB_POOL' >> config\/database.yml"    /docker-entrypoint.sh
@@ -559,5 +797,6 @@ fi
 if [ "${START_SERVER}" = "1" ]; then
   /docker-entrypoint.sh rails server -b 0.0.0.0
 else
+  wait_for_db_tables
   run_jobs_only_foreground
 fi
