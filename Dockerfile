@@ -10,6 +10,9 @@ ENV REDMINE_PATH=/usr/src/redmine \
   REDMINE_LOCAL_PATH=/var/local/redmine \
   RUBY_YJIT_ENABLE=1 \
   FAST_BOOT=1 \
+  STARTUP_ASSET_FIXES=0 \
+  APPLY_A1_THEME_OVERRIDES_ON_BOOT=0 \
+  ASSETS_PRECOMPILE=0 \
   RUNTIME_PLUGIN_SYNC=0 \
   RUNTIME_THEME_SYNC=0 \
   RUNTIME_BUNDLE_INSTALL=0
@@ -133,6 +136,7 @@ COPY config/recurring.yml ${REDMINE_PATH}/config/recurring.yml
 COPY config/solid_queue_migrations/20260313123000_install_solid_queue_tables.rb ${REDMINE_PATH}/db/migrate/20260313123000_install_solid_queue_tables.rb
 COPY config/rails_pulse_migrations/20260310221000_expand_rails_pulse_columns.rb ${REDMINE_PATH}/db/migrate/20260310221000_expand_rails_pulse_columns.rb
 COPY config/apply_a1_theme_overrides.sh /usr/local/bin/apply_a1_theme_overrides.sh
+COPY config/prepare_addons_assets.sh /usr/local/bin/prepare_addons_assets.sh
 COPY config/sync_addons_bundle.sh /usr/local/bin/sync_addons_bundle.sh
 COPY config/sync_addons_from_dir.sh /usr/local/bin/sync_addons_from_dir.sh
 COPY config/sync_addons_from_share.sh /usr/local/bin/sync_addons_from_share.sh
@@ -148,10 +152,15 @@ RUN set -euo pipefail \
 COPY theme_overrides/ ${REDMINE_PATH}/theme_overrides/
 RUN set -euo pipefail \
   && chmod 0755 /usr/local/bin/apply_a1_theme_overrides.sh \
+  && chmod 0755 /usr/local/bin/prepare_addons_assets.sh \
   && chmod 0755 /usr/local/bin/sync_addons_bundle.sh \
   && chmod 0755 /usr/local/bin/sync_addons_from_dir.sh \
   && chmod 0755 /usr/local/bin/sync_addons_from_share.sh \
   && /usr/local/bin/apply_a1_theme_overrides.sh \
+  && ADDONS_CURRENT_DIR="${REDMINE_PATH}" \
+     PLUGINS_DIR="${REDMINE_PATH}/plugins" \
+     THEMES_DIR="${REDMINE_PATH}/themes" \
+     /usr/local/bin/prepare_addons_assets.sh \
   && install -d ${REDMINE_PATH}/plugins/additionals/assets/images \
   && install -d ${REDMINE_PATH}/plugins/redmine_contacts_helpdesk/assets/images \
   && install -m 0644 ${REDMINE_PATH}/theme_overrides/a1/images/icons.svg ${REDMINE_PATH}/plugins/additionals/assets/images/icons.svg \

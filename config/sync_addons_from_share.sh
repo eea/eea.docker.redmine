@@ -135,4 +135,12 @@ if [ -x /usr/local/bin/apply_a1_theme_overrides.sh ] && [ -d "${themes_dst}/${A1
   THEMES_DIR="${themes_dst}" A1_THEME_ID="${A1_THEME_ID}" /usr/local/bin/apply_a1_theme_overrides.sh
 fi
 
+if [ -x /usr/local/bin/prepare_addons_assets.sh ]; then
+  ADDONS_CURRENT_DIR="${ADDONS_CURRENT_DIR}" \
+  PLUGINS_DIR="${plugins_dst}" \
+  THEMES_DIR="${themes_dst}" \
+  A1_THEME_ID="${A1_THEME_ID}" \
+  /usr/local/bin/prepare_addons_assets.sh
+fi
+
 echo "Share addons normalized into ${ADDONS_CURRENT_DIR}"
