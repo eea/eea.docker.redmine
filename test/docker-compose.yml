@@ -23,74 +23,141 @@ services:
     - --join-buffer-size=256M
     - --character_set_server=utf8mb4
 
-  redmine:
+  addons-sync:
     image: test-redmine:latest
+    pull_policy: never
     build:
       context: ../.
-      args:
-        PLUGINS_URL: https://cmshare.eea.europa.eu/remote.php/dav/files/${REDMINE_PLUGINS_USER:-}/redmine6-files/plugins
-        PLUGINS_USER: ${REDMINE_PLUGINS_USER:-}
-        PLUGINS_PASSWORD: ${REDMINE_PLUGINS_PASSWORD:-}
-        A1_THEME_URL: ${A1_THEME_URL:-}
-        A1_THEME_USER: ${A1_THEME_USER:-${REDMINE_PLUGINS_USER:-}}
-        A1_THEME_PASSWORD: ${A1_THEME_PASSWORD:-${REDMINE_PLUGINS_PASSWORD:-}}
-        A1_THEME_SHA256: ${A1_THEME_SHA256:-}
-        REQUIRE_PRO_PLUGINS: ${REQUIRE_PRO_PLUGINS:-1}
-        REQUIRE_A1_THEME: ${REQUIRE_A1_THEME:-1}
-    environment:
-      PLUGINS_PASSWORD: ${REDMINE_PLUGINS_PASSWORD:-}
-      PLUGINS_URL: https://cmshare.eea.europa.eu/remote.php/dav/files/${REDMINE_PLUGINS_USER:-}/redmine6-files/plugins
-      SELENIUM_REMOTE_URL: http://hub:4444/wd/hub
-      PLUGINS_USER: ${REDMINE_PLUGINS_USER:-}
-      REDIS_URL: redis://redis:6379/0
-      ACTIVE_JOB_QUEUE_ADAPTER: ${ACTIVE_JOB_QUEUE_ADAPTER:-async}
-      RAILS_PULSE_AUTH_ENABLED: "0"
-      CRON_IN_ASYNC_JOBS_ONLY: "1"
-      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
-      RAILS_MAX_THREADS: ${RAILS_MAX_THREADS:-5}
-      REDMINE_HOST: redmine:3000
-      RAILS_ENV: test
-      TZ: Europe/Copenhagen
     entrypoint:
-    - tail
-    - -f
-    - /dev/null
-    volumes:
-    - redmine_files:/usr/src/redmine/test/fixtures/files  
-    depends_on:
-    - mysql  
-    - redis
-    links:
-    - mysql:mysql
-
-  active-jobs:
-    image: test-redmine:latest
+    - /bin/bash
+    - -lc
+    command:
+    - /usr/local/bin/sync_addons_from_dir.sh
     environment:
-      PLUGINS_URL: https://cmshare.eea.europa.eu/remote.php/dav/files/${REDMINE_PLUGINS_USER:-}/redmine6-files/plugins
-      PLUGINS_USER: ${REDMINE_PLUGINS_USER:-}
-      PLUGINS_PASSWORD: ${REDMINE_PLUGINS_PASSWORD:-}
-      REDIS_URL: redis://redis:6379/0
-      ACTIVE_JOB_QUEUE_ADAPTER: ${ACTIVE_JOB_QUEUE_ADAPTER:-async}
-      RAILS_PULSE_AUTH_ENABLED: "0"
-      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
-      RAILS_MAX_THREADS: ${RAILS_MAX_THREADS:-5}
+      ADDONS_VOLUME_ROOT: /addons
+      SEED_ROOT: /seed
+    volumes:
+    - addons_data:/addons
+    - ../.local-artifacts/redmineup/plugins:/seed/plugins:ro
+    - ../.local-artifacts/redmineup/themes:/seed/themes:ro
+
+  migrate:
+    image: test-redmine:latest
+    pull_policy: never
+    environment:
       REDMINE_DB_MYSQL: mysql
       REDMINE_DB_DATABASE: redmine_test
       REDMINE_DB_USERNAME: redmine
       REDMINE_DB_PASSWORD: password
       REDMINE_PLUGINS_MIGRATE: "no"
-      ADMIN_BOOTSTRAP_ENABLE: "0"
+      REQUIRE_MOUNTED_ADDONS: "1"
+      MOUNTED_ADDONS_ROOT: /addons/current
       START_SERVER: "0"
-      START_CRON: "1"
-      CRON_IN_ASYNC_JOBS_ONLY: "1"
-      REDMINE_HOST: redmine:3000
+      START_CRON: "0"
+      START_SOLID_QUEUE: "0"
+      RUN_DB_MIGRATE: "1"
+      FAST_BOOT: ${FAST_BOOT:-1}
       RAILS_ENV: production
+      RAILS_LOG_LEVEL: info
       TZ: Europe/Copenhagen
     volumes:
+    - addons_data:/addons:ro
     - redmine_files:/usr/src/redmine/test/fixtures/files
     depends_on:
-    - mysql
-    - redis
+      addons-sync:
+        condition: service_completed_successfully
+      mysql:
+        condition: service_started
+    links:
+    - mysql:mysql
+
+  redmine:
+    image: test-redmine:latest
+    pull_policy: never
+    build:
+      context: ../.
+    environment:
+      REDMINE_DB_MYSQL: mysql
+      REDMINE_DB_DATABASE: redmine_test
+      REDMINE_DB_USERNAME: redmine
+      REDMINE_DB_PASSWORD: password
+      REDMINE_PLUGINS_MIGRATE: "no"
+      RUN_DB_MIGRATE: "0"
+      SELENIUM_REMOTE_URL: http://hub:4444/wd/hub
+      ACTIVE_JOB_QUEUE_ADAPTER: ${ACTIVE_JOB_QUEUE_ADAPTER:-solid_queue}
+      MISSION_CONTROL_JOBS_AUTH_ENABLED: "1"
+      MISSION_CONTROL_JOBS_BASIC_AUTH_USERNAME: admin
+      MISSION_CONTROL_JOBS_BASIC_AUTH_PASSWORD: ${ADMIN_BOOTSTRAP_PASSWORD:-Admin123!}
+      RAILS_PULSE_AUTH_ENABLED: "0"
+      CRON_IN_ASYNC_JOBS_ONLY: "1"
+      REQUIRE_MOUNTED_ADDONS: "1"
+      MOUNTED_ADDONS_ROOT: /addons/current
+      START_SERVER: "1"
+      START_CRON: "0"
+      FAST_BOOT: ${FAST_BOOT:-1}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
+      RAILS_MAX_THREADS: ${RAILS_MAX_THREADS:-5}
+      REDMINE_HOST: redmine:3000
+      RAILS_ENV: production
+      RAILS_LOG_LEVEL: info
+      MEMCACHE_SERVERS: memcached:11211
+      MEMCACHE_NAMESPACE: redmine-prod
+      MEMCACHE_EXPIRES_IN: "3600"
+      RAILS_SERVE_STATIC_FILES: "1"
+      TZ: Europe/Copenhagen
+    volumes:
+    - addons_data:/addons:ro
+    - redmine_files:/usr/src/redmine/test/fixtures/files
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      mysql:
+        condition: service_started
+    links:
+    - mysql:mysql
+
+  active-jobs:
+    image: test-redmine:latest
+    pull_policy: never
+    environment:
+      ACTIVE_JOB_QUEUE_ADAPTER: ${ACTIVE_JOB_QUEUE_ADAPTER:-solid_queue}
+      MISSION_CONTROL_JOBS_AUTH_ENABLED: "1"
+      MISSION_CONTROL_JOBS_BASIC_AUTH_USERNAME: admin
+      MISSION_CONTROL_JOBS_BASIC_AUTH_PASSWORD: ${ADMIN_BOOTSTRAP_PASSWORD:-Admin123!}
+      RAILS_PULSE_AUTH_ENABLED: "0"
+      REQUIRE_MOUNTED_ADDONS: "1"
+      MOUNTED_ADDONS_ROOT: /addons/current
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
+      RAILS_MAX_THREADS: ${RAILS_MAX_THREADS:-5}
+      FAST_BOOT: ${FAST_BOOT:-1}
+      REDMINE_DB_MYSQL: mysql
+      REDMINE_DB_DATABASE: redmine_test
+      REDMINE_DB_USERNAME: redmine
+      REDMINE_DB_PASSWORD: password
+      REDMINE_PLUGINS_MIGRATE: "no"
+      RUN_DB_MIGRATE: "0"
+      ADMIN_BOOTSTRAP_ENABLE: "0"
+      START_SERVER: "0"
+      START_CRON: "0"
+      START_SOLID_QUEUE: "1"
+      CRON_IN_ASYNC_JOBS_ONLY: "1"
+      WAIT_FOR_DB_TABLES: solid_queue_jobs,solid_queue_recurring_tasks
+      REDMINE_HOST: redmine:3000
+      RAILS_ENV: production
+      RAILS_LOG_LEVEL: info
+      MEMCACHE_SERVERS: memcached:11211
+      MEMCACHE_NAMESPACE: redmine-prod
+      MEMCACHE_EXPIRES_IN: "3600"
+      RAILS_SERVE_STATIC_FILES: "1"
+      TZ: Europe/Copenhagen
+    volumes:
+    - addons_data:/addons:ro
+    - redmine_files:/usr/src/redmine/test/fixtures/files
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      mysql:
+        condition: service_started
     links:
     - mysql:mysql
 
@@ -102,11 +169,6 @@ services:
     command:
     - -m
     - '512'
-
-  redis:
-    image: redis:7-alpine
-    environment:
-      TZ: Europe/Copenhagen
 
   postfix:
     image: eaudeweb/mailtrap:latest
@@ -121,6 +183,8 @@ services:
   
 volumes:
   taskman_test_db:
+    driver: local
+  addons_data:
     driver: local
   redmine_files:
     driver: local  
