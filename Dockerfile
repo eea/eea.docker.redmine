@@ -135,6 +135,7 @@ COPY config/rails_pulse_migrations/20260310221000_expand_rails_pulse_columns.rb 
 COPY config/apply_a1_theme_overrides.sh /usr/local/bin/apply_a1_theme_overrides.sh
 COPY config/sync_addons_bundle.sh /usr/local/bin/sync_addons_bundle.sh
 COPY config/sync_addons_from_dir.sh /usr/local/bin/sync_addons_from_dir.sh
+COPY config/sync_addons_from_share.sh /usr/local/bin/sync_addons_from_share.sh
 
 # Install Rails Pulse into the image: engine route, initializer, and migrations.
 RUN set -euo pipefail \
@@ -149,6 +150,7 @@ RUN set -euo pipefail \
   && chmod 0755 /usr/local/bin/apply_a1_theme_overrides.sh \
   && chmod 0755 /usr/local/bin/sync_addons_bundle.sh \
   && chmod 0755 /usr/local/bin/sync_addons_from_dir.sh \
+  && chmod 0755 /usr/local/bin/sync_addons_from_share.sh \
   && /usr/local/bin/apply_a1_theme_overrides.sh \
   && install -d ${REDMINE_PATH}/plugins/additionals/assets/images \
   && install -d ${REDMINE_PATH}/plugins/redmine_contacts_helpdesk/assets/images \

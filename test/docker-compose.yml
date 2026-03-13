@@ -32,10 +32,21 @@ services:
     - /bin/bash
     - -lc
     command:
-    - /usr/local/bin/sync_addons_from_dir.sh
+    - |
+      if [ "${ADDONS_SYNC_SOURCE:-share}" = "share" ]; then
+        exec /usr/local/bin/sync_addons_from_share.sh
+      fi
+      exec /usr/local/bin/sync_addons_from_dir.sh
     environment:
+      ADDONS_SYNC_SOURCE: ${ADDONS_SYNC_SOURCE:-share}
+      ADDONS_SYNC_SKIP_IF_PRESENT: ${ADDONS_SYNC_SKIP_IF_PRESENT:-1}
       ADDONS_VOLUME_ROOT: /addons
       SEED_ROOT: /seed
+      PLUGINS_URL: ${PLUGINS_URL:-https://cmshare.eea.europa.eu/remote.php/dav/files/${REDMINE_PLUGINS_USER:-}/redmine6-files/plugins}
+      PLUGINS_USER: ${PLUGINS_USER:-${REDMINE_PLUGINS_USER:-}}
+      PLUGINS_PASSWORD: ${PLUGINS_PASSWORD:-${REDMINE_PLUGINS_PASSWORD:-}}
+      A1_THEME_URL: ${A1_THEME_URL:-}
+      A1_THEME_ZIP: ${A1_THEME_ZIP:-a1_theme-4_1_2.zip}
     volumes:
     - addons_data:/addons
     - ../.local-artifacts/redmineup/plugins:/seed/plugins:ro
