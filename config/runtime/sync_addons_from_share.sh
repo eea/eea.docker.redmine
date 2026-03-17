@@ -1,19 +1,29 @@
 #!/bin/bash
 set -euo pipefail
 
+if [ -f /usr/local/bin/common.sh ]; then
+  # shellcheck disable=SC1091
+  source /usr/local/bin/common.sh
+fi
+type log_info >/dev/null 2>&1 || log_info() { echo "[runtime] $*"; }
+type log_error >/dev/null 2>&1 || log_error() { echo "[runtime][error] $*" >&2; }
+
 ADDONS_VOLUME_ROOT=${ADDONS_VOLUME_ROOT:-/addons}
 ADDONS_CURRENT_DIR="${ADDONS_VOLUME_ROOT}/current"
 TMP_ROOT="${ADDONS_VOLUME_ROOT}/.sync-tmp-share"
 
 PLUGINS_URL=${PLUGINS_URL:-}
+ADDONS_BASE_URL=${ADDONS_BASE_URL:-}
 PLUGINS_USER=${PLUGINS_USER:-}
 PLUGINS_PASSWORD=${PLUGINS_PASSWORD:-}
 A1_THEME_URL=${A1_THEME_URL:-}
-A1_THEME_ZIP=${A1_THEME_ZIP:-a1_theme-4_1_2.zip}
+A1_THEME_ZIP=${A1_THEME_ZIP:-}
 A1_THEME_ID=${A1_THEME_ID:-a1}
 ADDONS_SYNC_SKIP_IF_PRESENT=${ADDONS_SYNC_SKIP_IF_PRESENT:-1}
 
-plugins_cfg="${REDMINE_PATH:-/usr/src/redmine}/plugins.cfg"
+addons_cfg="${REDMINE_PATH:-/usr/src/redmine}/addons.cfg"
+addons_manifest="${addons_cfg}"
+addons_base_url=""
 plugins_dst="${ADDONS_CURRENT_DIR}/plugins"
 themes_dst="${ADDONS_CURRENT_DIR}/themes"
 plugins_tmp="${TMP_ROOT}/plugins"
@@ -21,26 +31,43 @@ themes_tmp="${TMP_ROOT}/themes"
 
 mkdir -p "${plugins_dst}" "${themes_dst}" "${plugins_tmp}" "${themes_tmp}"
 
-if [ -z "${PLUGINS_URL}" ]; then
-  echo "PLUGINS_URL is required for share sync" >&2
+if [ ! -f "${addons_manifest}" ]; then
+  log_error "addons.cfg not found: ${addons_manifest}"
   exit 1
 fi
 
-if [ ! -f "${plugins_cfg}" ]; then
-  echo "plugins.cfg not found: ${plugins_cfg}" >&2
+if [ -n "${ADDONS_BASE_URL}" ]; then
+  addons_base_url="${ADDONS_BASE_URL%/}"
+elif [ -n "${PLUGINS_URL}" ]; then
+  addons_base_url="${PLUGINS_URL%/plugins}"
+else
+  log_error "ADDONS_BASE_URL or PLUGINS_URL is required for share sync"
   exit 1
 fi
+
+manifest_cmd=(ruby /usr/src/redmine/config/lib/addons_manifest.rb)
+if [ ! -x /usr/src/redmine/config/lib/addons_manifest.rb ] && [ -f "${REDMINE_PATH:-/usr/src/redmine}/config/lib/addons_manifest.rb" ]; then
+  manifest_cmd=(ruby "${REDMINE_PATH:-/usr/src/redmine}/config/lib/addons_manifest.rb")
+fi
+
+if [ -z "${A1_THEME_ZIP}" ]; then
+  A1_THEME_ZIP="$("${manifest_cmd[@]}" theme-archive)"
+fi
+if [ -z "${A1_THEME_ZIP}" ]; then
+  A1_THEME_ZIP="a1_theme-4_1_2.zip"
+fi
+THEME_LOCATION="$("${manifest_cmd[@]}" theme-location)"
+[ -n "${THEME_LOCATION}" ] || THEME_LOCATION="themes"
 
 addons_already_synced() {
-  local plugin_name=""
-  local plugin_file=""
+  local kind="" name="" location="" archive=""
 
   [ -d "${themes_dst}/${A1_THEME_ID}" ] || return 1
 
-  while IFS=: read -r plugin_name plugin_file; do
-    [ -n "${plugin_name}" ] || continue
-    [ -d "${plugins_dst}/${plugin_name}" ] || return 1
-  done < "${plugins_cfg}"
+  while IFS=: read -r kind name location archive; do
+    [ "${kind}" = "plugin" ] || continue
+    [ -d "${plugins_dst}/${name}" ] || return 1
+  done < <("${manifest_cmd[@]}" list)
 
   return 0
 }
@@ -72,7 +99,7 @@ download_file() {
     return 0
   fi
 
-  echo "Neither wget nor curl is available" >&2
+  log_error "Neither wget nor curl is available"
   exit 1
 }
 
@@ -96,19 +123,18 @@ fi
 clean_dir "${plugins_tmp}"
 clean_dir "${themes_tmp}"
 
-while IFS=: read -r plugin_name plugin_file; do
-  [ -n "${plugin_name}" ] || continue
-  [ -n "${plugin_file}" ] || continue
+while IFS=: read -r kind name location archive_name; do
+  [ "${kind}" = "plugin" ] || continue
 
-  archive="${TMP_ROOT}/${plugin_file}"
-  download_url="${PLUGINS_URL%/}/${plugin_file}"
-  echo "Downloading plugin ${plugin_name} from ${download_url}"
+  archive="${TMP_ROOT}/${archive_name}"
+  download_url="${addons_base_url}/${location}/${archive_name}"
+  echo "Downloading plugin ${name} from ${download_url}"
   download_file "${download_url}" "${archive}"
   unzip -tqq "${archive}"
   unzip -q -o "${archive}" -d "${plugins_tmp}"
-done < "${plugins_cfg}"
+done < <("${manifest_cmd[@]}" list)
 
-theme_download_url="${A1_THEME_URL:-${PLUGINS_URL%/plugins}/themes/${A1_THEME_ZIP}}"
+theme_download_url="${A1_THEME_URL:-${addons_base_url}/${THEME_LOCATION}/${A1_THEME_ZIP}}"
 theme_archive="${TMP_ROOT}/${A1_THEME_ZIP}"
 echo "Downloading theme from ${theme_download_url}"
 download_file "${theme_download_url}" "${theme_archive}"
@@ -117,7 +143,7 @@ unzip -q -o "${theme_archive}" -d "${themes_tmp}"
 normalize_theme_dir
 
 if [ ! -d "${themes_tmp}/${A1_THEME_ID}" ]; then
-  echo "A1 theme directory not found after extraction: ${themes_tmp}/${A1_THEME_ID}" >&2
+  log_error "A1 theme directory not found after extraction: ${themes_tmp}/${A1_THEME_ID}"
   exit 1
 fi
 
@@ -143,4 +169,4 @@ if [ -x /usr/local/bin/prepare_addons_assets.sh ]; then
   /usr/local/bin/prepare_addons_assets.sh
 fi
 
-echo "Share addons normalized into ${ADDONS_CURRENT_DIR}"
+log_info "Share addons normalized into ${ADDONS_CURRENT_DIR}"

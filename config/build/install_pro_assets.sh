@@ -2,31 +2,43 @@
 set -euo pipefail
 
 REDMINE_PATH=${REDMINE_PATH:-/usr/src/redmine}
-PLUGINS_CFG="${REDMINE_PATH}/plugins.cfg"
+ADDONS_CFG="${REDMINE_PATH}/addons.cfg"
+MANIFEST_SCRIPT="${REDMINE_PATH}/config/lib/addons_manifest.rb"
+
+if [ ! -f "${ADDONS_CFG}" ]; then
+  echo "addons.cfg is required at ${ADDONS_CFG}" >&2
+  exit 1
+fi
+if [ ! -f "${MANIFEST_SCRIPT}" ]; then
+  echo "addons manifest helper is required at ${MANIFEST_SCRIPT}" >&2
+  exit 1
+fi
+
+manifest_cmd=(ruby "$MANIFEST_SCRIPT")
 
 download_plugins() {
   local plugins_url="$1"
   local plugins_user="$2"
   local plugins_password="$3"
   local require_pro_plugins="$4"
+  local addons_base_url="${ADDONS_BASE_URL:-${plugins_url%/plugins}}"
 
-  if [ -n "$plugins_url" ] && [ -n "$plugins_user" ] && [ -n "$plugins_password" ]; then
+  if [ -n "$addons_base_url" ] && [ -n "$plugins_user" ] && [ -n "$plugins_password" ]; then
     mkdir -p /tmp/install_plugins
     local plugins_host plugins_home plugins_netrc
-    plugins_host="$(echo "$plugins_url" | awk -F/ '{print $3}')"
+    plugins_host="$(echo "$addons_base_url" | awk -F/ '{print $3}')"
     plugins_home="$(mktemp -d /tmp/plugins-auth.XXXXXX)"
     plugins_netrc="${plugins_home}/.netrc"
     printf "machine %s login %s password %s\n" "$plugins_host" "$plugins_user" "$plugins_password" > "$plugins_netrc"
     chmod 600 "$plugins_netrc"
 
-    while IFS=: read -r plugin_name plugin_file; do
-      [ -n "$plugin_name" ] || continue
+    while IFS=: read -r kind plugin_name plugin_location plugin_file; do
+      [ "$kind" = "plugin" ] || continue
       archive="/tmp/install_plugins/$plugin_file"
-      HOME="$plugins_home" wget -q --auth-no-challenge --netrc -O "$archive" "$plugins_url/$plugin_file"
+      HOME="$plugins_home" wget -q --auth-no-challenge --netrc -O "$archive" "$addons_base_url/$plugin_location/$plugin_file"
       unzip -tqq "$archive"
       unzip -q -o "$archive" -d "${REDMINE_PATH}/plugins"
-      rm -f "${REDMINE_PATH}/plugins/${plugin_name}/Gemfile"
-    done < "$PLUGINS_CFG"
+    done < <("${manifest_cmd[@]}" list)
 
     rm -f "$plugins_netrc"
     rm -rf "$plugins_home"
@@ -42,20 +54,20 @@ validate_plugins() {
   local require_pro_plugins="$1"
 
   if [ "$require_pro_plugins" = "1" ]; then
-    while IFS=: read -r plugin_name plugin_file; do
-      [ -n "$plugin_name" ] || continue
+    while IFS=: read -r kind plugin_name plugin_location plugin_file; do
+      [ "$kind" = "plugin" ] || continue
       if [ ! -d "${REDMINE_PATH}/plugins/${plugin_name}" ]; then
         echo "Missing required plugin in built image: ${plugin_name} (${plugin_file})"
         exit 1
       fi
-    done < "$PLUGINS_CFG"
+    done < <("${manifest_cmd[@]}" list)
   else
-    while IFS=: read -r plugin_name plugin_file; do
-      [ -n "$plugin_name" ] || continue
+    while IFS=: read -r kind plugin_name plugin_location plugin_file; do
+      [ "$kind" = "plugin" ] || continue
       if [ ! -d "${REDMINE_PATH}/plugins/${plugin_name}" ]; then
         echo "Optional plugin not present in image: ${plugin_name} (${plugin_file})"
       fi
-    done < "$PLUGINS_CFG"
+    done < <("${manifest_cmd[@]}" list)
   fi
 }
 
@@ -69,11 +81,18 @@ download_theme() {
   local a1_theme_sha256="$7"
   local a1_theme_zip="$8"
   local require_a1_theme="$9"
+  local theme_id="${A1_THEME_ID:-a1}"
+  local theme_manifest location archive
+  local addons_base_url="${ADDONS_BASE_URL:-${plugins_url%/plugins}}"
+  theme_manifest="$("${manifest_cmd[@]}" theme-location):$("${manifest_cmd[@]}" theme-archive)"
+  location="${theme_manifest%%:*}"
+  archive="${theme_manifest#*:}"
+  [ -n "$archive" ] || archive="$a1_theme_zip"
 
   local theme_url
   theme_url="$a1_theme_url"
-  if [ -z "$theme_url" ] && [ -n "$plugins_url" ]; then
-    theme_url="${plugins_url%/plugins}/themes/$a1_theme_zip"
+  if [ -z "$theme_url" ] && [ -n "$addons_base_url" ]; then
+    theme_url="${addons_base_url}/${location:-themes}/${archive}"
   fi
 
   if [ -n "$theme_url" ]; then

@@ -1,212 +1,46 @@
 services:
   mysql:
-    image: mysql:5.7
-    environment:
-      MYSQL_DATABASE: redmine_test
-      MYSQL_PASSWORD: password
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_USER: redmine
-      TZ: Europe/Copenhagen
-    volumes:
-    - taskman_test_db:/var/lib/mysql
-    command:
-    - --query-cache-size=0
-    - --query-cache-limit=64M
-    - --query-cache-type=0
-    - --innodb-buffer-pool-size=1G
-    - --innodb-buffer-pool-instances=4
-    - --net-read-timeout=7200
-    - --net-write-timeout=7200
-    - --max-allowed-packet=128M
-    - --tmp-table-size=384M
-    - --max-heap-table-size=384M
-    - --join-buffer-size=256M
-    - --character_set_server=utf8mb4
+    extends:
+      file: docker-compose.base.yml
+      service: mysql
 
   addons-sync:
-    image: test-redmine:latest
-    pull_policy: never
-    build:
-      context: ../.
-    entrypoint:
-    - /bin/bash
-    - -lc
-    command:
-    - |
-      if [ "${ADDONS_SYNC_SOURCE:-share}" = "share" ]; then
-        exec /usr/local/bin/sync_addons_from_share.sh
-      fi
-      exec /usr/local/bin/sync_addons_from_dir.sh
-    environment:
-      ADDONS_SYNC_SOURCE: ${ADDONS_SYNC_SOURCE:-share}
-      ADDONS_SYNC_SKIP_IF_PRESENT: ${ADDONS_SYNC_SKIP_IF_PRESENT:-1}
-      ADDONS_VOLUME_ROOT: /addons
-      SEED_ROOT: /seed
-      PLUGINS_URL: ${PLUGINS_URL:-https://cmshare.eea.europa.eu/remote.php/dav/files/${REDMINE_PLUGINS_USER:-}/redmine6-files/plugins}
-      PLUGINS_USER: ${PLUGINS_USER:-${REDMINE_PLUGINS_USER:-}}
-      PLUGINS_PASSWORD: ${PLUGINS_PASSWORD:-${REDMINE_PLUGINS_PASSWORD:-}}
-      A1_THEME_URL: ${A1_THEME_URL:-}
-      A1_THEME_ZIP: ${A1_THEME_ZIP:-a1_theme-4_1_2.zip}
-    volumes:
-    - addons_data:/addons
-    - ../.local-artifacts/redmineup/plugins:/seed/plugins:ro
-    - ../.local-artifacts/redmineup/themes:/seed/themes:ro
+    extends:
+      file: docker-compose.base.yml
+      service: addons-sync
 
   migrate:
-    image: test-redmine:latest
-    pull_policy: never
-    environment:
-      REDMINE_DB_MYSQL: mysql
-      REDMINE_DB_DATABASE: redmine_test
-      REDMINE_DB_USERNAME: redmine
-      REDMINE_DB_PASSWORD: password
-      REDMINE_PLUGINS_MIGRATE: "no"
-      REQUIRE_MOUNTED_ADDONS: "1"
-      MOUNTED_ADDONS_ROOT: /addons/current
-      START_SERVER: "0"
-      START_CRON: "0"
-      START_SOLID_QUEUE: "0"
-      RUN_DB_MIGRATE: "1"
-      ASSETS_PRECOMPILE: "1"
-      ASSETS_PRECOMPILE_FORCE: "${ASSETS_PRECOMPILE_FORCE:-0}"
-      FAST_BOOT: ${FAST_BOOT:-1}
-      STARTUP_ASSET_FIXES: "0"
-      APPLY_A1_THEME_OVERRIDES_ON_BOOT: "0"
-      RAILS_ENV: production
-      RAILS_LOG_LEVEL: info
-      TZ: Europe/Copenhagen
-    volumes:
-    - addons_data:/addons:ro
-    - redmine_assets:/usr/src/redmine/public/assets
-    - redmine_files:/usr/src/redmine/test/fixtures/files
-    depends_on:
-      addons-sync:
-        condition: service_completed_successfully
-      mysql:
-        condition: service_started
-    links:
-    - mysql:mysql
+    extends:
+      file: docker-compose.base.yml
+      service: migrate
 
   redmine:
-    image: test-redmine:latest
-    pull_policy: never
-    build:
-      context: ../.
-    environment:
-      REDMINE_DB_MYSQL: mysql
-      REDMINE_DB_DATABASE: redmine_test
-      REDMINE_DB_USERNAME: redmine
-      REDMINE_DB_PASSWORD: password
-      REDMINE_PLUGINS_MIGRATE: "no"
-      RUN_DB_MIGRATE: "0"
-      ASSETS_PRECOMPILE: "0"
-      SELENIUM_REMOTE_URL: http://hub:4444/wd/hub
-      ACTIVE_JOB_QUEUE_ADAPTER: ${ACTIVE_JOB_QUEUE_ADAPTER:-solid_queue}
-      MISSION_CONTROL_JOBS_AUTH_ENABLED: "1"
-      MISSION_CONTROL_JOBS_BASIC_AUTH_USERNAME: admin
-      MISSION_CONTROL_JOBS_BASIC_AUTH_PASSWORD: ${ADMIN_BOOTSTRAP_PASSWORD:-Admin123!}
-      RAILS_PULSE_AUTH_ENABLED: "0"
-      CRON_IN_ASYNC_JOBS_ONLY: "1"
-      REQUIRE_MOUNTED_ADDONS: "1"
-      MOUNTED_ADDONS_ROOT: /addons/current
-      START_SERVER: "1"
-      START_CRON: "0"
-      FAST_BOOT: ${FAST_BOOT:-1}
-      STARTUP_ASSET_FIXES: "0"
-      APPLY_A1_THEME_OVERRIDES_ON_BOOT: "0"
-      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
-      RAILS_MAX_THREADS: ${RAILS_MAX_THREADS:-5}
-      REDMINE_HOST: redmine:3000
-      RAILS_ENV: production
-      RAILS_LOG_LEVEL: info
-      MEMCACHE_SERVERS: memcached:11211
-      MEMCACHE_NAMESPACE: redmine-prod
-      MEMCACHE_EXPIRES_IN: "3600"
-      RAILS_SERVE_STATIC_FILES: "1"
-      TZ: Europe/Copenhagen
-    volumes:
-    - addons_data:/addons:ro
-    - redmine_assets:/usr/src/redmine/public/assets
-    - redmine_files:/usr/src/redmine/test/fixtures/files
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-      mysql:
-        condition: service_started
-    links:
-    - mysql:mysql
+    extends:
+      file: docker-compose.base.yml
+      service: redmine
 
   active-jobs:
-    image: test-redmine:latest
-    pull_policy: never
-    environment:
-      ACTIVE_JOB_QUEUE_ADAPTER: ${ACTIVE_JOB_QUEUE_ADAPTER:-solid_queue}
-      MISSION_CONTROL_JOBS_AUTH_ENABLED: "1"
-      MISSION_CONTROL_JOBS_BASIC_AUTH_USERNAME: admin
-      MISSION_CONTROL_JOBS_BASIC_AUTH_PASSWORD: ${ADMIN_BOOTSTRAP_PASSWORD:-Admin123!}
-      RAILS_PULSE_AUTH_ENABLED: "0"
-      REQUIRE_MOUNTED_ADDONS: "1"
-      MOUNTED_ADDONS_ROOT: /addons/current
-      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
-      RAILS_MAX_THREADS: ${RAILS_MAX_THREADS:-5}
-      FAST_BOOT: ${FAST_BOOT:-1}
-      STARTUP_ASSET_FIXES: "0"
-      APPLY_A1_THEME_OVERRIDES_ON_BOOT: "0"
-      REDMINE_DB_MYSQL: mysql
-      REDMINE_DB_DATABASE: redmine_test
-      REDMINE_DB_USERNAME: redmine
-      REDMINE_DB_PASSWORD: password
-      REDMINE_PLUGINS_MIGRATE: "no"
-      RUN_DB_MIGRATE: "0"
-      ASSETS_PRECOMPILE: "0"
-      ADMIN_BOOTSTRAP_ENABLE: "0"
-      START_SERVER: "0"
-      START_CRON: "0"
-      START_SOLID_QUEUE: "1"
-      CRON_IN_ASYNC_JOBS_ONLY: "1"
-      WAIT_FOR_DB_TABLES: solid_queue_jobs,solid_queue_recurring_tasks
-      REDMINE_HOST: redmine:3000
-      RAILS_ENV: production
-      RAILS_LOG_LEVEL: info
-      MEMCACHE_SERVERS: memcached:11211
-      MEMCACHE_NAMESPACE: redmine-prod
-      MEMCACHE_EXPIRES_IN: "3600"
-      RAILS_SERVE_STATIC_FILES: "1"
-      TZ: Europe/Copenhagen
-    volumes:
-    - addons_data:/addons:ro
-    - redmine_assets:/usr/src/redmine/public/assets
-    - redmine_files:/usr/src/redmine/test/fixtures/files
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-      mysql:
-        condition: service_started
-    links:
-    - mysql:mysql
+    extends:
+      file: docker-compose.base.yml
+      service: active-jobs
 
   memcached:
-    # Avoid the ambiguous/nonexistent "memcached:1" tag in clean CI environments.
-    image: memcached:1.6
-    environment:
-      TZ: Europe/Copenhagen
-    command:
-    - -m
-    - '512'
+    extends:
+      file: docker-compose.base.yml
+      service: memcached
 
   postfix:
-    image: eaudeweb/mailtrap:latest
+    extends:
+      file: docker-compose.base.yml
+      service: postfix
 
   hub:
-    image: selenium/standalone-chrome:4.0
-    shm_size: 2g
-    depends_on:
-    - redmine
-    volumes:
-      - redmine_files:/usr/src/redmine/test/fixtures/files
-  
+    extends:
+      file: docker-compose.base.yml
+      service: hub
+
 volumes:
-  taskman_test_db:
+  taskman_test_db_mysql84:
     driver: local
   addons_data:
     driver: local

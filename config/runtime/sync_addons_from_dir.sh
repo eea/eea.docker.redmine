@@ -1,6 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
+if [ -f /usr/local/bin/common.sh ]; then
+  # shellcheck disable=SC1091
+  source /usr/local/bin/common.sh
+fi
+type log_info >/dev/null 2>&1 || log_info() { echo "[runtime] $*"; }
+type log_error >/dev/null 2>&1 || log_error() { echo "[runtime][error] $*" >&2; }
+
 ADDONS_VOLUME_ROOT=${ADDONS_VOLUME_ROOT:-/addons}
 ADDONS_CURRENT_DIR="${ADDONS_VOLUME_ROOT}/current"
 SEED_ROOT=${SEED_ROOT:-/seed}
@@ -16,7 +23,7 @@ themes_tmp="${TMP_ROOT}/themes"
 mkdir -p "${plugins_dst}" "${themes_dst}" "${plugins_tmp}" "${themes_tmp}"
 
 if [ ! -d "${plugins_src}" ] || [ ! -d "${themes_src}" ]; then
-  echo "Seed directories ${plugins_src} and ${themes_src} are required" >&2
+  log_error "Seed directories ${plugins_src} and ${themes_src} are required"
   exit 1
 fi
 
@@ -105,4 +112,4 @@ if [ -x /usr/local/bin/prepare_addons_assets.sh ]; then
   /usr/local/bin/prepare_addons_assets.sh
 fi
 
-echo "Seed addons normalized from ${SEED_ROOT} into ${ADDONS_CURRENT_DIR}"
+log_info "Seed addons normalized from ${SEED_ROOT} into ${ADDONS_CURRENT_DIR}"
