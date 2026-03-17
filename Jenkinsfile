@@ -18,8 +18,7 @@ pipeline {
       when { not { buildingTag() } }
       steps {
         script{
-          sh '''cp -f test/start_redmine.sh .'''
-          sh '''docker-compose -f test/docker-compose.yml up -d --build'''
+          sh '''REDMINE_BUILD_TARGET=ci-runtime docker-compose -f test/docker-compose.yml up -d --build'''
           DOCKER_REDMINE = sh(script: "docker-compose -f test/docker-compose.yml ps -q redmine", returnStdout: true).trim()
           if (!DOCKER_REDMINE) {
             error("Unable to resolve redmine container id from docker-compose")
@@ -46,7 +45,7 @@ fi
     stage("Prepare redmine for tests") {
       when { not { buildingTag() } }
       steps {
-        sh '''docker exec ${DOCKER_REDMINE} /start_redmine.sh'''
+        sh '''docker exec ${DOCKER_REDMINE} bash -lc "START_SERVER=0 START_CRON=0 START_SOLID_QUEUE=0 RUN_DB_MIGRATE=1 RUN_PLUGIN_MIGRATE=auto ASSETS_PRECOMPILE=1 ASSETS_PRECOMPILE_FORCE=1 RAILS_ENV=test /start_redmine.sh"'''
       }
     }
 
@@ -169,10 +168,10 @@ ls -la "$THEMES_DIR/a1" | head -n 20
            }
 
           catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
-            sh '''docker-compose -f test/docker-compose.yml stop'''
-            sh '''docker-compose -f test/docker-compose.yml rm -vf'''
+            sh '''REDMINE_BUILD_TARGET=ci-runtime docker-compose -f test/docker-compose.yml stop'''
+            sh '''REDMINE_BUILD_TARGET=ci-runtime docker-compose -f test/docker-compose.yml rm -vf'''
             sh '''docker rmi test_redmine'''
-            sh '''docker volume rm test_taskman_test_db test_redmine_files'''
+            sh '''docker volume rm test_taskman_test_db_mysql84 test_redmine_files'''
           }
         }
       }

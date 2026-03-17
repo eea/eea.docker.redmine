@@ -86,6 +86,58 @@ You now have the Redmine application up and ready for testing. If you want to us
 
 See (https://hub.docker.com/_/redmine)
 
+### Structure Map
+
+- `config/build/`: build-time scripts and composition
+- `config/runtime/`: runtime/startup orchestration
+- `config/overrides/`: documented policy overrides
+- `db/migrate/`: image-owned migrations
+- `docs/architecture/build-runtime-flow.md`: end-to-end sequence and upgrade guard
+- `test/docker-compose.base.yml`: canonical local stack definition
+- `test/docker-compose.yml`: default wrapper that extends the base stack
+- `test/docker-compose.amd64.yml`: thin amd64-only override (platform + amd64-local extras)
+
+### Build Flow (Current)
+
+The Dockerfile is intentionally split into clear stages:
+
+1. `base`: installs OS deps, checks out open-source plugins, composes `Gemfile` from Redmine + plugin Gemfiles + documented overrides.
+2. `gems`: runs `bundle install` (cached stage).
+3. `runtime`: copies bundled gems and app config/scripts, wires RailsPulse/SolidQueue integration, then sets entrypoint.
+4. `ci-runtime`: extends `runtime` with CI-only test dependencies for Jenkins.
+
+Addon source-of-truth is `addons.cfg` (`type:name:location:archive`).
+Paid plugins/themes are not embedded by default (`EMBED_PRO_ASSETS=0`) and are expected via runtime sync/PVC.
+Build target for local/CI compose is selected via `REDMINE_BUILD_TARGET` (`runtime` by default, `ci-runtime` for Jenkins).
+For amd64 local runs, compose files are layered:
+`docker compose -f test/docker-compose.yml -f test/docker-compose.amd64.yml ...`.
+
+Gem overrides are documented in:
+
+- `config/overrides/gem_overrides.rb`
+- `config/overrides/README.md`
+
+Repository layout (high-level):
+
+1. `config/build/`: build-time scripts (plugin checkout, Gemfile composition, engine integration).
+2. `config/runtime/`: runtime/startup scripts (addon sync, theme overrides, plugin install helper).
+3. `db/migrate/`: custom migrations shipped with this image.
+4. `config/overrides/`: documented policy overrides (gems/theme behavior).
+
+### Upgrade-Safe Migrations
+
+For Redmine upgrades (including future 6.3), run the dedicated migrate container with:
+
+- `RUN_DB_MIGRATE=1`
+- `RUN_PLUGIN_MIGRATE=auto` (default behavior when DB migration is enabled)
+
+`start_redmine.sh` now retries both:
+
+- `rake db:migrate`
+- `rake redmine:plugins:migrate`
+
+on concurrent migration lock errors, reducing rollout race failures.
+
 ### Upgrading
 
 To upgrade to newer redmine releases, simply follow this 4 step upgrade procedure.

@@ -17,19 +17,24 @@ fi
 mkdir -p /install_plugins /install_themes
 
 install_plugins_from_local_cache() {
-  local cfg_file="${REDMINE_PATH}/plugins.cfg"
+  local cfg_file="${REDMINE_PATH}/addons.cfg"
+  local manifest_script="${REDMINE_PATH}/config/lib/addons_manifest.rb"
   if [ ! -f "$cfg_file" ]; then
-    echo "plugins.cfg not found at $cfg_file (skipping RedmineUP plugins)"
+    echo "addons.cfg not found at $cfg_file (skipping RedmineUP plugins)"
     return 0
   fi
+  if [ ! -f "$manifest_script" ]; then
+    echo "addons manifest helper not found at $manifest_script"
+    return 1
+  fi
 
-  while IFS= read -r plugin || [ -n "$plugin" ]; do
-    [ -z "$plugin" ] && continue
-
-    local plugin_name
-    local plugin_file
-    plugin_name=$(echo "$plugin" | cut -d':' -f1)
-    plugin_file=$(echo "$plugin" | cut -d':' -f2)
+  local addons_base_url="${ADDONS_BASE_URL:-${PLUGINS_URL%/plugins}}"
+  while IFS=: read -r kind plugin_name location plugin_file; do
+    [ -n "$kind" ] || continue
+    case "$kind" in
+      \#*) continue ;;
+    esac
+    [ "$kind" = "plugin" ] || continue
 
     if [ -f "/install_plugins/$plugin_file" ]; then
       if [ ! -d "${REDMINE_PATH}/plugins/$plugin_name" ]; then
@@ -40,18 +45,18 @@ install_plugins_from_local_cache() {
       continue
     fi
 
-    if [ -n "${PLUGINS_URL:-}" ]; then
+    if [ -n "${addons_base_url:-}" ]; then
       local full_url
-      full_url=${PLUGINS_URL/https:\/\//https:\/\/${PLUGINS_USER:-}:${PLUGINS_PASSWORD:-}@}
-      echo "Missing /install_plugins/$plugin_file; downloading from $PLUGINS_URL"
-      wget -q -O "/install_plugins/$plugin_file" "$full_url/$plugin_file"
+      full_url=${addons_base_url/https:\/\//https:\/\/${PLUGINS_USER:-}:${PLUGINS_PASSWORD:-}@}
+      echo "Missing /install_plugins/$plugin_file; downloading from ${addons_base_url}/${location}"
+      wget -q -O "/install_plugins/$plugin_file" "$full_url/$location/$plugin_file"
       unzip -d "${REDMINE_PATH}/plugins" -o "/install_plugins/$plugin_file"
       REDMINE_PLUGINS_MIGRATE="yes"
       continue
     fi
 
-    echo "Missing /install_plugins/$plugin_file and PLUGINS_URL is empty; skipping $plugin_name"
-  done < "$cfg_file"
+    echo "Missing /install_plugins/$plugin_file and ADDONS_BASE_URL/PLUGINS_URL is empty; skipping $plugin_name"
+  done < <(ruby "$manifest_script" list)
 
   if [[ "${REDMINE_PLUGINS_MIGRATE:-no}" == "yes" ]]; then
     touch "${REDMINE_PATH}/log/redmine_helpdesk.log" || true
@@ -63,7 +68,7 @@ install_plugins_from_local_cache() {
   if [[ "${CLEANUP_INSTALL_PLUGINS:-no}" == "yes" ]] && [ -w /install_plugins ]; then
     for file in /install_plugins/*; do
       [ -e "$file" ] || continue
-      if [ "$(grep ":${file/\/install_plugins\//}" "$cfg_file" | wc -l)" -eq 0 ]; then
+      if [ "$(ruby "$manifest_script" has-plugin-archive "${file##*/}")" != "1" ]; then
         rm -f "$file"
       fi
     done

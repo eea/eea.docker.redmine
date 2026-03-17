@@ -33,59 +33,41 @@ ARG REQUIRE_PRO_PLUGINS=0
 ARG REQUIRE_A1_THEME=0
 ARG EMBED_PRO_ASSETS=0
 
-COPY plugins.cfg ${REDMINE_PATH}/plugins.cfg
-COPY config/install_pro_assets.sh /usr/local/bin/install_pro_assets.sh
+# Build-time helpers and manifests.
+COPY addons.cfg ${REDMINE_PATH}/addons.cfg
+COPY config/lib/ ${REDMINE_PATH}/config/lib/
+COPY config/build/install_pro_assets.sh /usr/local/bin/install_pro_assets.sh
+COPY config/build/compose_gemfile_from_plugins.rb /usr/local/bin/compose_gemfile_from_plugins.rb
+COPY config/build/install_core_plugins.sh /usr/local/bin/install_core_plugins.sh
+COPY config/build/install_engine_integrations.rb /usr/local/bin/install_engine_integrations.rb
 
-# Install dependencies and plugins. Keep this layer stable and cacheable.
+# Stage 1: OS packages + open-source plugin checkout.
+# Inputs: base Redmine image, build plugin installers/manifests, git refs.
+# Outputs: OS deps installed, OSS plugins checked out, optional paid assets embedded.
+# Why: create a deterministic source tree before dependency resolution.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
   --mount=type=cache,target=/var/lib/apt,sharing=locked \
   apt-get update -q \
   && apt-get install -y --no-install-recommends build-essential unzip graphviz vim python3-pip cron rsyslog python3-setuptools systemctl default-libmysqlclient-dev \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/* \
-  && mkdir -p ${REDMINE_LOCAL_PATH}/github \
-  && git clone https://github.com/eea/redmine-wiki_graphviz_plugin.git ${REDMINE_PATH}/plugins/wiki_graphviz_plugin \
-  && cd ${REDMINE_PATH}/plugins/wiki_graphviz_plugin \
-  && git checkout 33c07e45a6da51637418defa6a640acf8ca745d1 \
-  && sed -i "s/^require[[:space:]]*'kconv'$/# Ruby 3.4 removed kconv; use String#encode below instead/" ${REDMINE_PATH}/plugins/wiki_graphviz_plugin/app/helpers/wiki_graphviz_helper.rb \
-  && sed -i "s/t = t.toutf8/t = t.encode('UTF-8', invalid: :replace, undef: :replace, replace: '')/" ${REDMINE_PATH}/plugins/wiki_graphviz_plugin/app/helpers/wiki_graphviz_helper.rb \
-  && cd .. \
-  && git clone https://github.com/eea/redmine_wiki_backlinks.git ${REDMINE_PATH}/plugins/redmine_wiki_backlinks \
-  && cd ${REDMINE_PATH}/plugins/redmine_wiki_backlinks \
-  && git checkout be5749d0f258f9a3697342e6ced60af8534ed909 \
-  && cd .. \
-  && git clone -b 0.3.5 https://github.com/agileware-jp/redmine_banner.git ${REDMINE_PATH}/plugins/redmine_banner \
-  && git clone -b 3.4.0 https://github.com/alphanodes/additionals.git ${REDMINE_PATH}/plugins/additionals \
-  && sed -i "s#require 'additionals/plugin_version'#require_relative 'lib/additionals/plugin_version'#" ${REDMINE_PATH}/plugins/additionals/init.rb \
-  && git clone -b v1.5.1 https://github.com/mikitex70/redmine_drawio.git ${REDMINE_PATH}/plugins/redmine_drawio \
-  && git clone -b 1.0.7 https://github.com/ncoders/redmine_local_avatars.git ${REDMINE_PATH}/plugins/redmine_local_avatars \
-  && git clone https://github.com/eea/redmine_xls_export.git ${REDMINE_PATH}/plugins/redmine_xls_export \
-  && cd ${REDMINE_PATH}/plugins/redmine_xls_export \
-  && git checkout 087afa403b34a32313e7761cd018879f05f19e3c \
-  && cd .. \
-  && git clone -b master https://github.com/eea/redmine_entra_id.git ${REDMINE_PATH}/plugins/entra_id \
-  && git clone -b 1.11.0 https://github.com/haru/redmine_ai_helper.git ${REDMINE_PATH}/plugins/redmine_ai_helper \
+  && chmod 0755 /usr/local/bin/install_core_plugins.sh \
+  && /usr/local/bin/install_core_plugins.sh \
   && chmod 700 /usr/local/bin/install_pro_assets.sh \
   && if [ "${EMBED_PRO_ASSETS}" = "1" ]; then \
        /usr/local/bin/install_pro_assets.sh; \
      else \
-       echo "Skipping build-time install of paid plugins/themes (EMBED_PRO_ASSETS=${EMBED_PRO_ASSETS})"; \
+       echo "Skipping build-time install of paid plugins/themes (EMBED_PRO_ASSETS=${EMBED_PRO_ASSETS}); runtime sync/PVC will provide them"; \
      fi
 
-# Make sure plugin gems and mysql adapter gems are resolved at build-time.
-RUN echo 'gem "dalli", "~> 2.7.6"' >> ${REDMINE_PATH}/Gemfile \
-  && echo 'gem "acts-as-taggable-on", "~> 5.0"' >> ${REDMINE_PATH}/Gemfile \
-  && echo 'gem "redmineup"' >> ${REDMINE_PATH}/Gemfile \
-  && echo 'gem "redmine_plugin_kit"' >> ${REDMINE_PATH}/Gemfile \
-  && echo 'gem "rails_pulse"' >> ${REDMINE_PATH}/Gemfile \
-  && echo 'gem "mission_control-jobs"' >> ${REDMINE_PATH}/Gemfile \
-  && echo 'gem "solid_queue"' >> ${REDMINE_PATH}/Gemfile \
-  && echo 'gem "vcard"' >> ${REDMINE_PATH}/Gemfile \
-  && echo 'gem "wicked_pdf", "~> 1.1.0"' >> ${REDMINE_PATH}/Gemfile \
-  && echo 'gem "wkhtmltopdf-binary"' >> ${REDMINE_PATH}/Gemfile \
-  && echo 'gem "ostruct"' >> ${REDMINE_PATH}/Gemfile \
-  && printf "\ngem 'puma'\n" >> ${REDMINE_PATH}/Gemfile \
-  && ruby -e "path='${REDMINE_PATH}/Gemfile'; targets=%w[oauth2 puma redmineup redmine_plugin_kit rails-controller-testing wicked_pdf wkhtmltopdf-binary liquid vcard ostruct rails_pulse mission_control-jobs solid_queue]; lines=File.readlines(path); keep_last={}; lines.each_with_index { |line, idx| name = line[/^\\s*gem ['\\\"]([^'\\\"]+)['\\\"]/, 1]; keep_last[name] = idx if name && targets.include?(name) }; filtered = lines.each_with_index.filter_map { |line, idx| name = line[/^\\s*gem ['\\\"]([^'\\\"]+)['\\\"]/, 1]; next if name && targets.include?(name) && keep_last[name] != idx; line }; File.write(path, filtered.join)"
+# Stage 2: compose Gemfile from base+plugins+documented overrides.
+# Inputs: Redmine Gemfile, plugin Gemfiles, config/overrides policy.
+# Outputs: final deduplicated Gemfile/Gemfile.lock source for bundle stage.
+# Why: keep gem policy explicit and avoid ad-hoc Dockerfile gem mutations.
+COPY config/overrides/ ${REDMINE_PATH}/config/overrides/
+RUN chmod 700 /usr/local/bin/compose_gemfile_from_plugins.rb \
+  && ruby /usr/local/bin/compose_gemfile_from_plugins.rb \
+  && find ${REDMINE_PATH}/plugins -mindepth 2 -maxdepth 2 -name Gemfile -delete
 
 RUN chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH}
 
@@ -93,6 +75,9 @@ RUN chown -R redmine:redmine ${REDMINE_PATH} ${REDMINE_LOCAL_PATH}
 FROM base AS gems
 
 # Keep this in its own stage so most app/config edits do not invalidate gem install cache.
+# Inputs: composed Gemfile from base stage.
+# Outputs: fully installed production bundle.
+# Why: maximize cache hits and keep runtime boot fast.
 RUN --mount=type=cache,target=/usr/local/bundle/cache \
   printf "production:\n  adapter: mysql2\n\ntest:\n  adapter: mysql2\n" > ${REDMINE_PATH}/config/database.yml \
   && \
@@ -106,13 +91,17 @@ RUN --mount=type=cache,target=/usr/local/bundle/cache \
 
 FROM base AS runtime
 
+# Stage 3: runtime wiring + entrypoint.
+# Inputs: bundled gems + runtime scripts/config + custom migrations.
+# Outputs: runnable image with clear startup/migrate behavior.
+# Why: separate runtime concerns from build-time dependency work.
 COPY --from=gems /usr/local/bundle /usr/local/bundle
 COPY --from=gems /usr/src/redmine/Gemfile /usr/src/redmine/Gemfile
 COPY --from=gems /usr/src/redmine/Gemfile.lock /usr/src/redmine/Gemfile.lock
 
 # Install eea cron tools
 COPY crons/ ${REDMINE_LOCAL_PATH}/crons
-COPY config/install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
+COPY config/runtime/install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
 COPY redmine_jobs /var/redmine_jobs.txt
 
 RUN sed -i '/#cron./c\cron.*                          \/proc\/1\/fd\/1' /etc/rsyslog.conf \
@@ -133,21 +122,21 @@ COPY config/queue.yml ${REDMINE_PATH}/config/queue.yml
 COPY config/rails_pulse.rb ${REDMINE_PATH}/config/initializers/rails_pulse.rb
 COPY config/mission_control_jobs.rb ${REDMINE_PATH}/config/initializers/mission_control_jobs.rb
 COPY config/recurring.yml ${REDMINE_PATH}/config/recurring.yml
-COPY config/solid_queue_migrations/20260313123000_install_solid_queue_tables.rb ${REDMINE_PATH}/db/migrate/20260313123000_install_solid_queue_tables.rb
-COPY config/rails_pulse_migrations/20260310221000_expand_rails_pulse_columns.rb ${REDMINE_PATH}/db/migrate/20260310221000_expand_rails_pulse_columns.rb
-COPY config/apply_a1_theme_overrides.sh /usr/local/bin/apply_a1_theme_overrides.sh
-COPY config/prepare_addons_assets.sh /usr/local/bin/prepare_addons_assets.sh
-COPY config/sync_addons_bundle.sh /usr/local/bin/sync_addons_bundle.sh
-COPY config/sync_addons_from_dir.sh /usr/local/bin/sync_addons_from_dir.sh
-COPY config/sync_addons_from_share.sh /usr/local/bin/sync_addons_from_share.sh
+COPY db/migrate/20260313123000_install_solid_queue_tables.rb ${REDMINE_PATH}/db/migrate/20260313123000_install_solid_queue_tables.rb
+COPY db/migrate/20260310221000_expand_rails_pulse_columns.rb ${REDMINE_PATH}/db/migrate/20260310221000_expand_rails_pulse_columns.rb
+COPY config/runtime/apply_a1_theme_overrides.sh /usr/local/bin/apply_a1_theme_overrides.sh
+COPY config/runtime/prepare_addons_assets.sh /usr/local/bin/prepare_addons_assets.sh
+COPY config/runtime/sync_addons_bundle.sh /usr/local/bin/sync_addons_bundle.sh
+COPY config/runtime/sync_addons_from_dir.sh /usr/local/bin/sync_addons_from_dir.sh
+COPY config/runtime/sync_addons_from_share.sh /usr/local/bin/sync_addons_from_share.sh
+COPY config/runtime/migration_runner.rb ${REDMINE_PATH}/config/runtime/migration_runner.rb
+COPY config/runtime/common.sh /usr/local/bin/common.sh
 
-# Install Rails Pulse into the image: engine route, initializer, and migrations.
+# Add RailsPulse/SolidQueue integration in a dedicated build step.
 RUN set -euo pipefail \
   && cd ${REDMINE_PATH} \
-  && ruby -e "require 'fileutils'; spec = Gem::Specification.find_by_name('rails_pulse'); src = File.join(spec.gem_dir, 'db', 'migrate'); dst = File.join('${REDMINE_PATH}', 'db', 'migrate'); Dir.mkdir(dst) unless Dir.exist?(dst); Dir.glob(File.join(src, '*.rb')).sort.each do |path| base = File.basename(path); suffix = base.sub(/^\\d+_/, ''); exists = File.exist?(File.join(dst, base)) || !Dir.glob(File.join(dst, \"*_#{suffix}\")).empty?; FileUtils.cp(path, File.join(dst, base)) unless exists; end" \
-  && ruby -e "require 'fileutils'; spec = Gem::Specification.find_by_name('solid_queue'); src = File.join(spec.gem_dir, 'db', 'migrate'); dst = File.join('${REDMINE_PATH}', 'db', 'migrate'); Dir.mkdir(dst) unless Dir.exist?(dst); Dir.glob(File.join(src, '*.rb')).sort.each do |path| base = File.basename(path); suffix = base.sub(/^\\d+_/, ''); exists = File.exist?(File.join(dst, base)) || !Dir.glob(File.join(dst, \"*_#{suffix}\")).empty?; FileUtils.cp(path, File.join(dst, base)) unless exists; end" \
-  && ruby -e "require 'fileutils'; spec = Gem::Specification.find_by_name('rails_pulse'); src = File.join(spec.gem_dir, 'db', 'rails_pulse_schema.rb'); dst = File.join('${REDMINE_PATH}', 'db', 'rails_pulse_schema.rb'); FileUtils.cp(src, dst) unless File.exist?(dst)" \
-  && ruby -e "routes='${REDMINE_PATH}/config/routes.rb'; content=File.read(routes); mounts=[]; mounts << \"  mount RailsPulse::Engine, at: '/rails_pulse'\\n\" unless content.include?('RailsPulse::Engine'); mounts << \"  mount MissionControl::Jobs::Engine, at: '/jobs'\\n\" unless content.include?('MissionControl::Jobs::Engine'); unless mounts.empty?; updated = content.sub(/\\nend\\s*\\z/, \"\\n#{mounts.join}end\\n\"); raise 'Could not locate routes.rb closing end' if updated == content; File.write(routes, updated); end"
+  && chmod 0755 /usr/local/bin/install_engine_integrations.rb \
+  && ruby /usr/local/bin/install_engine_integrations.rb
 
 COPY theme_overrides/ ${REDMINE_PATH}/theme_overrides/
 RUN set -euo pipefail \
@@ -156,6 +145,9 @@ RUN set -euo pipefail \
   && chmod 0755 /usr/local/bin/sync_addons_bundle.sh \
   && chmod 0755 /usr/local/bin/sync_addons_from_dir.sh \
   && chmod 0755 /usr/local/bin/sync_addons_from_share.sh \
+  && chmod 0755 /usr/local/bin/common.sh \
+  && chmod 0755 ${REDMINE_PATH}/config/runtime/migration_runner.rb \
+  && chmod 0755 ${REDMINE_PATH}/config/lib/addons_manifest.rb \
   && /usr/local/bin/apply_a1_theme_overrides.sh \
   && ADDONS_CURRENT_DIR="${REDMINE_PATH}" \
      PLUGINS_DIR="${REDMINE_PATH}/plugins" \
@@ -166,7 +158,25 @@ RUN set -euo pipefail \
   && install -m 0644 ${REDMINE_PATH}/theme_overrides/a1/images/icons.svg ${REDMINE_PATH}/plugins/additionals/assets/images/icons.svg \
   && install -m 0644 ${REDMINE_PATH}/theme_overrides/a1/images/loading.gif ${REDMINE_PATH}/plugins/redmine_contacts_helpdesk/assets/images/loading.gif
 COPY start_redmine.sh /start_redmine.sh
-RUN chmod 0766 /start_redmine.sh
+RUN chmod 0755 /start_redmine.sh
 
 ENTRYPOINT ["/start_redmine.sh"]
 CMD []
+
+
+FROM runtime AS ci-runtime
+
+# CI-only additions (kept out of production runtime image)
+RUN set -euo pipefail \
+  && apt-get update -q \
+  && apt-get install -y --no-install-recommends python3 \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/* \
+  && for gem_name in ci_reporter_minitest minitest-reporters; do \
+       if ! grep -Eq "^[[:space:]]*gem ['\\\"]${gem_name}['\\\"]" /usr/src/redmine/Gemfile; then \
+         echo "gem '${gem_name}'" >> /usr/src/redmine/Gemfile; \
+       fi; \
+     done \
+  && /usr/local/bin/bundle config unset without || true \
+  && /usr/local/bin/bundle config set without '' \
+  && /usr/local/bin/bundle install --jobs 4
