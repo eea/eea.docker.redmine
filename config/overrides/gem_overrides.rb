@@ -19,6 +19,7 @@ gem 'acts-as-taggable-on', '~> 5.0'
 gem 'tanuki_emoji'
 gem 'render_async'
 gem 'rss'
+gem 'slim-rails'
 
 # Ruby 3.4 compatibility for stdlib extraction.
 gem 'ostruct'
