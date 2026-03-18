@@ -35,6 +35,7 @@ ARG EMBED_PRO_ASSETS=0
 
 # Build-time helpers and manifests.
 COPY addons.cfg ${REDMINE_PATH}/addons.cfg
+RUN awk -F: '$1 == "plugin" && $2 != "" && $4 != "" { print $2 ":" $4 }' "${REDMINE_PATH}/addons.cfg" > "${REDMINE_PATH}/plugins.cfg"
 COPY config/lib/ ${REDMINE_PATH}/config/lib/
 COPY config/build/install_pro_assets.sh /usr/local/bin/install_pro_assets.sh
 COPY config/build/compose_gemfile_from_plugins.rb /usr/local/bin/compose_gemfile_from_plugins.rb
