@@ -19,6 +19,7 @@ git checkout be5749d0f258f9a3697342e6ced60af8534ed909
 cd ..
 
 git clone -b 0.3.5 https://github.com/agileware-jp/redmine_banner.git "${REDMINE_PATH}/plugins/redmine_banner"
+git clone https://github.com/enricohuang/redmine_mermaid.git "${REDMINE_PATH}/plugins/redmine_mermaid"
 git clone -b 3.4.0 https://github.com/alphanodes/additionals.git "${REDMINE_PATH}/plugins/additionals"
 sed -i "s#require 'additionals/plugin_version'#require_relative 'lib/additionals/plugin_version'#" "${REDMINE_PATH}/plugins/additionals/init.rb"
 git clone -b v1.5.1 https://github.com/mikitex70/redmine_drawio.git "${REDMINE_PATH}/plugins/redmine_drawio"

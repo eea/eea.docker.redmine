@@ -74,16 +74,20 @@
       $(".members.box").next().filter(".projects.box").insertBefore(".members.box");
     }
 
-    function blockAnonymousQuickSearch() {
+    // #106078 block search for anonymous
+    function blockSearchAnonymous() {
       if (!$("#loggedas").length) {
-        $("#quick-search, #quick-search form, #quick-search input, .quick-search").hide();
-        $("input[placeholder='Search'], input[placeholder='search']").closest("form, #quick-search, .quick-search, .search-box").hide();
+        $("#quick-search form").hide();
+        $("#quick-search, .quick-search").hide();
+        $("input[placeholder='Search'], input[placeholder='search']")
+          .closest("form, #quick-search, .quick-search, .search-box")
+          .hide();
         document.cookie = "_redmine_eea=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-        return;
+      } else {
+        var d = new Date();
+        d.setTime(d.getTime() + 86400000);
+        document.cookie = "_redmine_eea=1; expires=" + d.toUTCString() + ";path=/";
       }
-      var d = new Date();
-      d.setTime(d.getTime() + 86400000);
-      document.cookie = "_redmine_eea=1; expires=" + d.toUTCString() + "; path=/;";
     }
 
     function fixIssueHistoryOrder() {
@@ -367,12 +371,17 @@
     }
 
     moveProjectsBoxAboveMembers();
-    blockAnonymousQuickSearch();
+    blockSearchAnonymous();
     fixIssueHistoryOrder();
     focusLoginAnd2fa();
     ensureTimeEntryBackUrl();
     normalizeAdminWikiLinksIconClass();
     setupPaymentReferencePrefill();
     setupWipOverloadIndicator();
+
+    // Re-apply on dynamic updates where search markup can be re-rendered.
+    $(document).on("ajaxComplete", function () {
+      blockSearchAnonymous();
+    });
   });
 }());
