@@ -3,7 +3,25 @@ production:
     class: RailsPulse::SummaryJob
     schedule: every 5 minutes
   rails_pulse_day_refresh:
-    command: "begin; RailsPulse::SummaryService.new('day', Time.current).perform; Rails.logger.info('[rails_pulse_day_refresh] ok'); rescue => e; Rails.logger.error(\"[rails_pulse_day_refresh] #{e.class}: #{e.message}\"); raise; end"
+    command: >
+      begin
+        if ENV.fetch('RAILS_PULSE_SUMMARY_ENABLED', '1') != '1'
+          Rails.logger.info('[rails_pulse_day_refresh] skipped (RAILS_PULSE_SUMMARY_ENABLED!=1)')
+        else
+          RailsPulse::SummaryService.new('day', Time.current).perform
+          Rails.logger.info('[rails_pulse_day_refresh] ok')
+        end
+      rescue ActiveRecord::RecordNotUnique, Mysql2::Error => e
+        if e.message.include?('idx_pulse_summaries_unique')
+          Rails.logger.warn("[rails_pulse_day_refresh] duplicate summary race: #{e.message}")
+        else
+          Rails.logger.error("[rails_pulse_day_refresh] #{e.class}: #{e.message}")
+          raise
+        end
+      rescue => e
+        Rails.logger.error("[rails_pulse_day_refresh] #{e.class}: #{e.message}")
+        raise
+      end
     schedule: every 5 minutes
   rails_pulse_cleanup:
     class: RailsPulse::CleanupJob
