@@ -49,7 +49,7 @@ COPY config/build/install_engine_integrations.rb /usr/local/bin/install_engine_i
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
   --mount=type=cache,target=/var/lib/apt,sharing=locked \
   apt-get update -q \
-  && apt-get install -y --no-install-recommends build-essential unzip graphviz vim python3-pip cron rsyslog python3-setuptools systemctl default-libmysqlclient-dev \
+  && apt-get install -y --no-install-recommends build-essential unzip graphviz vim python3-pip cron rsyslog python3-setuptools systemctl default-libmysqlclient-dev libyaml-dev \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/* \
   && chmod 0755 /usr/local/bin/install_core_plugins.sh \
@@ -86,6 +86,7 @@ RUN --mount=type=cache,target=/usr/local/bundle/cache \
   && /usr/local/bin/bundle config set retry '5' \
   && /usr/local/bin/bundle config set timeout '30' \
   && /usr/local/bin/bundle install --jobs 4 \
+  && /usr/local/bin/bundle exec ruby -e "require 'mysql2'; puts \"mysql2=#{Mysql2::VERSION}\"" \
   && /usr/local/bin/bundle clean --force \
   && chmod -R go-w /usr/local/bundle
 
@@ -134,6 +135,7 @@ COPY config/runtime/sync_addons_from_dir.sh /usr/local/bin/sync_addons_from_dir.
 COPY config/runtime/sync_addons_from_share.sh /usr/local/bin/sync_addons_from_share.sh
 COPY config/runtime/migration_runner.rb ${REDMINE_PATH}/config/runtime/migration_runner.rb
 COPY config/runtime/common.sh /usr/local/bin/common.sh
+COPY config/runtime/kconv.rb ${REDMINE_PATH}/lib/kconv.rb
 
 # Add RailsPulse/SolidQueue integration in a dedicated build step.
 RUN set -euo pipefail \
