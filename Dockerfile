@@ -119,9 +119,11 @@ COPY config/additional_environment.rb ${REDMINE_PATH}/config/additional_environm
 
 # Add email configuration
 COPY config/configuration.yml ${REDMINE_PATH}/config/configuration.yml
+COPY config/cable.yml ${REDMINE_PATH}/config/cable.yml
 COPY config/queue.yml ${REDMINE_PATH}/config/queue.yml
 COPY config/rails_pulse.rb ${REDMINE_PATH}/config/initializers/rails_pulse.rb
 COPY config/mission_control_jobs.rb ${REDMINE_PATH}/config/initializers/mission_control_jobs.rb
+COPY config/initializers/test_runtime_compat.rb ${REDMINE_PATH}/config/initializers/test_runtime_compat.rb
 COPY config/recurring.yml ${REDMINE_PATH}/config/recurring.yml
 COPY db/migrate/20260313123000_install_solid_queue_tables.rb ${REDMINE_PATH}/db/migrate/20260313123000_install_solid_queue_tables.rb
 COPY db/migrate/20260310221000_expand_rails_pulse_columns.rb ${REDMINE_PATH}/db/migrate/20260310221000_expand_rails_pulse_columns.rb
@@ -137,7 +139,9 @@ COPY config/runtime/common.sh /usr/local/bin/common.sh
 RUN set -euo pipefail \
   && cd ${REDMINE_PATH} \
   && chmod 0755 /usr/local/bin/install_engine_integrations.rb \
-  && ruby /usr/local/bin/install_engine_integrations.rb
+  && ruby /usr/local/bin/install_engine_integrations.rb \
+  && find /usr/local/bundle/gems -path "*/rails_pulse-*/lib/rails_pulse/engine.rb" -type f -print0 \
+     | xargs -0 sed -i "s/controller.class.name.start_with?(\"RailsPulse::\")/controller.class.name.to_s.start_with?(\"RailsPulse::\")/"
 
 COPY theme_overrides/ ${REDMINE_PATH}/theme_overrides/
 RUN set -euo pipefail \

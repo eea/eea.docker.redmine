@@ -237,23 +237,45 @@ ensure_database_yml() {
   local db_user="${REDMINE_DB_USERNAME:-redmine}"
   local db_pass="${REDMINE_DB_PASSWORD:-}"
   local db_pool="${REDMINE_DB_POOL:-${RAILS_MAX_THREADS:-5}}"
+  local test_db_host="${REDMINE_TEST_DB_MYSQL:-${db_host}}"
+  local test_db_port="${REDMINE_TEST_DB_PORT:-${db_port}}"
+  local test_db_name="${REDMINE_TEST_DB_DATABASE:-${db_name}}"
+  local test_db_user="${REDMINE_TEST_DB_USERNAME:-${db_user}}"
+  local test_db_pass="${REDMINE_TEST_DB_PASSWORD:-${db_pass}}"
+  local test_db_pool="${REDMINE_TEST_DB_POOL:-${db_pool}}"
 
-  if [ -f "${db_file}" ]; then
-    return 0
-  fi
+  append_db_block() {
+    local env_name="$1"
+    local host="$2"
+    local port="$3"
+    local name="$4"
+    local user="$5"
+    local pass="$6"
+    local pool="$7"
 
-  mkdir -p "$(dirname "${db_file}")"
-  cat > "${db_file}" <<EOF
-${rails_env}:
+    cat >> "${db_file}" <<EOF
+${env_name}:
   adapter: mysql2
-  host: "${db_host}"
-  port: "${db_port}"
-  database: "${db_name}"
-  username: "${db_user}"
-  password: "${db_pass}"
-  pool: ${db_pool}
+  host: "${host}"
+  port: "${port}"
+  database: "${name}"
+  username: "${user}"
+  password: "${pass}"
+  pool: ${pool}
   encoding: utf8mb4
 EOF
+  }
+
+  mkdir -p "$(dirname "${db_file}")"
+
+  if [ ! -f "${db_file}" ]; then
+    append_db_block "${rails_env}" "${db_host}" "${db_port}" "${db_name}" "${db_user}" "${db_pass}" "${db_pool}"
+  fi
+
+  if ! grep -qE '^test:' "${db_file}"; then
+    [ -s "${db_file}" ] && printf "\n" >> "${db_file}"
+    append_db_block "test" "${test_db_host}" "${test_db_port}" "${test_db_name}" "${test_db_user}" "${test_db_pass}" "${test_db_pool}"
+  fi
 }
 
 prepare_addons_assets_in_place() {
@@ -322,13 +344,13 @@ run_jobs_only_foreground() {
     start_cron_background
     echo "Starting Solid Queue supervisor in foreground with cron in background"
     cd "${REDMINE_PATH}"
-    exec /docker-entrypoint.sh bundle exec rake solid_queue:start
+    exec bundle exec rake solid_queue:start
   fi
 
   if [ "${START_SOLID_QUEUE}" = "1" ]; then
     echo "Starting Solid Queue supervisor in foreground"
     cd "${REDMINE_PATH}"
-    exec /docker-entrypoint.sh bundle exec rake solid_queue:start
+    exec bundle exec rake solid_queue:start
   fi
 
   if [ "${START_CRON}" = "1" ]; then
@@ -382,7 +404,7 @@ run_assets_precompile_if_enabled() {
   fi
 
   echo "Running assets:precompile (ASSETS_PRECOMPILE_FORCE=${ASSETS_PRECOMPILE_FORCE})"
-  if ! timeout "${ASSETS_PRECOMPILE_TIMEOUT}" /docker-entrypoint.sh bundle exec rake assets:precompile; then
+  if ! timeout "${ASSETS_PRECOMPILE_TIMEOUT}" bundle exec rake assets:precompile; then
     echo "assets:precompile failed or timed out after ${ASSETS_PRECOMPILE_TIMEOUT}s"
     return 1
   fi
@@ -482,7 +504,7 @@ if [ "${MIGRATIONS_ONLY_STARTUP}" = "1" ]; then
   fi
 
   if [ "${ADMIN_BOOTSTRAP_ENABLE}" = "1" ]; then
-    if ! timeout "${ADMIN_BOOTSTRAP_TIMEOUT}" /docker-entrypoint.sh bundle exec rails runner "
+    if ! timeout "${ADMIN_BOOTSTRAP_TIMEOUT}" bundle exec rails runner "
       password = ENV.fetch('ADMIN_BOOTSTRAP_PASSWORD', 'Admin123!')
       theme = ENV.fetch('DEFAULT_THEME', 'a1')
       admin = User.find_by(login: 'admin')
@@ -514,7 +536,7 @@ if [ "${MIGRATIONS_ONLY_STARTUP}" = "1" ]; then
     start_cron_background
     export REDMINE_NO_DB_MIGRATE=1
     export REDMINE_PLUGINS_MIGRATE=
-    exec /docker-entrypoint.sh bundle exec rails server -b 0.0.0.0
+    exec bundle exec rails server -b 0.0.0.0
   fi
 
   wait_for_db_tables
@@ -784,12 +806,8 @@ safe_chown_tree /usr/src/redmine/plugins
 safe_chown_tree "${THEMES_DIR}"
 safe_chown_path /usr/src/redmine/tmp
 
-if [ -n "${REDMINE_DB_POOL:-}" ]; then
-    sed -i "/bundle check/a\        echo '  pool: $REDMINE_DB_POOL' >> config\/database.yml"    /docker-entrypoint.sh
-fi
-
 if [ "${START_SERVER}" = "1" ]; then
-  /docker-entrypoint.sh bundle exec rails server -b 0.0.0.0
+  exec bundle exec rails server -b 0.0.0.0
 else
   wait_for_db_tables
   run_jobs_only_foreground
