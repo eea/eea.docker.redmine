@@ -20,10 +20,20 @@ cd ..
 
 git clone -b 0.3.5 https://github.com/agileware-jp/redmine_banner.git "${REDMINE_PATH}/plugins/redmine_banner"
 git clone https://github.com/enricohuang/redmine_mermaid.git "${REDMINE_PATH}/plugins/redmine_mermaid"
-git clone -b 4.4.0 https://github.com/alphanodes/additionals.git "${REDMINE_PATH}/plugins/additionals"
-sed -i "s#require 'additionals/plugin_version'#require_relative 'lib/additionals/plugin_version'#" "${REDMINE_PATH}/plugins/additionals/init.rb"
+git clone -b main https://github.com/alphanodes/additionals.git "${REDMINE_PATH}/plugins/additionals"
+(
+  cd "${REDMINE_PATH}/plugins/additionals"
+  # Upstream does not publish a 4.4.0 tag yet; pin known-good main commit.
+  git checkout 6a4b2bbec4c212622b9cb2c5b4445d89872d929e
+)
+# Backward-compatible patch for releases that still use absolute require.
+if [ -f "${REDMINE_PATH}/plugins/additionals/init.rb" ]; then
+  sed -i "s#require 'additionals/plugin_version'#require_relative 'lib/additionals/plugin_version'#" "${REDMINE_PATH}/plugins/additionals/init.rb"
+fi
 git clone -b v1.5.2 https://github.com/mikitex70/redmine_drawio.git "${REDMINE_PATH}/plugins/redmine_drawio"
 git clone -b 1.1.0 https://github.com/ncoders/redmine_local_avatars.git "${REDMINE_PATH}/plugins/redmine_local_avatars"
+# Upstream 1.1.0 tag still reports 1.0.7 in init.rb; normalize plugin registration version.
+sed -i "s/version '1.0.7'/version '1.1.0'/" "${REDMINE_PATH}/plugins/redmine_local_avatars/init.rb"
 
 git clone https://github.com/eea/redmine_xls_export.git "${REDMINE_PATH}/plugins/redmine_xls_export"
 cd "${REDMINE_PATH}/plugins/redmine_xls_export"
