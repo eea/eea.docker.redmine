@@ -27,6 +27,7 @@ FAST_BOOT=${FAST_BOOT:-1}
 RUNTIME_PLUGIN_SYNC=${RUNTIME_PLUGIN_SYNC:-0}
 RUNTIME_THEME_SYNC=${RUNTIME_THEME_SYNC:-0}
 RUNTIME_BUNDLE_INSTALL=${RUNTIME_BUNDLE_INSTALL:-0}
+RUNTIME_BUNDLE_LOCAL_INSTALL=${RUNTIME_BUNDLE_LOCAL_INSTALL:-1}
 STARTUP_ASSET_FIXES=${STARTUP_ASSET_FIXES:-0}
 APPLY_A1_THEME_OVERRIDES_ON_BOOT=${APPLY_A1_THEME_OVERRIDES_ON_BOOT:-0}
 ASSETS_PRECOMPILE=${ASSETS_PRECOMPILE:-0}
@@ -412,6 +413,31 @@ run_assets_precompile_if_enabled() {
   return 0
 }
 
+ensure_bundle_ready() {
+  if bundle check >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if [ "${RUNTIME_BUNDLE_LOCAL_INSTALL}" = "1" ]; then
+    echo "Bundle check failed, attempting offline bundle install from image cache"
+    bundle config set without 'development test' >/dev/null 2>&1 || true
+    if bundle install --local --jobs 4; then
+      return 0
+    fi
+  fi
+
+  if [ "${FAST_BOOT}" != "1" ] && [ "${RUNTIME_BUNDLE_INSTALL}" = "1" ]; then
+    echo "Bundle check failed, attempting online runtime bundle install"
+    bundle config set without 'development test' >/dev/null 2>&1 || true
+    bundle install --jobs 4
+    return 0
+  fi
+
+  echo "Missing gems in runtime bundle and installation is disabled."
+  echo "Set RUNTIME_BUNDLE_LOCAL_INSTALL=1 (offline cache) or rebuild image with complete bundle."
+  return 1
+}
+
 wait_for_db_tables() {
   if [ -z "${WAIT_FOR_DB_TABLES}" ]; then
     return 0
@@ -533,6 +559,7 @@ if [ "${MIGRATIONS_ONLY_STARTUP}" = "1" ]; then
   fi
 
   if [ "${START_SERVER}" = "1" ]; then
+    ensure_bundle_ready
     start_cron_background
     export REDMINE_NO_DB_MIGRATE=1
     export REDMINE_PLUGINS_MIGRATE=
@@ -631,6 +658,7 @@ resolve_archive() {
 
 setup_runtime_environment
 ensure_database_yml
+ensure_bundle_ready
 start_cron_background
 
 REDMINE_SMTP_HOST=${REDMINE_SMTP_HOST:-postfix}
@@ -657,7 +685,7 @@ fi
 last_line=$(sed -n '/smtp_settings/,/^$/p' ${REDMINE_PATH}/config/configuration.yml | wc -l )
 let last_part=${first_line}+${last_line}-1
 tail --lines=+$last_part ${REDMINE_PATH}/config/configuration.yml >> /tmp/configuration.yml
-diff /tmp/configuration.yml ${REDMINE_PATH}/config/configuration.yml
+diff /tmp/configuration.yml ${REDMINE_PATH}/config/configuration.yml || true
 mv /tmp/configuration.yml ${REDMINE_PATH}/config/configuration.yml
 
 

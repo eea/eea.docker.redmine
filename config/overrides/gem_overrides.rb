@@ -7,6 +7,7 @@ gem 'dalli', '~> 2.7.6'
 gem 'rails_pulse'
 gem 'mission_control-jobs'
 gem 'solid_queue'
+gem 'mysql2', '~> 0.5.0'
 
 # RedmineUP/pro-plugin runtime dependencies must be present in image
 # even when addons are synced at runtime from PVC/share.
