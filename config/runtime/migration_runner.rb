@@ -19,7 +19,7 @@ retries = Integer(ENV.fetch("MIGRATION_RETRIES", "30"))
 delay = Integer(ENV.fetch("MIGRATION_RETRY_DELAY", "2"))
 
 def run_task(task_name)
-  cmd = ["/docker-entrypoint.sh", "rake", task_name]
+  cmd = ["/docker-entrypoint.sh", "bundle", "exec", "rake", task_name]
   Open3.capture2e(*cmd)
 end
 

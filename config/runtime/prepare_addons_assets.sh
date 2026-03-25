@@ -12,11 +12,22 @@ ensure_file() {
   local destination="$1"
   shift
   local source
+  local destination_dir
 
-  mkdir -p "$(dirname "${destination}")"
+  destination_dir="$(dirname "${destination}")"
   if [ -f "${destination}" ]; then
     return 0
   fi
+  if [ ! -d "${destination_dir}" ] && [ ! -w "$(dirname "${destination_dir}")" ]; then
+    echo "Skipping asset materialization for ${destination} (parent not writable)"
+    return 0
+  fi
+  if [ -d "${destination_dir}" ] && [ ! -w "${destination_dir}" ]; then
+    echo "Skipping asset materialization for ${destination} (directory not writable)"
+    return 0
+  fi
+
+  mkdir -p "${destination_dir}"
 
   for source in "$@"; do
     if [ -f "${source}" ]; then
@@ -34,7 +45,7 @@ rewrite_css_urls() {
   for css in \
     "${PLUGINS_DIR}/redmine_contacts/assets/stylesheets/money.css" \
     "${PLUGINS_DIR}/redmineup/assets/stylesheets/money.css"; do
-    if [ -f "${css}" ]; then
+    if [ -f "${css}" ] && [ -w "${css}" ]; then
       sed -i \
         -e 's#\.\./images/money\.png#money.png#g' \
         -e 's#\.\./images/bullet_go\.png#bullet_go.png#g' \
@@ -44,6 +55,8 @@ rewrite_css_urls() {
         -e 's#\./bullet_end\.png#bullet_end.png#g' \
         -e 's#\./bullet_diamond\.png#bullet_diamond.png#g' \
         "${css}"
+    elif [ -f "${css}" ]; then
+      echo "Skipping CSS rewrite for ${css} (read-only)"
     fi
   done
 
@@ -51,7 +64,7 @@ rewrite_css_urls() {
     "${PLUGINS_DIR}/redmine_contacts/assets/stylesheets/select2.css" \
     "${PLUGINS_DIR}/redmine_contacts/assets/stylesheets/calendars.css" \
     "${PLUGINS_DIR}/redmine_contacts_helpdesk/assets/stylesheets/helpdesk.css"; do
-    if [ -f "${css}" ]; then
+    if [ -f "${css}" ] && [ -w "${css}" ]; then
       sed -i \
         -e 's#\.\./images/vcard\.png#vcard.png#g' \
         -e 's#\.\./\.\./\.\./images/bullet_go\.png#bullet_go.png#g' \
@@ -59,12 +72,16 @@ rewrite_css_urls() {
         -e 's#\.\./\.\./\.\./images/bullet_diamond\.png#bullet_diamond.png#g' \
         -e 's#\.\./\.\./\.\./loading\.gif#loading.gif#g' \
         "${css}"
+    elif [ -f "${css}" ]; then
+      echo "Skipping CSS rewrite for ${css} (read-only)"
     fi
   done
 
   css="${THEMES_DIR}/${A1_THEME_ID}/stylesheets/application.css"
-  if [ -f "${css}" ]; then
+  if [ -f "${css}" ] && [ -w "${css}" ]; then
     sed -i 's#/stylesheets/jquery/images/#jquery/#g' "${css}"
+  elif [ -f "${css}" ]; then
+    echo "Skipping CSS rewrite for ${css} (read-only)"
   fi
 }
 

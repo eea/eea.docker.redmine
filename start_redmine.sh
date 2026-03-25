@@ -322,13 +322,13 @@ run_jobs_only_foreground() {
     start_cron_background
     echo "Starting Solid Queue supervisor in foreground with cron in background"
     cd "${REDMINE_PATH}"
-    exec /docker-entrypoint.sh rake solid_queue:start
+    exec /docker-entrypoint.sh bundle exec rake solid_queue:start
   fi
 
   if [ "${START_SOLID_QUEUE}" = "1" ]; then
     echo "Starting Solid Queue supervisor in foreground"
     cd "${REDMINE_PATH}"
-    exec /docker-entrypoint.sh rake solid_queue:start
+    exec /docker-entrypoint.sh bundle exec rake solid_queue:start
   fi
 
   if [ "${START_CRON}" = "1" ]; then
@@ -382,7 +382,7 @@ run_assets_precompile_if_enabled() {
   fi
 
   echo "Running assets:precompile (ASSETS_PRECOMPILE_FORCE=${ASSETS_PRECOMPILE_FORCE})"
-  if ! timeout "${ASSETS_PRECOMPILE_TIMEOUT}" /docker-entrypoint.sh rake assets:precompile; then
+  if ! timeout "${ASSETS_PRECOMPILE_TIMEOUT}" /docker-entrypoint.sh bundle exec rake assets:precompile; then
     echo "assets:precompile failed or timed out after ${ASSETS_PRECOMPILE_TIMEOUT}s"
     return 1
   fi
@@ -482,7 +482,7 @@ if [ "${MIGRATIONS_ONLY_STARTUP}" = "1" ]; then
   fi
 
   if [ "${ADMIN_BOOTSTRAP_ENABLE}" = "1" ]; then
-    if ! timeout "${ADMIN_BOOTSTRAP_TIMEOUT}" /docker-entrypoint.sh rails runner "
+    if ! timeout "${ADMIN_BOOTSTRAP_TIMEOUT}" /docker-entrypoint.sh bundle exec rails runner "
       password = ENV.fetch('ADMIN_BOOTSTRAP_PASSWORD', 'Admin123!')
       theme = ENV.fetch('DEFAULT_THEME', 'a1')
       admin = User.find_by(login: 'admin')
@@ -514,7 +514,7 @@ if [ "${MIGRATIONS_ONLY_STARTUP}" = "1" ]; then
     start_cron_background
     export REDMINE_NO_DB_MIGRATE=1
     export REDMINE_PLUGINS_MIGRATE=
-    exec /docker-entrypoint.sh rails server -b 0.0.0.0
+    exec /docker-entrypoint.sh bundle exec rails server -b 0.0.0.0
   fi
 
   wait_for_db_tables
@@ -789,7 +789,7 @@ if [ -n "${REDMINE_DB_POOL:-}" ]; then
 fi
 
 if [ "${START_SERVER}" = "1" ]; then
-  /docker-entrypoint.sh rails server -b 0.0.0.0
+  /docker-entrypoint.sh bundle exec rails server -b 0.0.0.0
 else
   wait_for_db_tables
   run_jobs_only_foreground
