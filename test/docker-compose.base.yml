@@ -6,7 +6,7 @@ services:
       MYSQL_PASSWORD: password
       MYSQL_ROOT_PASSWORD: password
       MYSQL_USER: redmine
-      TZ: Europe/Copenhagen
+      TZ: UTC
     volumes:
     - taskman_test_db_mysql84:/var/lib/mysql
     command:
@@ -76,7 +76,7 @@ services:
       APPLY_A1_THEME_OVERRIDES_ON_BOOT: "0"
       RAILS_ENV: production
       RAILS_LOG_LEVEL: info
-      TZ: Europe/Copenhagen
+      TZ: UTC
     volumes:
     - addons_data:/addons:ro
     - redmine_assets:/usr/src/redmine/public/assets
@@ -105,6 +105,7 @@ services:
       RUN_DB_MIGRATE: "0"
       ASSETS_PRECOMPILE: "0"
       SELENIUM_REMOTE_URL: http://hub:4444/wd/hub
+      CAPYBARA_APP_HOST: http://redmine:3000
       ACTIVE_JOB_QUEUE_ADAPTER: ${ACTIVE_JOB_QUEUE_ADAPTER:-solid_queue}
       MISSION_CONTROL_JOBS_AUTH_ENABLED: "1"
       MISSION_CONTROL_JOBS_BASIC_AUTH_USERNAME: admin
@@ -123,11 +124,12 @@ services:
       REDMINE_HOST: redmine:3000
       RAILS_ENV: production
       RAILS_LOG_LEVEL: info
+      MT_NO_PLUGINS: "1"
       MEMCACHE_SERVERS: memcached:11211
       MEMCACHE_NAMESPACE: redmine-prod
       MEMCACHE_EXPIRES_IN: "3600"
       RAILS_SERVE_STATIC_FILES: "1"
-      TZ: Europe/Copenhagen
+      TZ: UTC
     volumes:
     - addons_data:/addons:ro
     - redmine_assets:/usr/src/redmine/public/assets
@@ -177,7 +179,7 @@ services:
       MEMCACHE_NAMESPACE: redmine-prod
       MEMCACHE_EXPIRES_IN: "3600"
       RAILS_SERVE_STATIC_FILES: "1"
-      TZ: Europe/Copenhagen
+      TZ: UTC
     volumes:
     - addons_data:/addons:ro
     - redmine_assets:/usr/src/redmine/public/assets
@@ -194,7 +196,7 @@ services:
     # Avoid the ambiguous/nonexistent "memcached:1" tag in clean CI environments.
     image: memcached:1.6
     environment:
-      TZ: Europe/Copenhagen
+      TZ: UTC
     command:
     - -m
     - '512'
@@ -203,7 +205,7 @@ services:
     image: eaudeweb/mailtrap:latest
 
   hub:
-    image: selenium/standalone-chrome:4.0
+    image: selenium/standalone-chrome:4.41.0
     shm_size: 2g
     depends_on:
     - redmine
