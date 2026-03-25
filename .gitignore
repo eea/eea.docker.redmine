@@ -3,3 +3,4 @@
 .ckb
 .env
 output/playwright
+test/*.md
