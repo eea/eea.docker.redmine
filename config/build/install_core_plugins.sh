@@ -8,14 +8,14 @@ mkdir -p "${REDMINE_LOCAL_PATH}/github"
 
 git clone https://github.com/eea/redmine-wiki_graphviz_plugin.git "${REDMINE_PATH}/plugins/wiki_graphviz_plugin"
 cd "${REDMINE_PATH}/plugins/wiki_graphviz_plugin"
-git checkout 33c07e45a6da51637418defa6a640acf8ca745d1
-sed -i "s/^require[[:space:]]*'kconv'$/# Ruby 3.4 removed kconv; use String#encode below instead/" "${REDMINE_PATH}/plugins/wiki_graphviz_plugin/app/helpers/wiki_graphviz_helper.rb"
-sed -i "s/t = t.toutf8/t = t.encode('UTF-8', invalid: :replace, undef: :replace, replace: '')/" "${REDMINE_PATH}/plugins/wiki_graphviz_plugin/app/helpers/wiki_graphviz_helper.rb"
+git checkout f52c89696d18e379669357aeb56a134498287f3e
+# sed -i "s/^require[[:space:]]*'kconv'$/# Ruby 3.4 removed kconv; use String#encode below instead/" "${REDMINE_PATH}/plugins/wiki_graphviz_plugin/app/helpers/wiki_graphviz_helper.rb"
+# sed -i "s/t = t.toutf8/t = t.encode('UTF-8', invalid: :replace, undef: :replace, replace: '')/" "${REDMINE_PATH}/plugins/wiki_graphviz_plugin/app/helpers/wiki_graphviz_helper.rb"
 cd ..
 
 git clone https://github.com/eea/redmine_wiki_backlinks.git "${REDMINE_PATH}/plugins/redmine_wiki_backlinks"
 cd "${REDMINE_PATH}/plugins/redmine_wiki_backlinks"
-git checkout be5749d0f258f9a3697342e6ced60af8534ed909
+git checkout b191144a8e758a85dc31a6d317aea55a8dad9415
 cd ..
 
 git clone -b 0.3.5 https://github.com/agileware-jp/redmine_banner.git "${REDMINE_PATH}/plugins/redmine_banner"
