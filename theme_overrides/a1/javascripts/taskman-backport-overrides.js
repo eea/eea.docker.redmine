@@ -244,6 +244,9 @@
       function getAssignedUserOverloadStatus(user) {
         var dfd = $.Deferred();
         var issuesByType = { "Total ongoing issues": 0 };
+        if (typeof user.is_overloaded !== "undefined") {
+          return dfd.resolve(user);
+        }
 
         $.ajax(getSiteUrl() + "/issues.json", {
           headers: {
@@ -316,16 +319,51 @@
         $container.each(function () {
           var $target = $(this);
           var $icon = $("<span class='overloaded-user-warning' />").appendTo($target);
-          var $dialogContent = $panel.clone().appendTo($target).dialog({
-            title: user.user_name + " is overloaded",
-            width: 300,
-            dialogClass: "wip-alert",
-            autoOpen: false,
-            position: { my: "left top", of: $icon }
+          if ($.fn && $.fn.dialog) {
+            var $dialogContent = $panel.clone().appendTo($target).dialog({
+              title: user.user_name + " is overloaded",
+              width: 300,
+              dialogClass: "wip-alert",
+              autoOpen: false,
+              position: { my: "left top", of: $icon }
+            });
+            $icon.on("mouseenter", function () {
+              $dialogContent.dialog("open");
+            });
+          } else {
+            $icon.attr("title", user.user_name + " is overloaded");
+          }
+        });
+      }
+
+      function attachWipUiForUser($user, $parent) {
+        getUserToken($)
+          .then(function (token) { return getAssignedUser(token, $user); })
+          .then(getAssignedUserOverloadStatus)
+          .then(function (user) {
+            if (user.is_overloaded) {
+              addWipUi(user, $parent);
+            }
           });
-          $icon.on("mouseenter", function () {
-            $dialogContent.dialog("open");
-          });
+      }
+
+      function applyAgileBoardWipIndicators() {
+        var $targets = $(
+          ".issue-card p.info.assigned-user .user, " +
+          ".issue-card a[href*='/users/']"
+        );
+        $(".issue-card .overloaded-user-warning").remove();
+        $(".issue-card .overloaded-user").remove();
+
+        $targets.each(function () {
+          var $target = $(this);
+          var $user = $target.is("a[href*='/users/']")
+            ? $target
+            : $target.find("a[href*='/users/']").first();
+          if (!$user.length) {
+            return;
+          }
+          attachWipUiForUser($user, $user.parent());
         });
       }
 
@@ -367,6 +405,13 @@
               addWipUi(user, $issueAssignedParent);
             }
           });
+      }
+
+      if (currentUrl.indexOf("/agile/board") !== -1) {
+        applyAgileBoardWipIndicators();
+        $(document).on("ajaxComplete", function () {
+          setTimeout(applyAgileBoardWipIndicators, 0);
+        });
       }
     }
 
