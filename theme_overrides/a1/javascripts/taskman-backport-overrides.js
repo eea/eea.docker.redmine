@@ -367,7 +367,7 @@
         });
       }
 
-      $(document).on("click", function (e) {
+      $(document).off("click.taskmanWip").on("click.taskmanWip", function (e) {
         var $dialog = $(".wip-alert");
         if ($dialog.length && !$(e.target).closest(".wip-alert").length) {
           $dialog.find(".ui-dialog-content").dialog("close");
@@ -378,7 +378,7 @@
         var $issueAssignedSelect = $("#issue_assigned_to_id");
         var $issueAssignedParent = $issueAssignedSelect.parent();
 
-        $issueAssignedSelect.on("change", function () {
+        $issueAssignedSelect.off("change.taskmanWip").on("change.taskmanWip", function () {
           var selected = $(this).find(":selected")[0];
           var value = selected && selected.value;
           if (!value) {
@@ -407,11 +407,9 @@
           });
       }
 
+      // Disabled on Agile board by request.
       if (currentUrl.indexOf("/agile/board") !== -1) {
-        applyAgileBoardWipIndicators();
-        $(document).on("ajaxComplete", function () {
-          setTimeout(applyAgileBoardWipIndicators, 0);
-        });
+        $(document).off("ajaxComplete.taskmanWipBoard");
       }
     }
 
@@ -423,6 +421,9 @@
     normalizeAdminWikiLinksIconClass();
     setupPaymentReferencePrefill();
     setupWipOverloadIndicator();
+    $(document).off("turbo:load.taskmanWip").on("turbo:load.taskmanWip", function () {
+      setupWipOverloadIndicator();
+    });
 
     // Re-apply on dynamic updates where search markup can be re-rendered.
     $(document).on("ajaxComplete", function () {
