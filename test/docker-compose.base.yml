@@ -33,6 +33,10 @@ services:
     - -lc
     command:
     - |
+      if [ "${ADDONS_SYNC_SOURCE:-share}" = "share" ] && [ -z "${PLUGINS_USER:-${REDMINE_PLUGINS_USER:-}}" ]; then
+        echo "addons-sync: PLUGINS_USER is empty, falling back to dir source"
+        export ADDONS_SYNC_SOURCE=dir
+      fi
       if [ "${ADDONS_SYNC_SOURCE:-share}" = "share" ]; then
         exec /usr/local/bin/sync_addons_from_share.sh
       fi
