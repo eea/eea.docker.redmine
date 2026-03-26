@@ -18,7 +18,18 @@ pipeline {
       when { not { buildingTag() } }
       steps {
         script{
-          sh '''REDMINE_BUILD_TARGET=ci-runtime docker-compose -f test/docker-compose.yml up -d --build'''
+          sh '''
+set -euo pipefail
+: "${REDMINE_PLUGINS_USER:?REDMINE_PLUGINS_USER is required for share-based addons sync}"
+: "${REDMINE_PLUGINS_PASSWORD:?REDMINE_PLUGINS_PASSWORD is required for share-based addons sync}"
+
+ADDONS_SYNC_SOURCE=share \
+ADDONS_SYNC_SKIP_IF_PRESENT=0 \
+PLUGINS_USER="${REDMINE_PLUGINS_USER}" \
+PLUGINS_PASSWORD="${REDMINE_PLUGINS_PASSWORD}" \
+REDMINE_BUILD_TARGET=ci-runtime \
+docker-compose -f test/docker-compose.yml up -d --build
+'''
           DOCKER_REDMINE = sh(script: "docker-compose -f test/docker-compose.yml ps -q redmine", returnStdout: true).trim()
           if (!DOCKER_REDMINE) {
             error("Unable to resolve redmine container id from docker-compose")
