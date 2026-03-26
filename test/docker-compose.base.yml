@@ -38,7 +38,12 @@ services:
         export ADDONS_SYNC_SOURCE=dir
       fi
       if [ "${ADDONS_SYNC_SOURCE:-share}" = "share" ]; then
-        exec /usr/local/bin/sync_addons_from_share.sh
+        if /usr/local/bin/sync_addons_from_share.sh; then
+          exit 0
+        fi
+        rc=$?
+        echo "addons-sync: share sync failed with exit ${rc}, falling back to dir source"
+        exec /usr/local/bin/sync_addons_from_dir.sh
       fi
       exec /usr/local/bin/sync_addons_from_dir.sh
     environment:
