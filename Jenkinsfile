@@ -46,7 +46,12 @@ REDMINE_PLUGINS_PASSWORD="${PLUGIN_SHARE_PASSWORD}" \
 PLUGINS_USER="${PLUGIN_SHARE_USER}" \
 PLUGINS_PASSWORD="${PLUGIN_SHARE_PASSWORD}" \
 REDMINE_BUILD_TARGET=ci-runtime \
-docker-compose -f test/docker-compose.yml up -d --build
+docker-compose -f test/docker-compose.yml up -d --build || {
+  echo "Initial docker-compose up failed; collecting diagnostics and retrying once..." >&2
+  docker-compose -f test/docker-compose.yml ps -a || true
+  docker-compose -f test/docker-compose.yml logs --no-color addons-sync migrate mysql redmine || true
+  docker-compose -f test/docker-compose.yml up -d --build
+}
 '''
           }
           sh '''
