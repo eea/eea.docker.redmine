@@ -49,13 +49,30 @@ REDMINE_BUILD_TARGET=ci-runtime \
 docker-compose -f test/docker-compose.yml up -d --build
 '''
           }
+          sh '''
+set -euo pipefail
+for _ in $(seq 1 120); do
+  cid="$(docker-compose -f test/docker-compose.yml ps -q redmine || true)"
+  if [ -n "${cid}" ] && docker inspect "${cid}" >/dev/null 2>&1; then
+    running="$(docker inspect -f '{{.State.Running}}' "${cid}" 2>/dev/null || true)"
+    if [ "${running}" = "true" ]; then
+      exit 0
+    fi
+  fi
+  sleep 2
+done
+echo "Timed out waiting for redmine service container to be running" >&2
+docker-compose -f test/docker-compose.yml ps || true
+docker-compose -f test/docker-compose.yml logs --no-color migrate || true
+exit 1
+'''
           DOCKER_REDMINE = sh(script: "docker-compose -f test/docker-compose.yml ps -q redmine", returnStdout: true).trim()
           if (!DOCKER_REDMINE) {
             error("Unable to resolve redmine container id from docker-compose")
           }
           env.DOCKER_REDMINE = DOCKER_REDMINE
           // Enforce policy: paid addons must not be baked into the published image.
-          sh """docker exec ${DOCKER_REDMINE} bash -lc '
+          sh """docker-compose -f test/docker-compose.yml exec -T redmine bash -lc '
 set -euo pipefail
 for plugin in redmine_agile redmine_checklists redmine_contacts_helpdesk redmine_contacts redmine_reporter redmine_zenedit redmine_resources; do
   if [ -d "/usr/src/redmine/plugins/${plugin}" ]; then
@@ -75,7 +92,7 @@ fi
     stage("Prepare redmine for tests") {
       when { not { buildingTag() } }
       steps {
-        sh '''docker exec ${DOCKER_REDMINE} bash -lc "START_SERVER=0 START_CRON=0 START_SOLID_QUEUE=0 RUN_DB_MIGRATE=1 RUN_PLUGIN_MIGRATE=auto ASSETS_PRECOMPILE=1 ASSETS_PRECOMPILE_FORCE=1 RAILS_ENV=test /start_redmine.sh"'''
+        sh '''docker-compose -f test/docker-compose.yml exec -T redmine bash -lc "START_SERVER=0 START_CRON=0 START_SOLID_QUEUE=0 RUN_DB_MIGRATE=1 RUN_PLUGIN_MIGRATE=auto ASSETS_PRECOMPILE=1 ASSETS_PRECOMPILE_FORCE=1 RAILS_ENV=test /start_redmine.sh"'''
       }
     }
 
@@ -85,7 +102,7 @@ fi
         catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
           // In this pipeline, A1 is provided as mounted addon data, not baked into image.
           sh '''
-docker exec ${DOCKER_REDMINE} bash -lc '
+docker-compose -f test/docker-compose.yml exec -T redmine bash -lc '
 set -euo pipefail
 
 THEMES_DIR=/usr/src/redmine/themes
@@ -107,11 +124,11 @@ ls -la "$THEMES_DIR/a1" | head -n 20
       when { not { buildingTag() } }
       steps {
         catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-          sh "docker exec ${DOCKER_REDMINE} bundle exec rake redmine:plugins:test"
+          sh "docker-compose -f test/docker-compose.yml exec -T redmine bundle exec rake redmine:plugins:test"
         }
 
         catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
-          sh "docker cp ${DOCKER_REDMINE}:/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-Plugins-Result.xml"
+          sh "docker cp $(docker-compose -f test/docker-compose.yml ps -q redmine):/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-Plugins-Result.xml"
           archiveArtifacts artifacts: "TEST-Plugins-Result.xml", fingerprint: true
         }
       }
@@ -120,10 +137,10 @@ ls -la "$THEMES_DIR/a1" | head -n 20
       when { not { buildingTag() } }
       steps {
         catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-          sh "docker exec ${DOCKER_REDMINE} bundle exec rake test"
+          sh "docker-compose -f test/docker-compose.yml exec -T redmine bundle exec rake test"
         }
         catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
-          sh "docker cp ${DOCKER_REDMINE}:/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-Redmine-Result.xml"
+          sh "docker cp $(docker-compose -f test/docker-compose.yml ps -q redmine):/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-Redmine-Result.xml"
           archiveArtifacts artifacts: "TEST-Redmine-Result.xml", fingerprint: true
         }
       }
@@ -132,11 +149,11 @@ ls -la "$THEMES_DIR/a1" | head -n 20
       when { not { buildingTag() } }
       steps {
         catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-          sh "docker exec ${DOCKER_REDMINE} bundle exec rake test:system"
+          sh "docker-compose -f test/docker-compose.yml exec -T redmine bundle exec rake test:system"
         }
 
         catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
-          sh "docker cp ${DOCKER_REDMINE}:/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-Browser-Result.xml"
+          sh "docker cp $(docker-compose -f test/docker-compose.yml ps -q redmine):/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-Browser-Result.xml"
           archiveArtifacts artifacts: "TEST-Browser-Result.xml", fingerprint: true
         }
       }
@@ -144,7 +161,7 @@ ls -la "$THEMES_DIR/a1" | head -n 20
         unstable {
           catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
             sh "mkdir -p screenshots"
-            sh "docker cp ${DOCKER_REDMINE}:/usr/src/redmine/tmp/screenshots/. screenshots/"
+            sh "docker cp $(docker-compose -f test/docker-compose.yml ps -q redmine):/usr/src/redmine/tmp/screenshots/. screenshots/"
             archiveArtifacts artifacts: "screenshots/*", fingerprint: true
           }
         }
@@ -183,8 +200,8 @@ ls -la "$THEMES_DIR/a1" | head -n 20
                  elif command -v python >/dev/null 2>&1; then
                    python merge_junitxml.py TEST-*-Result.xml TEST-Result.xml
                  else
-                   docker exec ${DOCKER_REDMINE} bash -lc 'cd /usr/src/redmine/test/reports && python3 /usr/src/redmine/test/merge_junitxml.py TEST-*-Result.xml TEST-Result.xml'
-                   docker cp ${DOCKER_REDMINE}:/usr/src/redmine/test/reports/TEST-Result.xml TEST-Result.xml
+                   docker-compose -f test/docker-compose.yml exec -T redmine bash -lc 'cd /usr/src/redmine/test/reports && python3 /usr/src/redmine/test/merge_junitxml.py TEST-*-Result.xml TEST-Result.xml'
+                   docker cp $(docker-compose -f test/docker-compose.yml ps -q redmine):/usr/src/redmine/test/reports/TEST-Result.xml TEST-Result.xml
                  fi
                else
                  echo "No junit xml artifacts found; skipping merge step"
