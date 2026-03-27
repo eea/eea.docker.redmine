@@ -24,6 +24,17 @@ set -euo pipefail
 PLUGIN_SHARE_USER="${REDMINE_PLUGINS_USER:-${PLUGINS_USER:-}}"
 PLUGIN_SHARE_PASSWORD="${REDMINE_PLUGINS_PASSWORD:-${PLUGINS_PASSWORD:-}}"
 
+if [ -z "${PLUGIN_SHARE_USER}" ] || [ -z "${PLUGIN_SHARE_PASSWORD}" ]; then
+  if [ -f .env ]; then
+    set -a
+    # shellcheck disable=SC1091
+    . ./.env
+    set +a
+    PLUGIN_SHARE_USER="${PLUGIN_SHARE_USER:-${REDMINE_PLUGINS_USER:-${PLUGINS_USER:-}}}"
+    PLUGIN_SHARE_PASSWORD="${PLUGIN_SHARE_PASSWORD:-${REDMINE_PLUGINS_PASSWORD:-${PLUGINS_PASSWORD:-}}}"
+  fi
+fi
+
 : "${PLUGIN_SHARE_USER:?Share-based addons sync requires REDMINE_PLUGINS_USER or PLUGINS_USER}"
 : "${PLUGIN_SHARE_PASSWORD:?Share-based addons sync requires REDMINE_PLUGINS_PASSWORD or PLUGINS_PASSWORD}"
 
