@@ -78,7 +78,7 @@ exit 1
           env.DOCKER_REDMINE = DOCKER_REDMINE
           // Enforce policy: paid addons must not be baked into the published image.
           sh '''
-cat <<'SCRIPT' | docker-compose -f test/docker-compose.yml exec -T redmine bash -s
+cat <<'SCRIPT' | docker run --rm --entrypoint bash test-redmine:latest -s
 set -euo pipefail
 for plugin in redmine_agile redmine_checklists redmine_contacts_helpdesk redmine_contacts redmine_reporter redmine_zenedit redmine_resources; do
   if [ -d "/usr/src/redmine/plugins/${plugin}" ]; then
