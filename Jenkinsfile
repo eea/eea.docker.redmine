@@ -71,13 +71,13 @@ docker-compose -f test/docker-compose.yml ps || true
 docker-compose -f test/docker-compose.yml logs --no-color migrate || true
 exit 1
 '''
-          DOCKER_REDMINE = sh(script: "docker-compose -f test/docker-compose.yml ps -q redmine", returnStdout: true).trim()
+          def DOCKER_REDMINE = sh(script: "docker-compose -f test/docker-compose.yml ps -q redmine", returnStdout: true).trim()
           if (!DOCKER_REDMINE) {
             error("Unable to resolve redmine container id from docker-compose")
           }
           env.DOCKER_REDMINE = DOCKER_REDMINE
           // Enforce policy: paid addons must not be baked into the published image.
-          sh '''docker-compose -f test/docker-compose.yml exec -T redmine bash -lc '
+          sh '''docker-compose -f test/docker-compose.yml exec -T redmine bash -lc "
 set -euo pipefail
 for plugin in redmine_agile redmine_checklists redmine_contacts_helpdesk redmine_contacts redmine_reporter redmine_zenedit redmine_resources; do
   if [ -d "/usr/src/redmine/plugins/${plugin}" ]; then
@@ -89,7 +89,7 @@ if [ -d /usr/src/redmine/themes/a1 ] || [ -d /usr/src/redmine/public/themes/a1 ]
   echo "A1 theme is embedded in image but should be mounted at runtime" >&2
   exit 1
 fi
-'''
+"'''
         }
       }
     }
