@@ -77,11 +77,11 @@ exit 1
           }
           env.DOCKER_REDMINE = DOCKER_REDMINE
           // Enforce policy: paid addons must not be baked into the published image.
-          sh """docker-compose -f test/docker-compose.yml exec -T redmine bash -lc '
+          sh '''docker-compose -f test/docker-compose.yml exec -T redmine bash -lc '
 set -euo pipefail
 for plugin in redmine_agile redmine_checklists redmine_contacts_helpdesk redmine_contacts redmine_reporter redmine_zenedit redmine_resources; do
-  if [ -d "/usr/src/redmine/plugins/\${plugin}" ]; then
-    echo "Paid plugin is embedded in image but should be mounted at runtime: \${plugin}" >&2
+  if [ -d "/usr/src/redmine/plugins/${plugin}" ]; then
+    echo "Paid plugin is embedded in image but should be mounted at runtime: ${plugin}" >&2
     exit 1
   fi
 done
@@ -89,7 +89,7 @@ if [ -d /usr/src/redmine/themes/a1 ] || [ -d /usr/src/redmine/public/themes/a1 ]
   echo "A1 theme is embedded in image but should be mounted at runtime" >&2
   exit 1
 fi
-'"""
+'''
         }
       }
     }
@@ -222,7 +222,7 @@ ls -la "$THEMES_DIR/a1" | head -n 20
           catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
             sh '''REDMINE_BUILD_TARGET=ci-runtime docker-compose -f test/docker-compose.yml stop'''
             sh '''REDMINE_BUILD_TARGET=ci-runtime docker-compose -f test/docker-compose.yml rm -vf'''
-            sh '''docker rmi test_redmine'''
+            sh '''docker rmi test_redmine || true'''
             sh '''docker volume rm test_taskman_test_db_mysql84 test_redmine_files'''
           }
         }
