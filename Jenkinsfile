@@ -128,7 +128,7 @@ ls -la "$THEMES_DIR/a1" | head -n 20
         }
 
         catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
-          sh "docker cp $(docker-compose -f test/docker-compose.yml ps -q redmine):/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-Plugins-Result.xml"
+          sh 'docker cp $(docker-compose -f test/docker-compose.yml ps -q redmine):/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-Plugins-Result.xml'
           archiveArtifacts artifacts: "TEST-Plugins-Result.xml", fingerprint: true
         }
       }
@@ -140,7 +140,7 @@ ls -la "$THEMES_DIR/a1" | head -n 20
           sh "docker-compose -f test/docker-compose.yml exec -T redmine bundle exec rake test"
         }
         catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
-          sh "docker cp $(docker-compose -f test/docker-compose.yml ps -q redmine):/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-Redmine-Result.xml"
+          sh 'docker cp $(docker-compose -f test/docker-compose.yml ps -q redmine):/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-Redmine-Result.xml'
           archiveArtifacts artifacts: "TEST-Redmine-Result.xml", fingerprint: true
         }
       }
@@ -153,7 +153,7 @@ ls -la "$THEMES_DIR/a1" | head -n 20
         }
 
         catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
-          sh "docker cp $(docker-compose -f test/docker-compose.yml ps -q redmine):/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-Browser-Result.xml"
+          sh 'docker cp $(docker-compose -f test/docker-compose.yml ps -q redmine):/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-Browser-Result.xml'
           archiveArtifacts artifacts: "TEST-Browser-Result.xml", fingerprint: true
         }
       }
@@ -161,7 +161,7 @@ ls -la "$THEMES_DIR/a1" | head -n 20
         unstable {
           catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
             sh "mkdir -p screenshots"
-            sh "docker cp $(docker-compose -f test/docker-compose.yml ps -q redmine):/usr/src/redmine/tmp/screenshots/. screenshots/"
+            sh 'docker cp $(docker-compose -f test/docker-compose.yml ps -q redmine):/usr/src/redmine/tmp/screenshots/. screenshots/'
             archiveArtifacts artifacts: "screenshots/*", fingerprint: true
           }
         }
