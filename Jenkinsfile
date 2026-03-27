@@ -18,11 +18,12 @@ pipeline {
       when { not { buildingTag() } }
       steps {
         script{
+          withCredentials([usernamePassword(credentialsId: '28f3ae32-6a71-4b8e-8a3e-6191620a0492', usernameVariable: 'CI_PLUGINS_USER', passwordVariable: 'CI_PLUGINS_PASSWORD')]) {
           sh '''
 set -euo pipefail
 
-PLUGIN_SHARE_USER="${REDMINE_PLUGINS_USER:-${PLUGINS_USER:-}}"
-PLUGIN_SHARE_PASSWORD="${REDMINE_PLUGINS_PASSWORD:-${PLUGINS_PASSWORD:-}}"
+PLUGIN_SHARE_USER="${REDMINE_PLUGINS_USER:-${PLUGINS_USER:-${CI_PLUGINS_USER:-}}}"
+PLUGIN_SHARE_PASSWORD="${REDMINE_PLUGINS_PASSWORD:-${PLUGINS_PASSWORD:-${CI_PLUGINS_PASSWORD:-}}}"
 
 if [ -z "${PLUGIN_SHARE_USER}" ] || [ -z "${PLUGIN_SHARE_PASSWORD}" ]; then
   if [ -f .env ]; then
@@ -47,6 +48,7 @@ PLUGINS_PASSWORD="${PLUGIN_SHARE_PASSWORD}" \
 REDMINE_BUILD_TARGET=ci-runtime \
 docker-compose -f test/docker-compose.yml up -d --build
 '''
+          }
           DOCKER_REDMINE = sh(script: "docker-compose -f test/docker-compose.yml ps -q redmine", returnStdout: true).trim()
           if (!DOCKER_REDMINE) {
             error("Unable to resolve redmine container id from docker-compose")
