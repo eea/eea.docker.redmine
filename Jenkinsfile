@@ -51,6 +51,8 @@ docker-compose -f test/docker-compose.yml up -d --build || {
   echo "Initial docker-compose up failed; collecting diagnostics and retrying once..." >&2
   docker-compose -f test/docker-compose.yml ps -a || true
   docker-compose -f test/docker-compose.yml logs --no-color addons-sync migrate mysql redmine || true
+  # Reset compose state/volumes so retry starts from a clean DB and avoids partially-applied migrations.
+  docker-compose -f test/docker-compose.yml down -v --remove-orphans || true
   docker-compose -f test/docker-compose.yml up -d --build
 }
 '''
