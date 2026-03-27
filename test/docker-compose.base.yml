@@ -42,7 +42,7 @@ services:
           exit 0
         fi
         rc=$?
-        echo "addons-sync: share sync failed with exit ${rc}, falling back to dir source"
+        echo "addons-sync: share sync failed with exit $${rc}, falling back to dir source"
         exec /usr/local/bin/sync_addons_from_dir.sh
       fi
       exec /usr/local/bin/sync_addons_from_dir.sh
