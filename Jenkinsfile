@@ -147,7 +147,14 @@ ls -la "$THEMES_DIR/a1" | head -n 20
       when { not { buildingTag() } }
       steps {
         catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-          sh "docker-compose -f test/docker-compose.yml exec -T redmine bundle exec rake redmine:plugins:test"
+          sh '''
+set -euo pipefail
+docker-compose -f test/docker-compose.yml exec -T redmine bash -lc '
+set -euo pipefail
+mkdir -p /usr/src/redmine/test/reports
+bundle exec rake redmine:plugins:test --verbose 2>&1 | tee /usr/src/redmine/test/reports/plugins-test-output.log
+'
+'''
         }
 
         catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
@@ -166,10 +173,13 @@ done
 if [ "${found}" != "1" ]; then
   echo "No plugin junit report found under /usr/src/redmine/test/reports" >&2
   docker exec "${cid}" ls -la /usr/src/redmine/test/reports || true
-  exit 0
 fi
+docker exec "${cid}" test -f /usr/src/redmine/test/reports/plugins-test-output.log && \
+  docker cp "${cid}:/usr/src/redmine/test/reports/plugins-test-output.log" TEST-Plugins-Output.log || true
+exit 0
 '''
           archiveArtifacts artifacts: "TEST-Plugins-Result.xml", fingerprint: true, allowEmptyArchive: true
+          archiveArtifacts artifacts: "TEST-Plugins-Output.log", fingerprint: true, allowEmptyArchive: true
         }
       }
     }
