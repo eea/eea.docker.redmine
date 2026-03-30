@@ -8,6 +8,7 @@ gem 'rails_pulse'
 gem 'mission_control-jobs'
 gem 'solid_queue'
 gem 'mysql2', '~> 0.5.0'
+gem 'with_advisory_lock'
 
 # RedmineUP/pro-plugin runtime dependencies must be present in image
 # even when addons are synced at runtime from PVC/share.
