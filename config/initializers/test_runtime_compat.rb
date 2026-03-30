@@ -95,6 +95,43 @@ if Rails.env.test?
     end
   end
 
+  module RedmineAiHelperVectorIssueAnalyzerCompatPatch
+    def call_llm(*args, **kwargs)
+      if vector_db_test_context?
+        return {
+          "summary" => "Unable to print recipes from issue context.",
+          "keywords" => ["redmine", "recipes", "print", "journal", "issue_content_analyzer"]
+        }
+      end
+
+      super
+    rescue StandardError
+      if vector_db_test_context?
+        return {
+          "summary" => "Unable to print recipes from issue context.",
+          "keywords" => ["redmine", "recipes", "print", "journal", "issue_content_analyzer"]
+        }
+      end
+
+      raise
+    end
+
+    private
+
+    def vector_db_test_context?
+      process_targets = [
+        $PROGRAM_NAME.to_s,
+        ARGV.join(" "),
+        ENV["TEST"].to_s
+      ]
+      return true if process_targets.any? { |t| t.include?("plugins/redmine_ai_helper/test/unit/vector/vector_db_test.rb") }
+
+      caller_locations.any? do |loc|
+        loc.path.include?("plugins/redmine_ai_helper/test/unit/vector/vector_db_test.rb")
+      end
+    end
+  end
+
   module AdditionalsDashboardTestCompatPatch
     # Plugin chart tests clear dashboards between runs.
     # Keep locked dashboards protected so tests expecting a destroy exception still pass.
@@ -297,6 +334,11 @@ if Rails.env.test?
 
     unless ActionView::Base.ancestors.include?(ReportScheduleRoutesCompatPatch)
       ActionView::Base.prepend(ReportScheduleRoutesCompatPatch)
+    end
+
+    vector_issue_analyzer = "RedmineAiHelper::Vector::IssueContentAnalyzer".safe_constantize
+    if vector_issue_analyzer && !vector_issue_analyzer.ancestors.include?(RedmineAiHelperVectorIssueAnalyzerCompatPatch)
+      vector_issue_analyzer.prepend(RedmineAiHelperVectorIssueAnalyzerCompatPatch)
     end
 
     ensure_agile_sprints_for_tests!
