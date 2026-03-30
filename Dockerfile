@@ -125,6 +125,7 @@ COPY config/queue.yml ${REDMINE_PATH}/config/queue.yml
 COPY config/rails_pulse.rb ${REDMINE_PATH}/config/initializers/rails_pulse.rb
 COPY config/mission_control_jobs.rb ${REDMINE_PATH}/config/initializers/mission_control_jobs.rb
 COPY config/initializers/test_runtime_compat.rb ${REDMINE_PATH}/config/initializers/test_runtime_compat.rb
+COPY config/initializers/runtime_compat.rb ${REDMINE_PATH}/config/initializers/runtime_compat.rb
 COPY config/recurring.yml ${REDMINE_PATH}/config/recurring.yml
 COPY db/migrate/20260313123000_install_solid_queue_tables.rb ${REDMINE_PATH}/db/migrate/20260313123000_install_solid_queue_tables.rb
 COPY db/migrate/20260310221000_expand_rails_pulse_columns.rb ${REDMINE_PATH}/db/migrate/20260310221000_expand_rails_pulse_columns.rb
