@@ -47,6 +47,15 @@ REDMINE_PLUGINS_PASSWORD="${PLUGIN_SHARE_PASSWORD}" \
 PLUGINS_USER="${PLUGIN_SHARE_USER}" \
 PLUGINS_PASSWORD="${PLUGIN_SHARE_PASSWORD}" \
 REDMINE_BUILD_TARGET=ci-runtime \
+docker-compose -f test/docker-compose.yml down -v --remove-orphans || true
+
+ADDONS_SYNC_SOURCE=share \
+ADDONS_SYNC_SKIP_IF_PRESENT=0 \
+REDMINE_PLUGINS_USER="${PLUGIN_SHARE_USER}" \
+REDMINE_PLUGINS_PASSWORD="${PLUGIN_SHARE_PASSWORD}" \
+PLUGINS_USER="${PLUGIN_SHARE_USER}" \
+PLUGINS_PASSWORD="${PLUGIN_SHARE_PASSWORD}" \
+REDMINE_BUILD_TARGET=ci-runtime \
 docker-compose -f test/docker-compose.yml up -d --build || {
   echo "Initial docker-compose up failed; collecting diagnostics and retrying once..." >&2
   docker-compose -f test/docker-compose.yml ps -a || true
