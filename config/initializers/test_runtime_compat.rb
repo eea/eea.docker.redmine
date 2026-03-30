@@ -96,9 +96,23 @@ if Rails.env.test?
   end
 
   module AdditionalsDashboardTestCompatPatch
-    # Plugin chart tests clear dashboards between runs; allow cleanup in test env.
+    # Plugin chart tests clear dashboards between runs.
+    # Keep locked dashboards protected so tests expecting a destroy exception still pass.
     def check_destroy_system_default
+      locked_dashboard =
+        if respond_to?(:locked?)
+          locked?
+        elsif respond_to?(:locked)
+          !!public_send(:locked)
+        else
+          false
+        end
+
+      return super if locked_dashboard
+
       true
+    rescue StandardError
+      super
     end
   end
 
