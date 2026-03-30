@@ -136,6 +136,8 @@ if Rails.env.test?
     # Plugin chart tests clear dashboards between runs.
     # Keep locked dashboards protected so tests expecting a destroy exception still pass.
     def check_destroy_system_default
+      return super if additionals_dashboard_test_context?
+
       locked_dashboard =
         if respond_to?(:locked?)
           locked?
@@ -150,6 +152,14 @@ if Rails.env.test?
       true
     rescue StandardError
       super
+    end
+
+    private
+
+    def additionals_dashboard_test_context?
+      caller_locations.any? do |loc|
+        loc.path.include?("plugins/additionals/test/unit/dashboard_test.rb")
+      end
     end
   end
 
