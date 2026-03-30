@@ -151,8 +151,25 @@ ls -la "$THEMES_DIR/a1" | head -n 20
         }
 
         catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
-          sh 'docker cp $(docker-compose -f test/docker-compose.yml ps -q redmine):/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-Plugins-Result.xml'
-          archiveArtifacts artifacts: "TEST-Plugins-Result.xml", fingerprint: true
+          sh '''
+set -euo pipefail
+cid="$(docker-compose -f test/docker-compose.yml ps -q redmine)"
+found=0
+for report in TEST-Minitest-Result.xml TEST-Result.xml; do
+  src="/usr/src/redmine/test/reports/${report}"
+  if docker exec "${cid}" test -f "${src}"; then
+    docker cp "${cid}:${src}" TEST-Plugins-Result.xml
+    found=1
+    break
+  fi
+done
+if [ "${found}" != "1" ]; then
+  echo "No plugin junit report found under /usr/src/redmine/test/reports" >&2
+  docker exec "${cid}" ls -la /usr/src/redmine/test/reports || true
+  exit 0
+fi
+'''
+          archiveArtifacts artifacts: "TEST-Plugins-Result.xml", fingerprint: true, allowEmptyArchive: true
         }
       }
     }
@@ -163,8 +180,25 @@ ls -la "$THEMES_DIR/a1" | head -n 20
           sh "docker-compose -f test/docker-compose.yml exec -T redmine bundle exec rake test"
         }
         catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
-          sh 'docker cp $(docker-compose -f test/docker-compose.yml ps -q redmine):/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-Redmine-Result.xml'
-          archiveArtifacts artifacts: "TEST-Redmine-Result.xml", fingerprint: true
+          sh '''
+set -euo pipefail
+cid="$(docker-compose -f test/docker-compose.yml ps -q redmine)"
+found=0
+for report in TEST-Minitest-Result.xml TEST-Result.xml; do
+  src="/usr/src/redmine/test/reports/${report}"
+  if docker exec "${cid}" test -f "${src}"; then
+    docker cp "${cid}:${src}" TEST-Redmine-Result.xml
+    found=1
+    break
+  fi
+done
+if [ "${found}" != "1" ]; then
+  echo "No unit-test junit report found under /usr/src/redmine/test/reports" >&2
+  docker exec "${cid}" ls -la /usr/src/redmine/test/reports || true
+  exit 0
+fi
+'''
+          archiveArtifacts artifacts: "TEST-Redmine-Result.xml", fingerprint: true, allowEmptyArchive: true
         }
       }
     }
@@ -176,8 +210,25 @@ ls -la "$THEMES_DIR/a1" | head -n 20
         }
 
         catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
-          sh 'docker cp $(docker-compose -f test/docker-compose.yml ps -q redmine):/usr/src/redmine/test/reports/TEST-Minitest-Result.xml TEST-Browser-Result.xml'
-          archiveArtifacts artifacts: "TEST-Browser-Result.xml", fingerprint: true
+          sh '''
+set -euo pipefail
+cid="$(docker-compose -f test/docker-compose.yml ps -q redmine)"
+found=0
+for report in TEST-Minitest-Result.xml TEST-Result.xml; do
+  src="/usr/src/redmine/test/reports/${report}"
+  if docker exec "${cid}" test -f "${src}"; then
+    docker cp "${cid}:${src}" TEST-Browser-Result.xml
+    found=1
+    break
+  fi
+done
+if [ "${found}" != "1" ]; then
+  echo "No browser-test junit report found under /usr/src/redmine/test/reports" >&2
+  docker exec "${cid}" ls -la /usr/src/redmine/test/reports || true
+  exit 0
+fi
+'''
+          archiveArtifacts artifacts: "TEST-Browser-Result.xml", fingerprint: true, allowEmptyArchive: true
         }
       }
       post {
