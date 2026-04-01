@@ -8,14 +8,17 @@ LABEL maintainer="EEA: IDM2 A-Team <eea-edw-a-team-alerts@googlegroups.com>"
 
 ENV REDMINE_PATH=/usr/src/redmine \
   REDMINE_LOCAL_PATH=/var/local/redmine \
+  BUNDLE_PATH=/usr/local/bundle \
+  BUNDLE_APP_CONFIG=/usr/local/bundle \
+  BUNDLE_WITHOUT=development:test \
+  PATH=/usr/local/bundle/bin:${PATH} \
   RUBY_YJIT_ENABLE=1 \
   FAST_BOOT=1 \
   STARTUP_ASSET_FIXES=0 \
   APPLY_A1_THEME_OVERRIDES_ON_BOOT=0 \
   ASSETS_PRECOMPILE=0 \
   RUNTIME_PLUGIN_SYNC=0 \
-  RUNTIME_THEME_SYNC=0 \
-  RUNTIME_BUNDLE_INSTALL=0
+  RUNTIME_THEME_SYNC=0
 
 # Fail build if upstream base drifts away from Ruby 3.4.x.
 RUN ruby -e 'abort("Ruby 3.4.x is required, got #{RUBY_VERSION}") unless RUBY_VERSION.start_with?("3.4.")'
@@ -82,10 +85,12 @@ FROM base AS gems
 RUN --mount=type=cache,target=/usr/local/bundle/cache \
   printf "production:\n  adapter: mysql2\n\ntest:\n  adapter: mysql2\n" > ${REDMINE_PATH}/config/database.yml \
   && \
-  /usr/local/bin/bundle config set without 'development test' \
+  gem install bundler:"$(tail -1 ${REDMINE_PATH}/Gemfile.lock | xargs)" \
+  && /usr/local/bin/bundle config set path '/usr/local/bundle' \
+  && /usr/local/bin/bundle config set --local without 'development test' \
   && /usr/local/bin/bundle config set retry '5' \
   && /usr/local/bin/bundle config set timeout '30' \
-  && /usr/local/bin/bundle install --jobs 4 \
+  && /usr/local/bin/bundle install --jobs 4 --no-cache \
   && /usr/local/bin/bundle exec ruby -e "require 'mysql2'; puts \"mysql2=#{Mysql2::VERSION}\"" \
   && /usr/local/bin/bundle clean --force \
   && chmod -R go-w /usr/local/bundle
@@ -142,9 +147,16 @@ COPY config/runtime/kconv.rb ${REDMINE_PATH}/lib/kconv.rb
 RUN set -euo pipefail \
   && cd ${REDMINE_PATH} \
   && chmod 0755 /usr/local/bin/install_engine_integrations.rb \
-  && ruby /usr/local/bin/install_engine_integrations.rb \
-  && find /usr/local/bundle/gems -path "*/rails_pulse-*/lib/rails_pulse/engine.rb" -type f -print0 \
-     | xargs -0 sed -i "s/controller.class.name.start_with?(\"RailsPulse::\")/controller.class.name.to_s.start_with?(\"RailsPulse::\")/"
+  && /usr/local/bin/bundle exec ruby /usr/local/bin/install_engine_integrations.rb \
+  && engine_files="$(find /usr/local/bundle -path "*/rails_pulse-*/lib/rails_pulse/engine.rb" -type f)" \
+  && if [ -n "${engine_files}" ]; then \
+       echo "${engine_files}" | while IFS= read -r file; do \
+         [ -n "${file}" ] || continue; \
+         sed -i "s/controller.class.name.start_with?(\"RailsPulse::\")/controller.class.name.to_s.start_with?(\"RailsPulse::\")/" "${file}"; \
+       done; \
+     else \
+       echo "Skipping rails_pulse engine.rb patch (file not found)"; \
+     fi
 
 COPY theme_overrides/ ${REDMINE_PATH}/theme_overrides/
 RUN set -euo pipefail \
@@ -185,6 +197,8 @@ RUN set -euo pipefail \
          echo "gem '${gem_name}'" >> /usr/src/redmine/Gemfile; \
        fi; \
      done \
+  && gem install bundler:"$(tail -1 ${REDMINE_PATH}/Gemfile.lock | xargs)" \
+  && /usr/local/bin/bundle config set path '/usr/local/bundle' \
   && /usr/local/bin/bundle config unset without || true \
   && /usr/local/bin/bundle config set without '' \
-  && /usr/local/bin/bundle install --jobs 4
+  && /usr/local/bin/bundle install --jobs 4 --no-cache
