@@ -26,8 +26,6 @@ DB_TABLE_WAIT_INTERVAL=${DB_TABLE_WAIT_INTERVAL:-3}
 FAST_BOOT=${FAST_BOOT:-1}
 RUNTIME_PLUGIN_SYNC=${RUNTIME_PLUGIN_SYNC:-0}
 RUNTIME_THEME_SYNC=${RUNTIME_THEME_SYNC:-0}
-RUNTIME_BUNDLE_INSTALL=${RUNTIME_BUNDLE_INSTALL:-0}
-RUNTIME_BUNDLE_LOCAL_INSTALL=${RUNTIME_BUNDLE_LOCAL_INSTALL:-1}
 STARTUP_ASSET_FIXES=${STARTUP_ASSET_FIXES:-0}
 APPLY_A1_THEME_OVERRIDES_ON_BOOT=${APPLY_A1_THEME_OVERRIDES_ON_BOOT:-0}
 ASSETS_PRECOMPILE=${ASSETS_PRECOMPILE:-0}
@@ -414,27 +412,22 @@ run_assets_precompile_if_enabled() {
 }
 
 ensure_bundle_ready() {
+  bundle config set path '/usr/local/bundle' >/dev/null 2>&1 || true
+  bundle config set --local without 'development test' >/dev/null 2>&1 || true
+
   if bundle check >/dev/null 2>&1; then
     return 0
   fi
 
-  if [ "${RUNTIME_BUNDLE_LOCAL_INSTALL}" = "1" ]; then
-    echo "Bundle check failed, attempting offline bundle install from image cache"
-    bundle config set without 'development test' >/dev/null 2>&1 || true
-    if bundle install --local --jobs 4; then
-      return 0
-    fi
-  fi
-
-  if [ "${FAST_BOOT}" != "1" ] && [ "${RUNTIME_BUNDLE_INSTALL}" = "1" ]; then
+  if [ "${FAST_BOOT}" != "1" ]; then
     echo "Bundle check failed, attempting online runtime bundle install"
-    bundle config set without 'development test' >/dev/null 2>&1 || true
-    bundle install --jobs 4
+    bundle install --jobs 4 --no-cache
+    bundle clean --force
     return 0
   fi
 
-  echo "Missing gems in runtime bundle and installation is disabled."
-  echo "Set RUNTIME_BUNDLE_LOCAL_INSTALL=1 (offline cache) or rebuild image with complete bundle."
+  echo "Missing gems in runtime bundle and runtime installation is disabled (FAST_BOOT=${FAST_BOOT})."
+  echo "Set FAST_BOOT=0 to allow runtime bundle install, or rebuild image with complete bundle."
   return 1
 }
 
@@ -818,13 +811,16 @@ fi
 apply_a1_theme_backport_overrides
 
 if [ "${RUNTIME_ADDONS_CHANGED}" = "1" ] || ! bundle check >/dev/null 2>&1; then
-  if [ "${FAST_BOOT}" != "1" ] && [ "${RUNTIME_BUNDLE_INSTALL}" = "1" ]; then
+  bundle config set path '/usr/local/bundle' >/dev/null 2>&1 || true
+  bundle config set --local without 'development test' >/dev/null 2>&1 || true
+
+  if [ "${FAST_BOOT}" != "1" ]; then
     echo "Installing runtime plugin/theme gem dependencies"
-    bundle config set without 'development test' >/dev/null 2>&1
-    bundle install
+    bundle install --jobs 4 --no-cache
+    bundle clean --force
   else
-    echo "Runtime gem installation is disabled (FAST_BOOT=${FAST_BOOT}, RUNTIME_BUNDLE_INSTALL=${RUNTIME_BUNDLE_INSTALL})."
-    echo "Build a complete image with all gems/plugins/themes baked in, or set RUNTIME_BUNDLE_INSTALL=1 for legacy behavior."
+    echo "Runtime gem installation is disabled (FAST_BOOT=${FAST_BOOT})."
+    echo "Build a complete image with all gems/plugins/themes baked in, or set FAST_BOOT=0 for runtime bundle install."
     exit 1
   fi
 fi
