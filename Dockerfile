@@ -132,8 +132,7 @@ COPY config/mission_control_jobs.rb ${REDMINE_PATH}/config/initializers/mission_
 COPY config/initializers/test_runtime_compat.rb ${REDMINE_PATH}/config/initializers/test_runtime_compat.rb
 COPY config/initializers/runtime_compat.rb ${REDMINE_PATH}/config/initializers/runtime_compat.rb
 COPY config/recurring.yml ${REDMINE_PATH}/config/recurring.yml
-COPY db/migrate/20260313123000_install_solid_queue_tables.rb ${REDMINE_PATH}/db/migrate/20260313123000_install_solid_queue_tables.rb
-COPY db/migrate/20260310221000_expand_rails_pulse_columns.rb ${REDMINE_PATH}/db/migrate/20260310221000_expand_rails_pulse_columns.rb
+COPY db/migrate/*.rb ${REDMINE_PATH}/db/migrate/
 COPY config/runtime/apply_a1_theme_overrides.sh /usr/local/bin/apply_a1_theme_overrides.sh
 COPY config/runtime/prepare_addons_assets.sh /usr/local/bin/prepare_addons_assets.sh
 COPY config/runtime/sync_addons_bundle.sh /usr/local/bin/sync_addons_bundle.sh
