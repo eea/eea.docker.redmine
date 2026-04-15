@@ -1,4 +1,4 @@
-class AddPrefixIdxJournalDetailsOnJournalIdPropKey < ActiveRecord::Migration["#{Rails::VERSION::MAJOR}.#{Rails::VERSION::MINOR}".to_f]
+class AddManualPrefixIdxJournalDetailsOnJournalIdPropKey < ActiveRecord::Migration["#{Rails::VERSION::MAJOR}.#{Rails::VERSION::MINOR}".to_f]
   disable_ddl_transaction!
 
   TABLE_NAME = :journal_details

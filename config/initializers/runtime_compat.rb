@@ -28,3 +28,39 @@ Rails.application.config.to_prepare do
       as: :ai_helper_global_banner_legacy
   end
 end
+
+# redmine_agile board status lookup can generate a very expensive join
+# across trackers/issues/projects/versions on large datasets.
+# Reuse the filtered issue scope to fetch only distinct tracker ids.
+Rails.application.config.to_prepare do
+  next unless defined?(AgileQuery)
+
+  unless defined?(TaskmanAgileQueryPerfPatch)
+    module TaskmanAgileQueryPerfPatch
+      def board_issue_statuses
+        return @board_issue_statuses if defined?(@board_issue_statuses) && @board_issue_statuses
+
+        tracker_ids =
+          issue_scope
+          .unscope(:select, :order)
+          .where.not("#{Issue.table_name}.tracker_id" => nil)
+          .distinct
+          .pluck("#{Issue.table_name}.tracker_id")
+
+        status_ids =
+          if tracker_ids.any?
+            WorkflowTransition.where(tracker_id: tracker_ids).distinct.pluck(:old_status_id, :new_status_id).flatten.uniq
+          else
+            []
+          end
+
+        @board_issue_statuses = IssueStatus.where(id: status_ids)
+      rescue StandardError => e
+        Rails.logger.warn("[AgileQueryPerfPatch] board_issue_statuses fallback: #{e.class}: #{e.message}")
+        super
+      end
+    end
+  end
+
+  AgileQuery.prepend(TaskmanAgileQueryPerfPatch) unless AgileQuery.ancestors.include?(TaskmanAgileQueryPerfPatch)
+end
