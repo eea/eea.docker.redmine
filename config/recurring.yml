@@ -22,7 +22,7 @@ production:
         Rails.logger.error("[rails_pulse_day_refresh] #{e.class}: #{e.message}")
         raise
       end
-    schedule: every 5 minutes
+    schedule: 0 0 * * *
   rails_pulse_cleanup:
     class: RailsPulse::CleanupJob
     schedule: 17 3 * * *

@@ -1,11 +1,9 @@
-class AddManualPrefixIdxJournalsOnJournalizedTypeJournalizedIdCreatedOn < ActiveRecord::Migration["#{Rails::VERSION::MAJOR}.#{Rails::VERSION::MINOR}".to_f]
+class AddManualIdxIssuesAssignedStatusTrackerId < ActiveRecord::Migration["#{Rails::VERSION::MAJOR}.#{Rails::VERSION::MINOR}".to_f]
   disable_ddl_transaction!
 
-  TABLE_NAME = :journals
-  INDEX_COLUMNS = [:journalized_type, :journalized_id, :created_on].freeze
-  # MySQL index identifiers are max 64 chars.
-  INDEX_NAME = "manual_idx_journals_on_journalized_type_journalized_id_created"
-  LEGACY_INDEX_NAME = "manual_prefix_idx_journals_on_journalized_type_journalized_id_created_on"
+  TABLE_NAME = :issues
+  INDEX_COLUMNS = [:assigned_to_id, :status_id, :tracker_id, :id].freeze
+  INDEX_NAME = "manual_idx_issues_assigned_status_tracker_id"
 
   def up
     unless table_exists?(TABLE_NAME)
@@ -13,9 +11,7 @@ class AddManualPrefixIdxJournalsOnJournalizedTypeJournalizedIdCreatedOn < Active
       return
     end
 
-    if index_exists?(TABLE_NAME, INDEX_COLUMNS, name: INDEX_NAME) ||
-        index_name_exists?(TABLE_NAME, INDEX_NAME) ||
-        index_name_exists?(TABLE_NAME, LEGACY_INDEX_NAME)
+    if index_exists?(TABLE_NAME, INDEX_COLUMNS, name: INDEX_NAME) || index_name_exists?(TABLE_NAME, INDEX_NAME)
       say "[manual_indexes] skip #{INDEX_NAME}: already exists", true
       return
     end
@@ -28,7 +24,6 @@ class AddManualPrefixIdxJournalsOnJournalizedTypeJournalizedIdCreatedOn < Active
 
   def down
     remove_index TABLE_NAME, name: INDEX_NAME, if_exists: true
-    remove_index TABLE_NAME, name: LEGACY_INDEX_NAME, if_exists: true
   end
 
   private

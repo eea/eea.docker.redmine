@@ -32,6 +32,20 @@ done
 
 DEFAULT_INDEX_NAME="manual_prefix_idx_${TABLE_NAME}_on_$(IFS=_; echo "${COLUMNS[*]}")"
 INDEX_NAME="${CUSTOM_INDEX_NAME:-$DEFAULT_INDEX_NAME}"
+MAX_INDEX_NAME_LEN=64
+
+if [[ "${INDEX_NAME}" != manual_* ]]; then
+  INDEX_NAME="manual_${INDEX_NAME}"
+fi
+
+if (( ${#INDEX_NAME} > MAX_INDEX_NAME_LEN )); then
+  hash_suffix="$(printf "%s" "${INDEX_NAME}" | shasum -a 256 | awk '{print $1}' | cut -c1-8)"
+  base_without_manual="${INDEX_NAME#manual_}"
+  max_base_len=$((MAX_INDEX_NAME_LEN - ${#hash_suffix} - 1 - 7))
+  trimmed_base="${base_without_manual:0:${max_base_len}}"
+  INDEX_NAME="manual_${trimmed_base}_${hash_suffix}"
+  echo "Index name exceeded ${MAX_INDEX_NAME_LEN} chars; using shortened name: ${INDEX_NAME}"
+fi
 
 timestamp="$(date +"%Y%m%d%H%M%S")"
 filename="${timestamp}_add_${INDEX_NAME}.rb"
@@ -42,7 +56,8 @@ camelize() {
   echo "$1" | sed -E 's/[^a-zA-Z0-9]+/ /g' | awk '{for (i=1; i<=NF; i++) printf toupper(substr($i,1,1)) tolower(substr($i,2));}'
 }
 
-class_name="Add$(camelize "${INDEX_NAME}")"
+class_source="${filename#*_}"
+class_name="$(camelize "${class_source%.rb}")"
 columns_ruby=""
 for col in "${COLUMNS[@]}"; do
   if [[ -n "${columns_ruby}" ]]; then
