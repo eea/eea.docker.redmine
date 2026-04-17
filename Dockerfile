@@ -155,6 +155,26 @@ RUN set -euo pipefail \
        done; \
      else \
        echo "Skipping rails_pulse engine.rb patch (file not found)"; \
+     fi \
+  && redmineup_route_files="$(find /usr/local/bundle -path "*/redmineup-*/config/routes.rb" -type f)" \
+  && if [ -n "${redmineup_route_files}" ]; then \
+       echo "${redmineup_route_files}" | while IFS= read -r file; do \
+         [ -n "${file}" ] || continue; \
+         # Temporary compatibility guard:
+         # redmine_contacts/config/routes.rb and redmineup/config/routes.rb both define
+         # auto_completes#taggable_tags with helper auto_complete_taggable_tags.
+         # Keep this until upstream resolves duplicate named route registration, then remove and re-test.
+         if grep -q "auto_completes/taggable_tags" "${file}" && ! grep -q "named_routes.key?(:auto_complete_taggable_tags)" "${file}"; then \
+           sed -i "/auto_completes\\/taggable_tags/ i\\  # TODO(redmineup): Remove this guard and re-test on future releases once upstream fixes duplicate named route registration. Overlap lives in redmine_contacts/config/routes.rb and redmineup/config/routes.rb for auto_completes#taggable_tags (helper: auto_complete_taggable_tags)." "${file}"; \
+           sed -i "/auto_completes\\/taggable_tags/ i\\  unless Rails.application.routes.named_routes.key?(:auto_complete_taggable_tags)" "${file}"; \
+           sed -i "/as: 'auto_complete_taggable_tags'/ a\\  end" "${file}"; \
+           echo "Patched redmineup routes: ${file}"; \
+         else \
+           echo "Skipping redmineup routes patch: ${file}"; \
+         fi; \
+       done; \
+     else \
+       echo "Skipping redmineup routes patch (file not found)"; \
      fi
 
 COPY theme_overrides/ ${REDMINE_PATH}/theme_overrides/

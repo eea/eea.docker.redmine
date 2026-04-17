@@ -13,7 +13,9 @@ gem 'with_advisory_lock'
 
 # RedmineUP/pro-plugin runtime dependencies must be present in image
 # even when addons are synced at runtime from PVC/share.
-gem 'redmineup'
+# Track latest 1.1.x line; runtime route conflict is handled by a build-time
+# compatibility patch in Dockerfile.
+gem 'redmineup', '~> 1.1.5'
 gem 'redmine_plugin_kit'
 gem 'vcard'
 gem 'wicked_pdf', '~> 1.1.0'
