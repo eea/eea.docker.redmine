@@ -2,6 +2,7 @@
 
 # Cache client used by Redmine + plugins in this deployment.
 gem 'dalli', '~> 2.7.6'
+gem 'connection_pool', '~> 2.4'
 
 # Runtime/instrumentation stack required by this image.
 gem 'rails_pulse'
