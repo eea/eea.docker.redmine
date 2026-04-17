@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-ARG REDMINE_BASE=redmine:6.1.1@sha256:a97aaee22fb7ff9d0ed691e11f5ad01c6e1dceaae63275fd6a96ac30f76aebfa
+ARG REDMINE_BASE=redmine:6.1.2@sha256:e8a05d36d55f022d3709865cc2932cb87e6701a35ca89aeb8e5af5e8a67b31b0
 
 FROM ${REDMINE_BASE} AS base
 
