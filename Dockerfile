@@ -29,9 +29,8 @@ RUN apt-get update -q \
 
 # Install gems
 RUN echo 'gem "dalli", "~> 2.7.6"' >> ${REDMINE_PATH}/Gemfile \
- && echo 'gem "acts-as-taggable-on", "~> 5.0"' >> ${REDMINE_PATH}/Gemfile  \
- && echo 'gem "redmineup", "~> 1.1.2"' >> ${REDMINE_PATH}/Gemfile
-
+ && echo 'gem "acts-as-taggable-on", "~> 5.0"' >> ${REDMINE_PATH}/Gemfile  
+ 
 # Install eea cron tools
 COPY crons/ ${REDMINE_LOCAL_PATH}/crons
 COPY config/install_plugins.sh ${REDMINE_PATH}/install_plugins.sh
