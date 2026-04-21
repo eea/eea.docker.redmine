@@ -118,6 +118,9 @@ if [ -n "$REDMINE_DB_POOL" ]; then
     sed -i "/bundle check/a\        echo '  pool: $REDMINE_DB_POOL' >> config\/database.yml"    /docker-entrypoint.sh
 fi
 
+#fix Gemfile redmineup version to 1.1.2 until we upgrade
+sed -i "s/gem 'redmineup'.*/gem 'redmineup', '= 1.1.2'/" plugins/*/Gemfile
+
 /docker-entrypoint.sh rails server -b 0.0.0.0
 
 
