@@ -28,6 +28,9 @@ services:
     build:
       context: ../.
       target: ${REDMINE_BUILD_TARGET:-runtime}
+      args:
+        REDMINE_BASE: ${REDMINE_BASE_IMAGE:-redmine:ruby402-trixie-amd64}
+        RUBY_REQUIRED_PREFIX: ${RUBY_REQUIRED_PREFIX:-4.0.}
     entrypoint:
     - /bin/bash
     - -lc
@@ -93,6 +96,8 @@ services:
     depends_on:
       addons-sync:
         condition: service_completed_successfully
+      memcached:
+        condition: service_started
       mysql:
         condition: service_started
     links:
@@ -104,6 +109,9 @@ services:
     build:
       context: ../.
       target: ${REDMINE_BUILD_TARGET:-runtime}
+      args:
+        REDMINE_BASE: ${REDMINE_BASE_IMAGE:-redmine:ruby402-trixie-amd64}
+        RUBY_REQUIRED_PREFIX: ${RUBY_REQUIRED_PREFIX:-4.0.}
     environment:
       REDMINE_DB_MYSQL: mysql
       REDMINE_DB_DATABASE: redmine_test
@@ -119,7 +127,11 @@ services:
       MISSION_CONTROL_JOBS_AUTH_ENABLED: "1"
       MISSION_CONTROL_JOBS_BASIC_AUTH_USERNAME: admin
       MISSION_CONTROL_JOBS_BASIC_AUTH_PASSWORD: ${ADMIN_BOOTSTRAP_PASSWORD:-Admin123!}
+      RAILS_PULSE_ENABLED: "0"
+      RAILS_PULSE_SUMMARY_ENABLED: "0"
       RAILS_PULSE_AUTH_ENABLED: "0"
+      RACK_MINI_PROFILER_ENABLED: "${RACK_MINI_PROFILER_ENABLED:-0}"
+      RACK_MINI_PROFILER_ALLOW_ALL: "${RACK_MINI_PROFILER_ALLOW_ALL:-0}"
       CRON_IN_ASYNC_JOBS_ONLY: "1"
       REQUIRE_MOUNTED_ADDONS: "1"
       MOUNTED_ADDONS_ROOT: /addons/current
@@ -133,19 +145,28 @@ services:
       REDMINE_HOST: redmine:3000
       RAILS_ENV: production
       RAILS_LOG_LEVEL: info
-      MT_NO_PLUGINS: "1"
+      MT_NO_PLUGINS: "${MT_NO_PLUGINS:-1}"
       MEMCACHE_SERVERS: memcached:11211
       MEMCACHE_NAMESPACE: redmine-prod
       MEMCACHE_EXPIRES_IN: "3600"
       RAILS_SERVE_STATIC_FILES: "1"
+      TASKMAN_PATCH_ADVISORY_LOCK: "0"
+      TASKMAN_PATCH_GLOBAL_BANNER_ROUTE: "0"
+      TASKMAN_PATCH_AGILE_QUERY: "0"
+      TASKMAN_PATCH_QUERY_INLINE_COLUMNS_CACHE: "0"
+      TASKMAN_PATCH_RESOURCE_ALLOCATION: "0"
       TZ: UTC
     volumes:
     - addons_data:/addons:ro
     - redmine_assets:/usr/src/redmine/public/assets
     - redmine_files:/usr/src/redmine/test/fixtures/files
+    ports:
+    - "${REDMINE_BIND:-127.0.0.1}:${REDMINE_PORT:-3000}:3000"
     depends_on:
       migrate:
         condition: service_completed_successfully
+      memcached:
+        condition: service_started
       mysql:
         condition: service_started
     links:
@@ -160,7 +181,11 @@ services:
       MISSION_CONTROL_JOBS_AUTH_ENABLED: "1"
       MISSION_CONTROL_JOBS_BASIC_AUTH_USERNAME: admin
       MISSION_CONTROL_JOBS_BASIC_AUTH_PASSWORD: ${ADMIN_BOOTSTRAP_PASSWORD:-Admin123!}
+      RAILS_PULSE_ENABLED: "0"
+      RAILS_PULSE_SUMMARY_ENABLED: "0"
       RAILS_PULSE_AUTH_ENABLED: "0"
+      RACK_MINI_PROFILER_ENABLED: "${RACK_MINI_PROFILER_ENABLED:-0}"
+      RACK_MINI_PROFILER_ALLOW_ALL: "${RACK_MINI_PROFILER_ALLOW_ALL:-0}"
       REQUIRE_MOUNTED_ADDONS: "1"
       MOUNTED_ADDONS_ROOT: /addons/current
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
@@ -188,6 +213,11 @@ services:
       MEMCACHE_NAMESPACE: redmine-prod
       MEMCACHE_EXPIRES_IN: "3600"
       RAILS_SERVE_STATIC_FILES: "1"
+      TASKMAN_PATCH_ADVISORY_LOCK: "0"
+      TASKMAN_PATCH_GLOBAL_BANNER_ROUTE: "0"
+      TASKMAN_PATCH_AGILE_QUERY: "0"
+      TASKMAN_PATCH_QUERY_INLINE_COLUMNS_CACHE: "0"
+      TASKMAN_PATCH_RESOURCE_ALLOCATION: "0"
       TZ: UTC
     volumes:
     - addons_data:/addons:ro
@@ -196,6 +226,8 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+      memcached:
+        condition: service_started
       mysql:
         condition: service_started
     links:
