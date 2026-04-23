@@ -18,11 +18,14 @@ css_src="${overrides_root}/stylesheets/taskman-backport-overrides.css"
 js_src="${overrides_root}/javascripts/taskman-backport-overrides.js"
 svg_src="${overrides_root}/svg/stop-hand.svg"
 logo_src="${overrides_root}/images/logo/logo.png"
+favicon_src="${overrides_root}/favicon/favicon.ico"
 css_dst="${theme_root}/stylesheets/taskman-backport-overrides.css"
 js_dst="${theme_root}/javascripts/taskman-backport-overrides.js"
 svg_dst="${theme_root}/svg/stop-hand.svg"
 logo_dst="${theme_root}/images/logo/logo.png"
 logo_compat_dst="${theme_root}/logo/logo.png"
+favicon_theme_dst="${theme_root}/favicon/favicon.ico"
+favicon_public_dst="${REDMINE_PATH}/public/favicon.ico"
 theme_css="${theme_root}/stylesheets/application.css"
 theme_js="${theme_root}/javascripts/theme.js"
 css_inline_begin="taskman-backport-overrides-inline-begin"
@@ -34,7 +37,7 @@ if [ ! -d "${overrides_root}" ] || [ ! -d "${theme_root}" ]; then
   exit 0
 fi
 
-mkdir -p "${theme_root}/stylesheets" "${theme_root}/javascripts" "${theme_root}/svg" "${theme_root}/images/logo" "${theme_root}/logo"
+mkdir -p "${theme_root}/stylesheets" "${theme_root}/javascripts" "${theme_root}/svg" "${theme_root}/images/logo" "${theme_root}/logo" "${theme_root}/favicon" "${REDMINE_PATH}/public"
 
 if [ -f "${css_src}" ]; then
   cp "${css_src}" "${css_dst}"
@@ -73,4 +76,9 @@ fi
 if [ -f "${logo_src}" ]; then
   cp "${logo_src}" "${logo_dst}"
   cp "${logo_src}" "${logo_compat_dst}"
+fi
+
+if [ -f "${favicon_src}" ]; then
+  cp "${favicon_src}" "${favicon_theme_dst}"
+  cp "${favicon_src}" "${favicon_public_dst}"
 fi

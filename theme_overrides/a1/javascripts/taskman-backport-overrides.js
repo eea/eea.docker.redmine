@@ -70,10 +70,31 @@
       return;
     }
 
+    function forceTaskmanFavicon() {
+      // Keep favicon local to the deployed app; no external fetch at runtime.
+      var faviconUrl = "/favicon.ico?v=taskman-local";
+      var selectors = "link[rel='icon'], link[rel='shortcut icon']";
+      var links = document.querySelectorAll(selectors);
+
+      if (!links.length) {
+        var link = document.createElement("link");
+        link.setAttribute("rel", "icon");
+        link.setAttribute("type", "image/x-icon");
+        link.setAttribute("href", faviconUrl);
+        document.head.appendChild(link);
+        return;
+      }
+
+      links.forEach(function (linkEl) {
+        linkEl.setAttribute("href", faviconUrl);
+      });
+    }
+
     function moveProjectsBoxAboveMembers() {
       $(".members.box").next().filter(".projects.box").insertBefore(".members.box");
     }
 
+    forceTaskmanFavicon();
     // #106078 block search for anonymous
     function blockSearchAnonymous() {
       if (!$("#loggedas").length) {
