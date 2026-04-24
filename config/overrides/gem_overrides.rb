@@ -5,7 +5,8 @@ gem 'dalli', '~> 2.7.6'
 gem 'connection_pool', '~> 2.4'
 
 # Runtime/instrumentation stack required by this image.
-gem 'rails_pulse'
+gem 'rack-mini-profiler', '~> 4.0'
+gem 'stackprof'
 gem 'mission_control-jobs'
 gem 'solid_queue'
 gem 'mysql2', '~> 0.5.0'
@@ -26,8 +27,9 @@ gem 'render_async'
 gem 'rss'
 gem 'slim-rails'
 
-# Ruby 3.4 compatibility for stdlib extraction.
+# Ruby 4 compatibility for stdlib extraction.
 gem 'ostruct'
+gem 'nkf'
 
 # Force puma availability in final image.
 gem 'puma'

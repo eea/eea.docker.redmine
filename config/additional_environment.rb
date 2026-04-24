@@ -1,12 +1,21 @@
 log_level_name = ENV.fetch('RAILS_LOG_LEVEL', 'info').upcase
 log_level = Logger.const_get(log_level_name)
 cache_servers = ENV.fetch('MEMCACHE_SERVERS', 'memcached:11211').split(',')
+cache_pool_enabled = ENV.fetch('MEMCACHE_POOL_ENABLED', '1') == '1'
+cache_pool_size = ENV.fetch('MEMCACHE_POOL_SIZE', '32').to_i
+cache_pool_timeout = ENV.fetch('MEMCACHE_POOL_TIMEOUT', '1').to_i
 cache_options = {
-  pool: false,
   namespace: ENV.fetch('MEMCACHE_NAMESPACE', 'redmine'),
   compress: true,
-  expires_in: ENV.fetch('MEMCACHE_EXPIRES_IN', '3600').to_i
+  expires_in: ENV.fetch('MEMCACHE_EXPIRES_IN', '3600').to_i,
+  race_condition_ttl: ENV.fetch('MEMCACHE_RACE_CONDITION_TTL', '10').to_i,
+  skip_nil: true
 }
+cache_options[:pool] = if cache_pool_enabled
+                         { size: cache_pool_size, timeout: cache_pool_timeout }
+                       else
+                         false
+                       end
 
 asset_warning_filters = [
   /MCP config file not found:/,
@@ -64,11 +73,14 @@ if config.respond_to?(:active_job)
   config.active_job.queue_adapter = adapter_name.to_sym
 end
 
-# Rails 7.2+ can raise ArgumentError inside connection_pool when MemCacheStore
-# is initialized with pooling enabled. Disable pooling to keep startup/migrations working.
 config.cache_store = :mem_cache_store, cache_servers, cache_options
 config.action_controller.cache_store = :mem_cache_store, cache_servers, cache_options
 config.redmine_search_cache_store = :mem_cache_store, cache_servers, cache_options
+
+stdout_logger.info(
+  "[cache_store] store=mem_cache_store servers=#{cache_servers.join(',')} " \
+  "pool_enabled=#{cache_pool_enabled} pool_size=#{cache_pool_size} pool_timeout=#{cache_pool_timeout}"
+)
 
 if ENV['AGILE_BOARD_PROFILE'] == '1'
   ActiveSupport::Notifications.subscribe('process_action.action_controller') do |_name, _start_t, _finish_t, _id, payload|

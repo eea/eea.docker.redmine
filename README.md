@@ -103,7 +103,7 @@ The Dockerfile is intentionally split into clear stages:
 
 1. `base`: installs OS deps, checks out open-source plugins, composes `Gemfile` from Redmine + plugin Gemfiles + documented overrides.
 2. `gems`: runs `bundle install` (cached stage).
-3. `runtime`: copies bundled gems and app config/scripts, wires RailsPulse/SolidQueue integration, then sets entrypoint.
+3. `runtime`: copies bundled gems and app config/scripts, wires SolidQueue integration, then sets entrypoint.
 4. `ci-runtime`: extends `runtime` with CI-only test dependencies for Jenkins.
 
 Addon source-of-truth is `addons.cfg` (`type:name:location:archive`).
@@ -111,6 +111,37 @@ Paid plugins/themes are not embedded by default (`EMBED_PRO_ASSETS=0`) and are e
 Build target for local/CI compose is selected via `REDMINE_BUILD_TARGET` (`runtime` by default, `ci-runtime` for Jenkins).
 For amd64 local runs, compose files are layered:
 `docker compose -f test/docker-compose.yml -f test/docker-compose.amd64.yml ...`.
+
+### Local Test Toggle: Ruby4 + Plugins (On/Off)
+
+`test/docker-compose.base.yml` supports a local toggle via env vars:
+
+- `REDMINE_BASE_IMAGE` controls the Docker base image used at build-time.
+- `RUBY_REQUIRED_PREFIX` controls the Docker build-time Ruby version guard.
+- `MT_NO_PLUGINS` controls plugin loading at runtime (`0` = enabled, `1` = disabled).
+
+Default mode (off):
+
+```bash
+docker compose -f test/docker-compose.yml -f test/docker-compose.amd64.yml up -d --build
+```
+
+Ruby4 + plugins mode (on):
+
+```bash
+REDMINE_BASE_IMAGE=redmine:ruby402-trixie-amd64 RUBY_REQUIRED_PREFIX=4.0. MT_NO_PLUGINS=0 \
+docker compose -f test/docker-compose.yml -f test/docker-compose.amd64.yml up -d --build
+```
+
+`ostruct` is included through `config/overrides/gem_overrides.rb` and will be applied
+automatically by `compose_gemfile_from_plugins.rb` in this mode.
+
+Switch back off:
+
+```bash
+REDMINE_BASE_IMAGE=redmine:6.1.2@sha256:e8a05d36d55f022d3709865cc2932cb87e6701a35ca89aeb8e5af5e8a67b31b0 MT_NO_PLUGINS=1 \
+docker compose -f test/docker-compose.yml -f test/docker-compose.amd64.yml up -d --build
+```
 
 Gem overrides are documented in:
 
