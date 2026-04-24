@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
 ARG REDMINE_BASE=redmine:6.1.2@sha256:e8a05d36d55f022d3709865cc2932cb87e6701a35ca89aeb8e5af5e8a67b31b0
+ARG RUBY_REQUIRED_PREFIX=3.4.
 
 FROM ${REDMINE_BASE} AS base
 
@@ -21,7 +22,8 @@ ENV REDMINE_PATH=/usr/src/redmine \
   RUNTIME_THEME_SYNC=0
 
 # Fail build if upstream base drifts away from Ruby 3.4.x.
-RUN ruby -e 'abort("Ruby 3.4.x is required, got #{RUBY_VERSION}") unless RUBY_VERSION.start_with?("3.4.")'
+ARG RUBY_REQUIRED_PREFIX
+RUN ruby -e 'req = "'"${RUBY_REQUIRED_PREFIX}"'"; abort("Ruby #{req}x is required, got #{RUBY_VERSION}") unless RUBY_VERSION.start_with?(req)'
 
 # Optional: bake RedmineUP assets into the image.
 ARG PLUGINS_URL=
@@ -127,8 +129,8 @@ COPY config/additional_environment.rb ${REDMINE_PATH}/config/additional_environm
 COPY config/configuration.yml ${REDMINE_PATH}/config/configuration.yml
 COPY config/cable.yml ${REDMINE_PATH}/config/cable.yml
 COPY config/queue.yml ${REDMINE_PATH}/config/queue.yml
-COPY config/rails_pulse.rb ${REDMINE_PATH}/config/initializers/rails_pulse.rb
 COPY config/mission_control_jobs.rb ${REDMINE_PATH}/config/initializers/mission_control_jobs.rb
+COPY config/initializers/rack_mini_profiler.rb ${REDMINE_PATH}/config/initializers/rack_mini_profiler.rb
 COPY config/initializers/test_runtime_compat.rb ${REDMINE_PATH}/config/initializers/test_runtime_compat.rb
 COPY config/initializers/runtime_compat.rb ${REDMINE_PATH}/config/initializers/runtime_compat.rb
 COPY config/recurring.yml ${REDMINE_PATH}/config/recurring.yml
@@ -141,21 +143,13 @@ COPY config/runtime/sync_addons_from_share.sh /usr/local/bin/sync_addons_from_sh
 COPY config/runtime/migration_runner.rb ${REDMINE_PATH}/config/runtime/migration_runner.rb
 COPY config/runtime/common.sh /usr/local/bin/common.sh
 COPY config/runtime/kconv.rb ${REDMINE_PATH}/lib/kconv.rb
+COPY scripts/seed_perf_data.rb ${REDMINE_PATH}/scripts/seed_perf_data.rb
 
-# Add RailsPulse/SolidQueue integration in a dedicated build step.
+# Add SolidQueue integration in a dedicated build step.
 RUN set -euo pipefail \
   && cd ${REDMINE_PATH} \
   && chmod 0755 /usr/local/bin/install_engine_integrations.rb \
   && /usr/local/bin/bundle exec ruby /usr/local/bin/install_engine_integrations.rb \
-  && engine_files="$(find /usr/local/bundle -path "*/rails_pulse-*/lib/rails_pulse/engine.rb" -type f)" \
-  && if [ -n "${engine_files}" ]; then \
-       echo "${engine_files}" | while IFS= read -r file; do \
-         [ -n "${file}" ] || continue; \
-         sed -i "s/controller.class.name.start_with?(\"RailsPulse::\")/controller.class.name.to_s.start_with?(\"RailsPulse::\")/" "${file}"; \
-       done; \
-     else \
-       echo "Skipping rails_pulse engine.rb patch (file not found)"; \
-     fi \
   && redmineup_route_files="$(find /usr/local/bundle -path "*/redmineup-*/config/routes.rb" -type f)" \
   && if [ -n "${redmineup_route_files}" ]; then \
        echo "${redmineup_route_files}" | while IFS= read -r file; do \

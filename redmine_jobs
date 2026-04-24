@@ -9,6 +9,3 @@
 0 * * * *  /var/local/redmine/crons/eea_entra_id_sync_users.sh 2>&1 | logger
 # Redmine EEA Entra ID daily syncronization of user groups
 15 4 * * *  /var/local/redmine/crons/eea_entra_id_sync_groups.sh 2>&1 | logger
-# Rails Pulse jobs (guarded with DB advisory lock, safe across multiple pods)
-*/5 * * * * /var/local/redmine/crons/rails_pulse_job.sh RailsPulse::SummaryJob rails_pulse_summary 2>&1 | logger
-17 3 * * * /var/local/redmine/crons/rails_pulse_job.sh RailsPulse::CleanupJob rails_pulse_cleanup 2>&1 | logger

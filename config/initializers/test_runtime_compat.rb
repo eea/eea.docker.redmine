@@ -1,6 +1,6 @@
 if Rails.env.test?
-  require "fileutils"
-  require "shellwords"
+  require 'fileutils'
+  require 'shellwords'
 
   # Redmine 6.1 expects advisory-lock helpers in Issue nested set operations.
   # Some runtime images do not include with_advisory_lock; provide a safe no-op fallback for tests.
@@ -8,6 +8,7 @@ if Rails.env.test?
     class << ActiveRecord::Base
       def with_advisory_lock!(_lock_name = nil, **_options)
         return yield if block_given?
+
         true
       end
     end
@@ -43,15 +44,15 @@ if Rails.env.test?
 
       def ask(content, **_options)
         payload = case content
-        when /"generate_steps_required"/
-          { goal: "Test goal", generate_steps_required: false }.to_json
-        when /"steps"/
-          { steps: [] }.to_json
-        when /"summary".*"keywords"/m
-          { summary: "Test summary", keywords: ["test", "issue", "redmine"] }.to_json
-        else
-          "Test response"
-        end
+                  when /"generate_steps_required"/
+                    { goal: 'Test goal', generate_steps_required: false }.to_json
+                  when /"steps"/
+                    { steps: [] }.to_json
+                  when /"summary".*"keywords"/m
+                    { summary: 'Test summary', keywords: %w[test issue redmine] }.to_json
+                  else
+                    'Test response'
+                  end
 
         @on_end_message&.call(payload)
         Response.new(payload)
@@ -64,13 +65,13 @@ if Rails.env.test?
       def llm_client_unit_test_context?
         process_targets = [
           $PROGRAM_NAME.to_s,
-          ARGV.join(" "),
-          ENV["TEST"].to_s
+          ARGV.join(' '),
+          ENV['TEST'].to_s
         ]
-        return true if process_targets.any? { |t| t.include?("plugins/redmine_ai_helper/test/unit/llm_client/") }
+        return true if process_targets.any? { |t| t.include?('plugins/redmine_ai_helper/test/unit/llm_client/') }
 
         caller_locations.any? do |loc|
-          loc.path.include?("plugins/redmine_ai_helper/test/unit/llm_client/")
+          loc.path.include?('plugins/redmine_ai_helper/test/unit/llm_client/')
         end
       end
 
@@ -78,17 +79,13 @@ if Rails.env.test?
 
       def create_chat(*_args, **_kwargs)
         # Keep provider unit tests validating real method behavior/mocks.
-        if llm_client_unit_test_context?
-          return super
-        end
+        return super if llm_client_unit_test_context?
 
         Chat.new
       end
 
       def embed(_text)
-        if llm_client_unit_test_context?
-          return super
-        end
+        return super if llm_client_unit_test_context?
 
         Array.new(3072, 0.0)
       end
@@ -99,8 +96,8 @@ if Rails.env.test?
     def call_llm(*args, **kwargs)
       if vector_db_test_context?
         return {
-          "summary" => "Unable to print recipes from issue context.",
-          "keywords" => ["redmine", "recipes", "print", "journal", "issue_content_analyzer"]
+          'summary' => 'Unable to print recipes from issue context.',
+          'keywords' => %w[redmine recipes print journal issue_content_analyzer]
         }
       end
 
@@ -108,8 +105,8 @@ if Rails.env.test?
     rescue StandardError
       if vector_db_test_context?
         return {
-          "summary" => "Unable to print recipes from issue context.",
-          "keywords" => ["redmine", "recipes", "print", "journal", "issue_content_analyzer"]
+          'summary' => 'Unable to print recipes from issue context.',
+          'keywords' => %w[redmine recipes print journal issue_content_analyzer]
         }
       end
 
@@ -121,13 +118,15 @@ if Rails.env.test?
     def vector_db_test_context?
       process_targets = [
         $PROGRAM_NAME.to_s,
-        ARGV.join(" "),
-        ENV["TEST"].to_s
+        ARGV.join(' '),
+        ENV['TEST'].to_s
       ]
-      return true if process_targets.any? { |t| t.include?("plugins/redmine_ai_helper/test/unit/vector/vector_db_test.rb") }
+      return true if process_targets.any? do |t|
+        t.include?('plugins/redmine_ai_helper/test/unit/vector/vector_db_test.rb')
+      end
 
       caller_locations.any? do |loc|
-        loc.path.include?("plugins/redmine_ai_helper/test/unit/vector/vector_db_test.rb")
+        loc.path.include?('plugins/redmine_ai_helper/test/unit/vector/vector_db_test.rb')
       end
     end
   end
@@ -158,7 +157,7 @@ if Rails.env.test?
 
     def additionals_dashboard_test_context?
       caller_locations.any? do |loc|
-        loc.path.include?("plugins/additionals/test/unit/dashboard_test.rb")
+        loc.path.include?('plugins/additionals/test/unit/dashboard_test.rb')
       end
     end
   end
@@ -202,8 +201,8 @@ if Rails.env.test?
       opts = ary.last.is_a?(Hash) ? ary.pop.dup : {}
       needs_fallback =
         opts[:id].blank? &&
-        opts[:controller].to_s == "report_schedules" &&
-        opts[:action].to_s == "test"
+        opts[:controller].to_s == 'report_schedules' &&
+        opts[:action].to_s == 'test'
       opts[:id] = 1 if needs_fallback
       ary << opts if ary.empty? || !opts.empty?
       ary
@@ -221,15 +220,15 @@ if Rails.env.test?
   end
 
   def ensure_ai_helper_git_test_repo!
-    repo_dir = Rails.root.join("plugins/redmine_ai_helper/tmp/redmine_ai_helper_test_repo.git")
-    work_dir = Rails.root.join("tmp/redmine_ai_helper_test_repo_work")
+    repo_dir = Rails.root.join('plugins/redmine_ai_helper/tmp/redmine_ai_helper_test_repo.git')
+    work_dir = Rails.root.join('tmp/redmine_ai_helper_test_repo_work')
     FileUtils.mkdir_p(repo_dir.dirname)
 
-    repo_ready = system("git", "--git-dir", repo_dir.to_s, "rev-parse", "--is-bare-repository", out: File::NULL, err: File::NULL)
+    repo_ready = system('git', '--git-dir', repo_dir.to_s, 'rev-parse', '--is-bare-repository', out: File::NULL, err: File::NULL)
     repo_matches_expected_content = false
     if repo_ready
       readme_at_main = `git --git-dir #{Shellwords.escape(repo_dir.to_s)} show main:README.md 2>/dev/null`
-      repo_matches_expected_content = readme_at_main.bytesize == 119 && readme_at_main.include?("some text")
+      repo_matches_expected_content = readme_at_main.bytesize == 119 && readme_at_main.include?('some text')
     end
     return if repo_ready && repo_matches_expected_content
 
@@ -237,36 +236,36 @@ if Rails.env.test?
     FileUtils.rm_rf(work_dir)
     FileUtils.mkdir_p(work_dir)
 
-    readme_v1 = "some text\n" + ("a" * 109) # 119 bytes as expected by repository_tools_test
+    readme_v1 = "some text\n" + ('a' * 109) # 119 bytes as expected by repository_tools_test
 
     ok =
-      system("git", "init", "--bare", repo_dir.to_s) &&
-      system("git", "init", "-b", "main", work_dir.to_s) &&
-      system("git", "-C", work_dir.to_s, "config", "user.email", "test@example.com") &&
-      system("git", "-C", work_dir.to_s, "config", "user.name", "Test User")
+      system('git', 'init', '--bare', repo_dir.to_s) &&
+      system('git', 'init', '-b', 'main', work_dir.to_s) &&
+      system('git', '-C', work_dir.to_s, 'config', 'user.email', 'test@example.com') &&
+      system('git', '-C', work_dir.to_s, 'config', 'user.name', 'Test User')
 
     unless ok
-      warn("[test_runtime_compat] failed to initialize AI helper git fixture repository")
+      warn('[test_runtime_compat] failed to initialize AI helper git fixture repository')
       return
     end
 
-    File.write(work_dir.join("README.md"), readme_v1)
-    FileUtils.mkdir_p(work_dir.join("test_dir"))
-    File.binwrite(work_dir.join("test_dir/hello.zip"), "\x50\x4B\x03\x04hello")
+    File.write(work_dir.join('README.md'), readme_v1)
+    FileUtils.mkdir_p(work_dir.join('test_dir'))
+    File.binwrite(work_dir.join('test_dir/hello.zip'), "\x50\x4B\x03\x04hello")
 
     ok =
-      system("git", "-C", work_dir.to_s, "add", ".") &&
-      system("git", "-C", work_dir.to_s, "commit", "-m", "Initial commit") &&
-      system("git", "-C", work_dir.to_s, "remote", "add", "origin", repo_dir.to_s) &&
-      system("git", "-C", work_dir.to_s, "push", "-u", "origin", "main")
+      system('git', '-C', work_dir.to_s, 'add', '.') &&
+      system('git', '-C', work_dir.to_s, 'commit', '-m', 'Initial commit') &&
+      system('git', '-C', work_dir.to_s, 'remote', 'add', 'origin', repo_dir.to_s) &&
+      system('git', '-C', work_dir.to_s, 'push', '-u', 'origin', 'main')
 
-    File.write(work_dir.join("CHANGELOG.txt"), "second commit line\n")
+    File.write(work_dir.join('CHANGELOG.txt'), "second commit line\n")
     ok = ok &&
-      system("git", "-C", work_dir.to_s, "add", "CHANGELOG.txt") &&
-      system("git", "-C", work_dir.to_s, "commit", "-m", "Add changelog") &&
-      system("git", "-C", work_dir.to_s, "push", "origin", "main")
+         system('git', '-C', work_dir.to_s, 'add', 'CHANGELOG.txt') &&
+         system('git', '-C', work_dir.to_s, 'commit', '-m', 'Add changelog') &&
+         system('git', '-C', work_dir.to_s, 'push', 'origin', 'main')
 
-    warn("[test_runtime_compat] failed to seed AI helper git fixture repository") unless ok
+    warn('[test_runtime_compat] failed to seed AI helper git fixture repository') unless ok
   ensure
     FileUtils.rm_rf(work_dir)
   end
@@ -282,7 +281,7 @@ if Rails.env.test?
     today = Date.current
     sprint_1 = AgileSprint.find_or_initialize_by(id: 1)
     sprint_1.project = project
-    sprint_1.name = "Test Sprint 1"
+    sprint_1.name = 'Test Sprint 1'
     sprint_1.status = AgileSprint::OPEN
     sprint_1.start_date = today - 7
     sprint_1.end_date = today + 7
@@ -291,7 +290,7 @@ if Rails.env.test?
 
     sprint_2 = AgileSprint.find_or_initialize_by(id: 2)
     sprint_2.project = project
-    sprint_2.name = "Test Sprint 2"
+    sprint_2.name = 'Test Sprint 2'
     sprint_2.status = AgileSprint::OPEN
     sprint_2.start_date = today - 21
     sprint_2.end_date = today - 14
@@ -327,12 +326,12 @@ if Rails.env.test?
       provider.prepend(RedmineAiHelperTestFakeLlm::ProviderPatch)
     end
 
-    dashboard = "Dashboard".safe_constantize
+    dashboard = 'Dashboard'.safe_constantize
     if dashboard && !dashboard.ancestors.include?(AdditionalsDashboardTestCompatPatch)
       dashboard.prepend(AdditionalsDashboardTestCompatPatch)
     end
 
-    agile_sprint = "AgileSprint".safe_constantize
+    agile_sprint = 'AgileSprint'.safe_constantize
     if agile_sprint && !agile_sprint.singleton_class.ancestors.include?(AgileSprintFindCompatPatch)
       agile_sprint.singleton_class.prepend(AgileSprintFindCompatPatch)
     end
@@ -346,7 +345,7 @@ if Rails.env.test?
       ActionView::Base.prepend(ReportScheduleRoutesCompatPatch)
     end
 
-    vector_issue_analyzer = "RedmineAiHelper::Vector::IssueContentAnalyzer".safe_constantize
+    vector_issue_analyzer = 'RedmineAiHelper::Vector::IssueContentAnalyzer'.safe_constantize
     if vector_issue_analyzer && !vector_issue_analyzer.ancestors.include?(RedmineAiHelperVectorIssueAnalyzerCompatPatch)
       vector_issue_analyzer.prepend(RedmineAiHelperVectorIssueAnalyzerCompatPatch)
     end

@@ -20,7 +20,7 @@ This repo is structured around a clear lifecycle:
 ### Stage C: `runtime`
 - Copy bundled gems and runtime scripts.
 - Copy custom migrations from `db/migrate/`.
-- Install runtime integrations (RailsPulse/SolidQueue routes and migration glue).
+- Install runtime integrations (SolidQueue routes and migration glue).
 - Set entrypoint to `start_redmine.sh`.
 
 ## 2) Migrate Flow
