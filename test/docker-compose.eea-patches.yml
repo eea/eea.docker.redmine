@@ -4,14 +4,14 @@
 services:
   redmine:
     volumes:
-      - ./plugins/redmine_eea_patches:/usr/src/redmine/plugins/redmine_eea_patches:ro
+      - ../plugins/redmine_eea_patches:/usr/src/redmine/plugins/redmine_eea_patches:ro
     environment:
       - PLUGIN_MOUNT=1
 
   migrate:
     volumes:
-      - ./plugins/redmine_eea_patches:/usr/src/redmine/plugins/redmine_eea_patches:ro
+      - ../plugins/redmine_eea_patches:/usr/src/redmine/plugins/redmine_eea_patches:ro
 
   active-jobs:
     volumes:
-      - ./plugins/redmine_eea_patches:/usr/src/redmine/plugins/redmine_eea_patches:ro
+      - ../plugins/redmine_eea_patches:/usr/src/redmine/plugins/redmine_eea_patches:ro
