@@ -236,6 +236,11 @@ ensure_database_yml() {
   local db_user="${REDMINE_DB_USERNAME:-redmine}"
   local db_pass="${REDMINE_DB_PASSWORD:-}"
   local db_pool="${REDMINE_DB_POOL:-${RAILS_MAX_THREADS:-5}}"
+  local db_reconnect="${REDMINE_DB_RECONNECT:-true}"
+  local db_connect_timeout="${REDMINE_DB_CONNECT_TIMEOUT:-5}"
+  local db_read_timeout="${REDMINE_DB_READ_TIMEOUT:-30}"
+  local db_write_timeout="${REDMINE_DB_WRITE_TIMEOUT:-30}"
+  local db_checkout_timeout="${REDMINE_DB_CHECKOUT_TIMEOUT:-5}"
   local test_db_host="${REDMINE_TEST_DB_MYSQL:-${db_host}}"
   local test_db_port="${REDMINE_TEST_DB_PORT:-${db_port}}"
   local test_db_name="${REDMINE_TEST_DB_DATABASE:-${db_name}}"
@@ -261,6 +266,11 @@ ${env_name}:
   username: "${user}"
   password: "${pass}"
   pool: ${pool}
+  reconnect: ${db_reconnect}
+  connect_timeout: ${db_connect_timeout}
+  read_timeout: ${db_read_timeout}
+  write_timeout: ${db_write_timeout}
+  checkout_timeout: ${db_checkout_timeout}
   encoding: utf8mb4
 EOF
   }
@@ -275,6 +285,31 @@ EOF
     [ -s "${db_file}" ] && printf "\n" >> "${db_file}"
     append_db_block "test" "${test_db_host}" "${test_db_port}" "${test_db_name}" "${test_db_user}" "${test_db_pass}" "${test_db_pool}"
   fi
+}
+
+prune_disabled_recurring_tasks() {
+  local recurring_file="${REDMINE_PATH}/config/recurring.yml"
+
+  if [ ! -f "${recurring_file}" ]; then
+    return 0
+  fi
+
+  if [ "${TASKMAN_DEFAULT_MAILBOX_ENABLED:-0}" = "1" ]; then
+    return 0
+  fi
+
+  RECURRING_FILE="${recurring_file}" ruby <<'RUBY'
+require "yaml"
+
+path = ENV.fetch("RECURRING_FILE")
+config = YAML.safe_load(File.read(path), aliases: true) || {}
+production = config["production"].is_a?(Hash) ? config["production"] : nil
+
+if production&.delete("taskman_default_mailbox")
+  File.write(path, config.to_yaml)
+  puts "Removed disabled recurring task taskman_default_mailbox from #{path}"
+end
+RUBY
 }
 
 prepare_addons_assets_in_place() {
@@ -490,6 +525,7 @@ if [ "${MIGRATIONS_ONLY_STARTUP}" = "1" ]; then
   fi
   setup_runtime_environment
   ensure_database_yml
+  prune_disabled_recurring_tasks
   export ADMIN_BOOTSTRAP_PASSWORD=${ADMIN_BOOTSTRAP_PASSWORD:-Admin123!}
   export DEFAULT_THEME=${DEFAULT_THEME:-a1}
   export REDMINE_PLUGINS_MIGRATE=${REDMINE_PLUGINS_MIGRATE:-}
@@ -651,6 +687,7 @@ resolve_archive() {
 
 setup_runtime_environment
 ensure_database_yml
+prune_disabled_recurring_tasks
 ensure_bundle_ready
 start_cron_background
 
@@ -822,6 +859,15 @@ if [ "${RUNTIME_ADDONS_CHANGED}" = "1" ] || ! bundle check >/dev/null 2>&1; then
     echo "Runtime gem installation is disabled (FAST_BOOT=${FAST_BOOT})."
     echo "Build a complete image with all gems/plugins/themes baked in, or set FAST_BOOT=0 for runtime bundle install."
     exit 1
+  fi
+fi
+
+# Plugin mount toggle for development
+if [ "${PLUGIN_MOUNT:-0}" = "1" ]; then
+  echo "Plugin mount enabled - using local plugin sources"
+  # Symlink instead of copy if already mounted
+  if [ -L "/usr/src/redmine/plugins/redmine_eea_patches/init.rb" ]; then
+    echo "Plugin already mounted via volume"
   fi
 fi
 

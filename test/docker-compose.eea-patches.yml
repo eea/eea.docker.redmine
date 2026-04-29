@@ -1,0 +1,17 @@
+# Thin overlay for plugin mount during development
+# Usage: PLUGIN_MOUNT=1 docker-compose -f docker-compose.yml -f docker-compose.eea-patches.yml up -d
+
+services:
+  redmine:
+    volumes:
+      - ./plugins/redmine_eea_patches:/usr/src/redmine/plugins/redmine_eea_patches:ro
+    environment:
+      - PLUGIN_MOUNT=1
+
+  migrate:
+    volumes:
+      - ./plugins/redmine_eea_patches:/usr/src/redmine/plugins/redmine_eea_patches:ro
+
+  active-jobs:
+    volumes:
+      - ./plugins/redmine_eea_patches:/usr/src/redmine/plugins/redmine_eea_patches:ro
