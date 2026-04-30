@@ -60,10 +60,9 @@ Rails.application.config.to_prepare do
   end
 end
 
-# redmine_agile board status lookup can generate a very expensive join
-# across trackers/issues/projects/versions on large datasets.
-# Reuse the filtered issue scope to fetch only distinct tracker ids.
-# Scope: AgileQuery only; falls back to original implementation on exception.
+# redmine_agile board status lookup - query rewrite avoids expensive join
+# Original: joins issue_scope through tracker/project to workflows
+# Fixed: fetches tracker_ids first, then queries workflows directly
 # Toggle: TASKMAN_PATCH_AGILE_QUERY
 agile_query_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('AGILE_QUERY')
 TaskmanRuntimeCompat.log_patch('AGILE_QUERY', agile_query_patch_enabled)
@@ -74,25 +73,20 @@ Rails.application.config.to_prepare do
   unless defined?(TaskmanAgileQueryPerfPatch)
     module TaskmanAgileQueryPerfPatch
       def board_issue_statuses
-        # Request-local memoization to avoid recomputing in one render cycle.
-        return @board_issue_statuses if defined?(@board_issue_statuses) && @board_issue_statuses
+        tracker_ids = issue_scope.unscope(:select, :order)
+                               .where.not("#{Issue.table_name}.tracker_id" => nil)
+                               .distinct
+                               .pluck("#{Issue.table_name}.tracker_id")
 
-        tracker_ids =
-          issue_scope
-          .unscope(:select, :order)
-          .where.not("#{Issue.table_name}.tracker_id" => nil)
-          .distinct
-          .pluck("#{Issue.table_name}.tracker_id")
+        return IssueStatus.none if tracker_ids.empty?
 
-        status_ids =
-          if tracker_ids.any?
-            WorkflowTransition.where(tracker_id: tracker_ids).distinct.pluck(:old_status_id,
-                                                                             :new_status_id).flatten.uniq
-          else
-            []
-          end
+        status_ids = WorkflowTransition.where(tracker_id: tracker_ids)
+                                       .distinct
+                                       .pluck(:old_status_id, :new_status_id)
+                                       .flatten
+                                       .uniq
 
-        @board_issue_statuses = IssueStatus.where(id: status_ids)
+        IssueStatus.where(id: status_ids)
       rescue StandardError => e
         Rails.logger.warn("[AgileQueryPerfPatch] board_issue_statuses fallback: #{e.class}: #{e.message}")
         super
