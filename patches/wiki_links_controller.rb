@@ -42,16 +42,11 @@ class WikiLinksController < ApplicationController
   end
 
   def links_to
-    # Obtain the ids of all the pages that link to this one
-    ids_to = @page.links_to.uniq.pluck(:from_page_id)
-
-    begin
-      # Collect the pretty and ugly titles and sort by pretty title
-      @link_pages = WikiPage.find(ids_to).map(&:title)
-    rescue StandardError => e
-      @link_pages = []
-      puts e.message
-    end
+    # Obtain the pretty titles of all pages that link to this one, sorted by title
+    @link_pages = WikiPage.where(id: @page.links_to.select(:from_page_id))
+                          .distinct
+                          .order(:title)
+                          .pluck(:title)
   end
 
   def orphan
