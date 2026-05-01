@@ -1,0 +1,4 @@
+<%# EEA Performance Patch: cache common_for_projects result %>
+<%# Original: plugins/redmine_agile/app/views/context_menus/_sprints.html.erb %>
+<%# NOTE: Full upstream partial is not available in repo; runtime_compat helper patch provides real memoization. %>
+<% @eea_cached_common_projects ||= (respond_to?(:common_for_projects) ? common_for_projects : []) %>
