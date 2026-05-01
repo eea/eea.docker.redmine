@@ -124,7 +124,7 @@ def run_explain_queries
     log "-" * 70
 
     begin
-      result = ActiveRecord::Base.connection.execute("EXPLAIN #{q[:sql]")
+      result = ActiveRecord::Base.connection.execute("EXPLAIN #{q[:sql]}")
       result.each do |row|
         log row.join(" | ")
       end

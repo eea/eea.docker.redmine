@@ -1,5 +1,14 @@
 # Testing Guide: Redmine Performance Fixes
 
+## Quick Start
+
+Run the full performance test suite:
+```bash
+./performance_findings/docker-perf-test.sh
+# Or with custom compose file:
+./performance_findings/docker-perf-test.sh test/docker-compose.yml
+```
+
 ## Prerequisites
 
 - Docker and docker compose installed
