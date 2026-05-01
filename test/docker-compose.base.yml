@@ -148,8 +148,6 @@ services:
       MEMCACHE_EXPIRES_IN: "3600"
       RAILS_SERVE_STATIC_FILES: "1"
       TASKMAN_PATCH_AGILE_QUERY: "1"
-      TASKMAN_PATCH_QUERY_INLINE_COLUMNS_CACHE: "0"
-      TASKMAN_PATCH_RESOURCE_ALLOCATION: "0"
       TZ: UTC
     volumes:
     - addons_data:/addons:ro
@@ -206,8 +204,6 @@ services:
       MEMCACHE_EXPIRES_IN: "3600"
       RAILS_SERVE_STATIC_FILES: "1"
       TASKMAN_PATCH_AGILE_QUERY: "1"
-      TASKMAN_PATCH_QUERY_INLINE_COLUMNS_CACHE: "0"
-      TASKMAN_PATCH_RESOURCE_ALLOCATION: "0"
       TZ: UTC
     volumes:
     - addons_data:/addons:ro
