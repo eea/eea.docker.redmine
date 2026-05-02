@@ -21,6 +21,11 @@ class FixManualIdxAgileBoardSecondaryHotPath < ActiveRecord::Migration["#{Rails:
   COLUMNS = [:issue_id, :position]
 
   def up
+    unless table_exists?(TABLE)
+      say "[manual_indexes] skip: #{TABLE} table does not exist yet (plugin not migrated)", true
+      return
+    end
+
     if composite_index_exists?(TABLE, COLUMNS)
       say "[manual_indexes] skip: composite index on #{TABLE} (#{COLUMNS.join(", ")}) already exists (any name)", true
       return
