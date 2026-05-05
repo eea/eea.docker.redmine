@@ -207,6 +207,33 @@ lines.sum("CASE WHEN product_id IS NULL THEN 0 ELSE quantity END")
 
 ---
 
+## FORBIDDEN PATTERNS
+
+### 🚫 DO NOT USE: Arbitrary Result Limiting
+
+**NEVER add `.limit()` or pagination to collections that should display ALL results.**
+
+Adding limits to "fix" performance is **forbidden** because:
+- Users expect to see all members/records they're entitled to view
+- Hiding data silently is a data integrity issue
+- It creates invisible bugs where counts don't match displayed items
+- It makes debugging harder (where did the other 52,000 members go?)
+
+**WRONG (Forbidden):**
+```ruby
+# NEVER DO THIS:
+@members = Member.where(project_id: project.id).limit(100)
+@principals = principals_by_role.first(100)
+```
+
+**CORRECT (Fix the query, not the data):**
+- Use database aggregation for counts
+- Implement proper caching at the right layer
+- Preload associations efficiently
+- Use counter caches instead of loading records
+
+---
+
 ## Pattern Categories
 
 ### 1. `map(&:id)` → `pluck(:id)`

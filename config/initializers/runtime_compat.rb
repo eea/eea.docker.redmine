@@ -609,50 +609,6 @@ Rails.application.config.to_prepare do
   end
 end
 
-# PROJECT_SHOW_MEMBERS_LIMIT
-# Limit members loaded on project show to prevent massive queries
-# Original: project.members loads ALL members (52,981 on zope = 2.1s)
-# Fixed: limit to first 100 + cached count for display
-# Toggle: TASKMAN_PATCH_PROJECT_MEMBERS_LIMIT
-project_members_limit_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('PROJECT_MEMBERS_LIMIT')
-TaskmanRuntimeCompat.log_patch('PROJECT_MEMBERS_LIMIT', project_members_limit_patch_enabled)
-Rails.application.config.to_prepare do
-  next unless project_members_limit_patch_enabled
-  next unless defined?(Project)
-
-  unless defined?(TaskmanProjectMembersLimitPatch)
-    module TaskmanProjectMembersLimitPatch
-      MEMBERS_DISPLAY_LIMIT = 100
-
-      def principals_by_role
-        @principals_by_role ||= begin
-          limit = MEMBERS_DISPLAY_LIMIT
-          all_members = super
-
-          # Limit each role's members for display, but show total count
-          result = {}
-          all_members.each do |role, members|
-            result[role] = if members.size > limit
-              # Keep reference to all for count, but only return limited set
-              limited = members.first(limit)
-              limited.instance_variable_set(:@total_count, members.size)
-              limited
-            else
-              members
-            end
-          end
-          result
-        rescue StandardError => e
-          Rails.logger.warn("[ProjectMembersLimitPatch] principals_by_role fallback: #{e.class}: #{e.message}")
-          super
-        end
-      end
-    end
-  end
-
-  Project.prepend(TaskmanProjectMembersLimitPatch) unless Project.ancestors.include?(TaskmanProjectMembersLimitPatch)
-end
-
 # SCHEMA_CACHE_ENABLED
 # Enable ActiveRecord schema caching to avoid SHOW FULL FIELDS queries
 # Original: Rails queries schema on first access for each model
