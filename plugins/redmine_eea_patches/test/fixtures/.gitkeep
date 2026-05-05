@@ -1,0 +1,10 @@
+# EEA Performance Patches - Test Fixtures
+# Place test fixtures in this directory
+
+# Example: test/fixtures/helpdesk_tickets.yml
+# ticket_001:
+#   id: 1
+#   issue_id: 1
+#   contact_id: 1
+#   source: email
+#   ticket_date: <%= Time.now %>
