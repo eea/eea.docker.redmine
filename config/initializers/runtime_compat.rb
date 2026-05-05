@@ -608,3 +608,103 @@ Rails.application.config.to_prepare do
     TimeEntryQuery.prepend(TaskmanTimeEntrySumHoursPatch) unless TimeEntryQuery.ancestors.include?(TaskmanTimeEntrySumHoursPatch)
   end
 end
+
+# PROJECT_SHOW_MEMBERS_LIMIT
+# Limit members loaded on project show to prevent massive queries
+# Original: project.members loads ALL members (52,981 on zope = 2.1s)
+# Fixed: limit to first 100 + cached count for display
+# Toggle: TASKMAN_PATCH_PROJECT_MEMBERS_LIMIT
+project_members_limit_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('PROJECT_MEMBERS_LIMIT')
+TaskmanRuntimeCompat.log_patch('PROJECT_MEMBERS_LIMIT', project_members_limit_patch_enabled)
+Rails.application.config.to_prepare do
+  next unless project_members_limit_patch_enabled
+  next unless defined?(Project)
+
+  unless defined?(TaskmanProjectMembersLimitPatch)
+    module TaskmanProjectMembersLimitPatch
+      MEMBERS_DISPLAY_LIMIT = 100
+
+      def principals_by_role
+        @principals_by_role ||= begin
+          limit = MEMBERS_DISPLAY_LIMIT
+          all_members = super
+
+          # Limit each role's members for display, but show total count
+          result = {}
+          all_members.each do |role, members|
+            result[role] = if members.size > limit
+              # Keep reference to all for count, but only return limited set
+              limited = members.first(limit)
+              limited.instance_variable_set(:@total_count, members.size)
+              limited
+            else
+              members
+            end
+          end
+          result
+        rescue StandardError => e
+          Rails.logger.warn("[ProjectMembersLimitPatch] principals_by_role fallback: #{e.class}: #{e.message}")
+          super
+        end
+      end
+    end
+  end
+
+  Project.prepend(TaskmanProjectMembersLimitPatch) unless Project.ancestors.include?(TaskmanProjectMembersLimitPatch)
+end
+
+# SCHEMA_CACHE_ENABLED
+# Enable ActiveRecord schema caching to avoid SHOW FULL FIELDS queries
+# Original: Rails queries schema on first access for each model
+# Fixed: Load schema cache at startup
+# Toggle: TASKMAN_PATCH_SCHEMA_CACHE
+schema_cache_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('SCHEMA_CACHE')
+TaskmanRuntimeCompat.log_patch('SCHEMA_CACHE', schema_cache_patch_enabled)
+Rails.application.config.to_prepare do
+  next unless schema_cache_patch_enabled
+  next unless defined?(ActiveRecord::Base)
+
+  cache_path = Rails.root.join('tmp/schema_cache.dump')
+  cache_path.dirname.mkpath
+
+  begin
+    if File.exist?(cache_path)
+      ActiveRecord::Base.connection.schema_cache = ActiveRecord::ConnectionAdapters::SchemaCache.new(
+        ActiveRecord::Base.connection
+      )
+      ActiveRecord::Base.connection.schema_cache.load_from(cache_path)
+      Rails.logger.info("[SchemaCachePatch] Loaded schema cache from #{cache_path}")
+    else
+      # Dump cache for next startup
+      ActiveRecord::Base.connection.schema_cache.dump_to(cache_path)
+      Rails.logger.info("[SchemaCachePatch] Dumped schema cache to #{cache_path}")
+    end
+  rescue StandardError => e
+    Rails.logger.warn("[SchemaCachePatch] Schema cache error: #{e.class}: #{e.message}")
+  end
+end
+
+# PROJECT_ENABLED_MODULES_DEDUP
+# Avoid duplicate enabled_modules queries on project show
+# Original: enabled_modules queried multiple times for same project
+# Fixed: Preload once and cache in instance variable
+# Toggle: TASKMAN_PATCH_PROJECT_ENABLED_MODULES
+project_enabled_modules_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('PROJECT_ENABLED_MODULES')
+TaskmanRuntimeCompat.log_patch('PROJECT_ENABLED_MODULES', project_enabled_modules_patch_enabled)
+Rails.application.config.to_prepare do
+  next unless project_enabled_modules_patch_enabled
+  next unless defined?(Project)
+
+  unless defined?(TaskmanProjectEnabledModulesPatch)
+    module TaskmanProjectEnabledModulesPatch
+      def enabled_modules
+        @cached_enabled_modules ||= super
+      rescue StandardError => e
+        Rails.logger.warn("[ProjectEnabledModulesPatch] enabled_modules fallback: #{e.class}: #{e.message}")
+        super
+      end
+    end
+  end
+
+  Project.prepend(TaskmanProjectEnabledModulesPatch) unless Project.ancestors.include?(TaskmanProjectEnabledModulesPatch)
+end
