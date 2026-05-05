@@ -4,3 +4,7 @@
 .env
 output/playwright
 test/*.md
+.sisyphus
+.sisyphus/*
+performance_findings
+performance_findings/*

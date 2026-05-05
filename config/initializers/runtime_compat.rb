@@ -236,112 +236,279 @@ Rails.application.config.to_prepare do
 HelpdeskDataCollectorBusiestTime.prepend(TaskmanHelpdeskCollectorPatch) unless HelpdeskDataCollectorBusiestTime.ancestors.include?(TaskmanHelpdeskCollectorPatch)
 end
 
-# redmine_agile sprints context menu - memoize common_for_projects
-# Original: common_for_projects called multiple times in view context
-# Fixed: helper-level memoization to reuse the same result per request
-# Toggle: TASKMAN_PATCH_AGILE_SPRINTS_CACHE
-agile_sprints_cache_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('AGILE_SPRINTS_CACHE')
-TaskmanRuntimeCompat.log_patch('AGILE_SPRINTS_CACHE', agile_sprints_cache_patch_enabled)
+agile_sprint_hours_sum_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('AGILE_SPRINT_HOURS_SUM')
+TaskmanRuntimeCompat.log_patch('AGILE_SPRINT_HOURS_SUM', agile_sprint_hours_sum_patch_enabled)
 Rails.application.config.to_prepare do
-  next unless agile_sprints_cache_patch_enabled
+  next unless agile_sprint_hours_sum_patch_enabled
+  next unless defined?(AgileSprintsController)
 
-  unless defined?(TaskmanAgileSprintsCachePatch)
-    module TaskmanAgileSprintsCachePatch
-      def common_for_projects
-        @eea_common_for_projects ||= super
+  unless defined?(TaskmanAgileSprintHoursSumPatch)
+    module TaskmanAgileSprintHoursSumPatch
+      def show
+        super
+        if @issues.any?
+          @estimated_hours = @issues.sum(:estimated_hours)
+          @spent_hours = @issues.joins(:time_entries).sum('time_entries.hours')
+          @story_points = @issues.joins(:agile_data).sum('agile_data.story_points')
+        end
       rescue StandardError => e
-        Rails.logger.warn("[AgileSprintsCachePatch] common_for_projects fallback: #{e.class}: #{e.message}")
+        Rails.logger.warn("[AgileSprintHoursSumPatch] show fallback: #{e.class}: #{e.message}")
         super
       end
     end
   end
 
-  if defined?(AgileSprintsHelper)
-    AgileSprintsHelper.prepend(TaskmanAgileSprintsCachePatch) unless AgileSprintsHelper.ancestors.include?(TaskmanAgileSprintsCachePatch)
-  elsif defined?(ContextMenusController)
-    ContextMenusController.prepend(TaskmanAgileSprintsCachePatch) unless ContextMenusController.ancestors.include?(TaskmanAgileSprintsCachePatch)
-  end
+  AgileSprintsController.prepend(TaskmanAgileSprintHoursSumPatch) unless AgileSprintsController.ancestors.include?(TaskmanAgileSprintHoursSumPatch)
 end
 
-# redmine_contacts deals statistics - pre-aggregate counts by status
-# Original: view performs count per status (N+1)
-# Fixed: controller computes grouped counts once
-# Toggle: TASKMAN_PATCH_DEALS_STATS
-deals_stats_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('DEALS_STATS')
-TaskmanRuntimeCompat.log_patch('DEALS_STATS', deals_stats_patch_enabled)
+contacts_ids_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('CONTACTS_IDS')
+TaskmanRuntimeCompat.log_patch('CONTACTS_IDS', contacts_ids_patch_enabled)
 Rails.application.config.to_prepare do
-  next unless deals_stats_patch_enabled
-  next unless defined?(DealsController)
+  next unless contacts_ids_patch_enabled
+  next unless defined?(ContactsController)
 
-  unless defined?(TaskmanDealsStatsPatch)
-    module TaskmanDealsStatsPatch
+  unless defined?(TaskmanContactsIdsPatch)
+    module TaskmanContactsIdsPatch
       def index
         super
-        if defined?(@deals_scope) && @deals_scope
-          @eea_deals_count_by_status ||= @deals_scope.group(:status_id).count
-        end
       rescue StandardError => e
-        Rails.logger.warn("[DealsStatsPatch] index fallback: #{e.class}: #{e.message}")
+        Rails.logger.warn("[ContactsIdsPatch] index fallback: #{e.class}: #{e.message}")
+        super
       end
     end
   end
 
-  DealsController.prepend(TaskmanDealsStatsPatch) unless DealsController.ancestors.include?(TaskmanDealsStatsPatch)
+  ContactsController.prepend(TaskmanContactsIdsPatch) unless ContactsController.ancestors.include?(TaskmanContactsIdsPatch)
 end
 
-# redmine_contacts board deals counts - pre-aggregate counts by status
-# Original: board view performs count per status (N+1)
-# Fixed: controller computes grouped counts once
-# Toggle: TASKMAN_PATCH_BOARD_DEALS
-board_deals_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('BOARD_DEALS')
-TaskmanRuntimeCompat.log_patch('BOARD_DEALS', board_deals_patch_enabled)
+helpdesk_project_children_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('HELPDESK_PROJECT_CHILDREN')
+TaskmanRuntimeCompat.log_patch('HELPDESK_PROJECT_CHILDREN', helpdesk_project_children_patch_enabled)
 Rails.application.config.to_prepare do
-  next unless board_deals_patch_enabled
+  next unless helpdesk_project_children_patch_enabled
+  next unless defined?(HelpdeskTicket)
+
+  unless defined?(TaskmanHelpdeskProjectChildrenPatch)
+    module TaskmanHelpdeskProjectChildrenPatch
+      def project_ids_with_children(project)
+        [project.id] + project.children
+                              .joins(:enabled_modules)
+                              .where(enabled_modules: { name: :contacts_helpdesk })
+                              .pluck(:id)
+      rescue StandardError => e
+        Rails.logger.warn("[HelpdeskProjectChildrenPatch] project_ids_with_children fallback: #{e.class}: #{e.message}")
+        [project.id] + project.children.select { |ch| ch.module_enabled?(:contacts_helpdesk) }.map(&:id)
+      end
+    end
+  end
+
+  HelpdeskTicket.prepend(TaskmanHelpdeskProjectChildrenPatch) unless HelpdeskTicket.ancestors.include?(TaskmanHelpdeskProjectChildrenPatch)
+end
+
+resource_booking_blank_issue_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('RESOURCE_BOOKING_BLANK_ISSUE')
+TaskmanRuntimeCompat.log_patch('RESOURCE_BOOKING_BLANK_ISSUE', resource_booking_blank_issue_patch_enabled)
+Rails.application.config.to_prepare do
+  next unless resource_booking_blank_issue_patch_enabled
+  next unless defined?(WeekPlan) || defined?(MonthPlan) || defined?(Plan)
+
+  unless defined?(TaskmanResourceBookingBlankIssuePatch)
+    module TaskmanResourceBookingBlankIssuePatch
+      def booked_project_ids(resource_bookings)
+        resource_bookings.where(issue_id: nil).pluck(:project_id)
+      rescue StandardError => e
+        Rails.logger.warn("[ResourceBookingBlankIssuePatch] booked_project_ids fallback: #{e.class}: #{e.message}")
+        resource_bookings.select { |rb| rb.issue.blank? }.map(&:project_id)
+      end
+    end
+  end
+
+  if defined?(WeekPlan)
+    WeekPlan.prepend(TaskmanResourceBookingBlankIssuePatch) unless WeekPlan.ancestors.include?(TaskmanResourceBookingBlankIssuePatch)
+  end
+  if defined?(MonthPlan)
+    MonthPlan.prepend(TaskmanResourceBookingBlankIssuePatch) unless MonthPlan.ancestors.include?(TaskmanResourceBookingBlankIssuePatch)
+  end
+  if defined?(Plan)
+    Plan.prepend(TaskmanResourceBookingBlankIssuePatch) unless Plan.ancestors.include?(TaskmanResourceBookingBlankIssuePatch)
+  end
+end
+
+deal_lines_sum_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('DEAL_LINES_SUM')
+TaskmanRuntimeCompat.log_patch('DEAL_LINES_SUM', deal_lines_sum_patch_enabled)
+Rails.application.config.to_prepare do
+  next unless deal_lines_sum_patch_enabled
+  next unless defined?(Deal)
+  next unless Deal.method_defined?(:lines)
+
+  unless defined?(TaskmanDealLinesSumPatch)
+    module TaskmanDealLinesSumPatch
+      def tax_amount
+        lines.where(marked_for_destruction: false).sum(:tax_amount)
+      rescue StandardError => e
+        Rails.logger.warn("[DealLinesSumPatch] tax_amount fallback: #{e.class}: #{e.message}")
+        lines.select { |l| !l.marked_for_destruction? }.inject(0) { |sum, l| sum + l.tax_amount }
+      end
+
+      def total_amount
+        lines.where(marked_for_destruction: false).sum(:total)
+      rescue StandardError => e
+        Rails.logger.warn("[DealLinesSumPatch] total_amount fallback: #{e.class}: #{e.message}")
+        lines.select { |l| !l.marked_for_destruction? }.inject(0) { |sum, l| sum + l.total }
+      end
+
+      def total_quantity
+        lines.sum(:quantity)
+      rescue StandardError => e
+        Rails.logger.warn("[DealLinesSumPatch] total_quantity fallback: #{e.class}: #{e.message}")
+        lines.inject(0) { |sum, l| sum + (l.product.blank? ? 0 : l.quantity) }
+      end
+    end
+  end
+
+  Deal.prepend(TaskmanDealLinesSumPatch) unless Deal.ancestors.include?(TaskmanDealLinesSumPatch)
+end
+
+contact_notes_attachments_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('CONTACT_NOTES_ATTACHMENTS')
+TaskmanRuntimeCompat.log_patch('CONTACT_NOTES_ATTACHMENTS', contact_notes_attachments_patch_enabled)
+Rails.application.config.to_prepare do
+  next unless contact_notes_attachments_patch_enabled
+  next unless defined?(Contact)
+
+  unless defined?(TaskmanContactNotesAttachmentsPatch)
+    module TaskmanContactNotesAttachmentsPatch
+      def contact_attachments
+        @contact_attachments ||= Attachment.where(container_type: 'Note', container_id: notes.pluck(:id)).order(:created_on)
+      rescue StandardError => e
+        Rails.logger.warn("[ContactNotesAttachmentsPatch] contact_attachments fallback: #{e.class}: #{e.message}")
+        Attachment.where(container_type: 'Note', container_id: notes.map(&:id)).order(:created_on)
+      end
+    end
+  end
+
+  Contact.prepend(TaskmanContactNotesAttachmentsPatch) unless Contact.ancestors.include?(TaskmanContactNotesAttachmentsPatch)
+end
+
+# CONTACTS_CONTROLLER_CAN
+contacts_controller_can_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('CONTACTS_CONTROLLER_CAN')
+TaskmanRuntimeCompat.log_patch('CONTACTS_CONTROLLER_CAN', contacts_controller_can_patch_enabled)
+Rails.application.config.to_prepare do
+  next unless contacts_controller_can_patch_enabled
+  next unless defined?(ContactsController)
+
+  unless defined?(TaskmanContactsControllerCanPatch)
+    module TaskmanContactsControllerCanPatch
+      def bulk_authorize
+        super
+        if @can && @contacts
+          @can[:edit]       = @contacts.all?(&:editable?)
+          @can[:delete]     = @contacts.all?(&:deletable?)
+          @can[:send_mails] = @contacts.all? { |c| c.send_mail_allowed? && c.primary_email.present? }
+        end
+      rescue StandardError => e
+        Rails.logger.warn("[ContactsControllerCanPatch] bulk_authorize fallback: #{e.class}: #{e.message}")
+        super
+      end
+    end
+  end
+
+  ContactsController.prepend(TaskmanContactsControllerCanPatch) unless ContactsController.ancestors.include?(TaskmanContactsControllerCanPatch)
+end
+
+# DEALS_CONTROLLER_INTERSECTION
+deals_controller_intersection_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('DEALS_CONTROLLER_INTERSECTION')
+TaskmanRuntimeCompat.log_patch('DEALS_CONTROLLER_INTERSECTION', deals_controller_intersection_patch_enabled)
+Rails.application.config.to_prepare do
+  next unless deals_controller_intersection_patch_enabled
   next unless defined?(DealsController)
 
-  unless defined?(TaskmanBoardDealsPatch)
-    module TaskmanBoardDealsPatch
-      def board
+  unless defined?(TaskmanDealsControllerIntersectionPatch)
+    module TaskmanDealsControllerIntersectionPatch
+      def index
         super
-        if defined?(@deals_scope) && @deals_scope
-          @eea_board_deals_count_by_status ||= @deals_scope.group(:status_id).count
+        if @projects && @projects.any?
+          @available_statuses    = @projects.map(&:deal_statuses).reduce(:&) || []
+          @available_categories  = @projects.map(&:deal_categories).reduce(:&) || []
+          @assignables           = @projects.map(&:assignable_users).reduce(:&) || []
         end
       rescue StandardError => e
-        Rails.logger.warn("[BoardDealsPatch] board fallback: #{e.class}: #{e.message}")
+        Rails.logger.warn("[DealsControllerIntersectionPatch] index fallback: #{e.class}: #{e.message}")
+        super
       end
     end
   end
 
-  DealsController.prepend(TaskmanBoardDealsPatch) unless DealsController.ancestors.include?(TaskmanBoardDealsPatch)
+  DealsController.prepend(TaskmanDealsControllerIntersectionPatch) unless DealsController.ancestors.include?(TaskmanDealsControllerIntersectionPatch)
 end
 
-# redmine_resources utilization report - pre-load roles per user/project
-# Original: roles_for_project called in nested user x project loop
-# Fixed: preload memberships+roles and build lookup hash
-# Toggle: TASKMAN_PATCH_UTILIZATION_ROLES
-utilization_roles_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('UTILIZATION_ROLES')
-TaskmanRuntimeCompat.log_patch('UTILIZATION_ROLES', utilization_roles_patch_enabled)
+# CONTACT_GROUPS_IDS
+contact_groups_ids_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('CONTACT_GROUPS_IDS')
+TaskmanRuntimeCompat.log_patch('CONTACT_GROUPS_IDS', contact_groups_ids_patch_enabled)
 Rails.application.config.to_prepare do
-  next unless utilization_roles_patch_enabled
-  next unless defined?(ResourceBookingsController)
+  next unless contact_groups_ids_patch_enabled
+  next unless defined?(Contact)
 
-  unless defined?(TaskmanUtilizationRolesPatch)
-    module TaskmanUtilizationRolesPatch
-      def utilization_report
-        super
-        if defined?(@users) && defined?(@projects) && @users && @projects && defined?(Member)
-          @eea_roles_by_user_project ||= Member
-            .where(user_id: @users.map(&:id), project_id: @projects.map(&:id))
-            .includes(:roles)
-            .each_with_object({}) do |member, hash|
-              hash[[member.user_id, member.project_id]] = member.roles
-            end
-        end
+  unless defined?(TaskmanContactGroupsIdsPatch)
+    module TaskmanContactGroupsIdsPatch
+      def visible?(usr = nil)
+        usr ||= User.current
+        user_ids = [usr.id] + usr.groups.pluck(:id)
+        return true if usr.admin?
+        return false unless usr.logged?
+        projects_with_contacts = Project.joins(:enabled_modules)
+                                        .where(enabled_modules: { name: 'contacts' })
+                                        .where(id: ContactsProject.where(contact_id: id).select(:project_id))
+        projects_with_contacts.any? { |project| usr.allowed_to?(:view_contacts, project) }
       rescue StandardError => e
-        Rails.logger.warn("[UtilizationRolesPatch] utilization_report fallback: #{e.class}: #{e.message}")
+        Rails.logger.warn("[ContactGroupsIdsPatch] visible? fallback: #{e.class}: #{e.message}")
+        super
       end
     end
   end
 
-  ResourceBookingsController.prepend(TaskmanUtilizationRolesPatch) unless ResourceBookingsController.ancestors.include?(TaskmanUtilizationRolesPatch)
+  Contact.prepend(TaskmanContactGroupsIdsPatch) unless Contact.ancestors.include?(TaskmanContactGroupsIdsPatch)
+end
+
+# AGILE_VERSIONS_QUERY
+agile_versions_query_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('AGILE_VERSIONS_QUERY')
+TaskmanRuntimeCompat.log_patch('AGILE_VERSIONS_QUERY', agile_versions_query_patch_enabled)
+Rails.application.config.to_prepare do
+  next unless agile_versions_query_patch_enabled
+  next unless defined?(AgileVersionsQuery)
+
+  unless defined?(TaskmanAgileVersionsQueryPatch)
+    module TaskmanAgileVersionsQueryPatch
+      def roadmap_tracker_ids(project)
+        project.trackers.where(is_in_roadmap: true).pluck(:id)
+      rescue StandardError => e
+        Rails.logger.warn("[AgileVersionsQueryPatch] roadmap_tracker_ids fallback: #{e.class}: #{e.message}")
+        project.trackers.where(is_in_roadmap: true).map(&:id)
+      end
+    end
+  end
+
+  AgileVersionsQuery.prepend(TaskmanAgileVersionsQueryPatch) unless AgileVersionsQuery.ancestors.include?(TaskmanAgileVersionsQueryPatch)
+end
+
+# AGILE_SPRINTS_QUERY
+agile_sprints_query_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('AGILE_SPRINTS_QUERY')
+TaskmanRuntimeCompat.log_patch('AGILE_SPRINTS_QUERY', agile_sprints_query_patch_enabled)
+Rails.application.config.to_prepare do
+  next unless agile_sprints_query_patch_enabled
+  next unless defined?(AgileSprintsQuery)
+
+  unless defined?(TaskmanAgileSprintsQueryPatch)
+    module TaskmanAgileSprintsQueryPatch
+      def project_ids_with_descendants(project)
+        ids = [project.id]
+        ids += project.descendants.pluck(:id) if project.lft.present? && Setting.display_subprojects_issues?
+        ids
+      rescue StandardError => e
+        Rails.logger.warn("[AgileSprintsQueryPatch] project_ids_with_descendants fallback: #{e.class}: #{e.message}")
+        ids = [project.id]
+        ids += project.descendants.map(&:id) if project.lft.present? && Setting.display_subprojects_issues?
+        ids
+      end
+    end
+  end
+
+  AgileSprintsQuery.prepend(TaskmanAgileSprintsQueryPatch) unless AgileSprintsQuery.ancestors.include?(TaskmanAgileSprintsQueryPatch)
 end

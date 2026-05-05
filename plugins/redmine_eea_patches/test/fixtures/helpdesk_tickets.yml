@@ -1,0 +1,17 @@
+nanyt_ticket_1:
+  id: 1
+  contact_id: 1
+  issue_id: 1
+  source: 0
+  from_address: "test@example.com"
+  to_address: "support@eea.europa.eu"
+  ticket_date: 2025-01-01 00:00:00
+
+nanyt_ticket_2:
+  id: 2
+  contact_id: 2
+  issue_id: 2
+  source: 0
+  from_address: "customer@example.com"
+  to_address: "support@eea.europa.eu"
+  ticket_date: 2025-01-02 00:00:00
