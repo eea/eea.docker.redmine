@@ -512,3 +512,99 @@ Rails.application.config.to_prepare do
 
   AgileSprintsQuery.prepend(TaskmanAgileSprintsQueryPatch) unless AgileSprintsQuery.ancestors.include?(TaskmanAgileSprintsQueryPatch)
 end
+
+# TIME_ENTRY_CUSTOM_VALUES
+# Preload custom_values on time_entries to avoid N+1 (25 queries -> 1)
+# Original: TimeEntryQuery doesn't preload custom_values
+# Fixed: Add .preload(:custom_values) to results scope
+# Toggle: TASKMAN_PATCH_TIME_ENTRY_CUSTOM_VALUES
+time_entry_custom_values_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('TIME_ENTRY_CUSTOM_VALUES')
+TaskmanRuntimeCompat.log_patch('TIME_ENTRY_CUSTOM_VALUES', time_entry_custom_values_patch_enabled)
+Rails.application.config.to_prepare do
+  next unless time_entry_custom_values_patch_enabled
+  next unless defined?(TimeEntryQuery)
+
+  unless defined?(TaskmanTimeEntryCustomValuesPatch)
+    module TaskmanTimeEntryCustomValuesPatch
+      def results_scope(options = {})
+        scope = super
+        scope = scope.preload(:custom_values => :custom_field) unless scope.includes_values.include?(:custom_values)
+        scope
+      rescue StandardError => e
+        Rails.logger.warn("[TimeEntryCustomValuesPatch] results_scope fallback: #{e.class}: #{e.message}")
+        super
+      end
+    end
+  end
+
+  TimeEntryQuery.prepend(TaskmanTimeEntryCustomValuesPatch) unless TimeEntryQuery.ancestors.include?(TaskmanTimeEntryCustomValuesPatch)
+end
+
+# TIME_ENTRY_PROJECT_MODULES
+# Preload enabled_modules on projects to avoid N+1 (11 queries -> 1)
+# Original: project.module_enabled? fires query per project
+# Fixed: Batch preload enabled_modules for all visible projects
+# Toggle: TASKMAN_PATCH_TIME_ENTRY_PROJECT_MODULES
+time_entry_project_modules_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('TIME_ENTRY_PROJECT_MODULES')
+TaskmanRuntimeCompat.log_patch('TIME_ENTRY_PROJECT_MODULES', time_entry_project_modules_patch_enabled)
+Rails.application.config.to_prepare do
+  next unless time_entry_project_modules_patch_enabled
+  next unless defined?(TimelogController)
+
+  unless defined?(TaskmanTimeEntryProjectModulesPatch)
+    module TaskmanTimeEntryProjectModulesPatch
+      def index
+        super
+        return unless @project && @time_entries
+
+        project_ids = @time_entries.map(&:project_id).compact.uniq
+        return if project_ids.empty?
+
+        modules_map = EnabledModule.where(project_id: project_ids)
+                                   .group_by(&:project_id)
+
+        @time_entries.each do |te|
+          next unless te.project
+          modules = modules_map[te.project.id] || []
+          te.project.instance_variable_set(:@enabled_modules, modules)
+        end
+      rescue StandardError => e
+        Rails.logger.warn("[TimeEntryProjectModulesPatch] index fallback: #{e.class}: #{e.message}")
+        super
+      end
+    end
+  end
+
+  TimelogController.prepend(TaskmanTimeEntryProjectModulesPatch) unless TimelogController.ancestors.include?(TaskmanTimeEntryProjectModulesPatch)
+end
+
+# TIME_ENTRY_SUM_HOURS
+# Pre-calculate sum hours to avoid second query
+# Original: SUM query runs separately in _date_range partial
+# Fixed: Add sum cached value to avoid duplicate query
+# Toggle: TASKMAN_PATCH_TIME_ENTRY_SUM_HOURS
+time_entry_sum_hours_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('TIME_ENTRY_SUM_HOURS')
+TaskmanRuntimeCompat.log_patch('TIME_ENTRY_SUM_HOURS', time_entry_sum_hours_patch_enabled)
+Rails.application.config.to_prepare do
+  next unless time_entry_sum_hours_patch_enabled
+  next unless defined?(TimeEntryQuery)
+
+  unless defined?(TaskmanTimeEntrySumHoursPatch)
+    module TaskmanTimeEntrySumHoursPatch
+      def default_total_hours
+        total = super
+        return total if total.present? || !responseable?
+
+        scope = base_scope
+        @cached_hours_sum ||= scope.sum(:hours)
+      rescue StandardError => e
+        Rails.logger.warn("[TimeEntrySumHoursPatch] default_total_hours fallback: #{e.class}: #{e.message}")
+        super
+      end
+    end
+  end
+
+  if defined?(TimeEntryQuery)
+    TimeEntryQuery.prepend(TaskmanTimeEntrySumHoursPatch) unless TimeEntryQuery.ancestors.include?(TaskmanTimeEntrySumHoursPatch)
+  end
+end
