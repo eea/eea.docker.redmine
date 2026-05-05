@@ -219,18 +219,12 @@ Adding limits to "fix" performance is **forbidden** because:
 - It creates invisible bugs where counts don't match displayed items
 - It makes debugging harder (where did the other 52,000 members go?)
 
-**WRONG (Forbidden):**
-```ruby
-# NEVER DO THIS:
-@members = Member.where(project_id: project.id).limit(100)
-@principals = principals_by_role.first(100)
-```
-
 **CORRECT (Fix the query, not the data):**
 - Use database aggregation for counts
-- Implement proper caching at the right layer
-- Preload associations efficiently
+- Preload associations with `includes()` to avoid N+1
+- Implement proper caching at the right layer (fragment caching)
 - Use counter caches instead of loading records
+- Select only needed columns with `pluck()`
 
 ---
 
@@ -250,6 +244,17 @@ Checking if all/any items match a condition. Use `all?`/`any?` for early termina
 
 ### 5. `map(&:association).inject` → JOIN + single query
 Each `map` runs N queries. Should join once and operate on DB.
+
+### 6. Large Collection Performance (/projects/zope - 52,981 members)
+**Problem:** Loading all members without pagination causes 2.1s query time.
+
+**Solutions (No Limits):**
+- **Preload associations**: Use `includes(:user, :member_roles => :role)` to batch-load
+- **Fragment caching**: Cache rendered HTML at view level (not limiting data)
+- **Counter cache**: Add `members_count` column to Role for instant counts
+- **Select only needed columns**: Use `pluck(:id, :name)` instead of full objects
+
+**Forbidden:** `.limit(100)` or any pagination that hides data from users.
 
 ## Files Analyzed
 

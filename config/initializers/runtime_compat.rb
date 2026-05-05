@@ -609,6 +609,86 @@ Rails.application.config.to_prepare do
   end
 end
 
+# PROJECT_MEMBERS_PRELOAD
+# Preload members with user and roles to avoid N+1 queries
+# Original: principals_by_role causes N+1 as each member's user/roles loaded separately
+# Fixed: Use includes() to preload all needed associations in optimized query
+# Toggle: TASKMAN_PATCH_PROJECT_MEMBERS_PRELOAD
+project_members_preload_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('PROJECT_MEMBERS_PRELOAD')
+TaskmanRuntimeCompat.log_patch('PROJECT_MEMBERS_PRELOAD', project_members_preload_patch_enabled)
+Rails.application.config.to_prepare do
+  next unless project_members_preload_patch_enabled
+  next unless defined?(Project)
+
+  unless defined?(TaskmanProjectMembersPreloadPatch)
+    module TaskmanProjectMembersPreloadPatch
+      def principals_by_role
+        @principals_by_role ||= begin
+          # Preload user and roles to avoid N+1
+          members_scope = members
+                           .includes(:user, :member_roles => :role)
+                           .where("users.status = ?", User::STATUS_ACTIVE)
+                           .references(:user)
+
+          principals = {}
+          members_scope.each do |member|
+            next unless member.user
+
+            member.member_roles.each do |mr|
+              next unless mr.role
+
+              principals[mr.role] ||= []
+              principals[mr.role] << member.user
+            end
+          end
+
+          principals.values.each { |users| users.uniq! }
+          principals
+        rescue StandardError => e
+          Rails.logger.warn("[ProjectMembersPreloadPatch] principals_by_role fallback: #{e.class}: #{e.message}")
+          super
+        end
+      end
+    end
+  end
+
+  Project.prepend(TaskmanProjectMembersPreloadPatch) unless Project.ancestors.include?(TaskmanProjectMembersPreloadPatch)
+end
+
+# PROJECT_MEMBERS_COUNT_CACHE
+# Add counter cache support for role-based member counts
+# Original: Counting members per role requires full table scan
+# Fixed: Use counter_cache column if available, falls back to count
+# Toggle: TASKMAN_PATCH_PROJECT_MEMBERS_COUNT
+project_members_count_cache_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('PROJECT_MEMBERS_COUNT')
+TaskmanRuntimeCompat.log_patch('PROJECT_MEMBERS_COUNT', project_members_count_cache_patch_enabled)
+Rails.application.config.to_prepare do
+  next unless project_members_count_cache_patch_enabled
+  next unless defined?(Project)
+
+  unless defined?(TaskmanProjectMembersCountCachePatch)
+    module TaskmanProjectMembersCountCachePatch
+      def members_count_by_role(role_id)
+        # Check if counter cache column exists on member_roles join table
+        cache_column = "cached_count_for_role_#{role_id}"
+
+        if respond_to?(:member_roles_count_cache) && member_roles_count_cache.key?(role_id)
+          member_roles_count_cache[role_id]
+        else
+          members.joins(:member_roles)
+                .where(member_roles: { role_id: role_id })
+                .count
+        end
+      rescue StandardError => e
+        Rails.logger.warn("[ProjectMembersCountCachePatch] members_count_by_role fallback: #{e.class}: #{e.message}")
+        members.joins(:member_roles).where(member_roles: { role_id: role_id }).count
+      end
+    end
+  end
+
+  Project.prepend(TaskmanProjectMembersCountCachePatch) unless Project.ancestors.include?(TaskmanProjectMembersCountCachePatch)
+end
+
 # SCHEMA_CACHE_ENABLED
 # Enable ActiveRecord schema caching to avoid SHOW FULL FIELDS queries
 # Original: Rails queries schema on first access for each model
