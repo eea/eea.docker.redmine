@@ -191,8 +191,10 @@ RUN set -euo pipefail \
   && install -m 0644 ${REDMINE_PATH}/theme_overrides/a1/images/icons.svg ${REDMINE_PATH}/plugins/additionals/assets/images/icons.svg \
   && install -m 0644 ${REDMINE_PATH}/theme_overrides/a1/images/loading.gif ${REDMINE_PATH}/plugins/redmine_contacts_helpdesk/assets/images/loading.gif
 
-# Copy EEA performance patches plugin (loads last due to 'zzzz_' prefix)
 COPY plugins/zzzz_eea_patches ${REDMINE_PATH}/plugins/zzzz_eea_patches
+
+COPY plugins/zzzz_eea_patches/app/views/projects/_helpdesk_tickets.html.erb \
+    ${REDMINE_PATH}/plugins/redmine_contacts_helpdesk/app/views/projects/_helpdesk_tickets.html.erb
 
 COPY start_redmine.sh /start_redmine.sh
 RUN chmod 0755 /start_redmine.sh
