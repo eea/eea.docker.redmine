@@ -9,7 +9,6 @@ Redmine::Plugin.register :zzzz_eea_patches do
   author_url 'https://www.eea.europa.eu'
 
   requires_redmine version_or_higher: '5.0.0'
-  requires_redmine_plugin :redmine_contacts_helpdesk, :version_or_higher => '4.0.0'
 end
 
-Rails.logger.info '[zzzz_eea_patches] Plugin registered, dir=zzzz_eea_patches'
+Rails.logger.info '[zzzz_eea_patches] Plugin registered (view overrides for redmine_contacts_helpdesk)'
