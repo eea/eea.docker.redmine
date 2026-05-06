@@ -558,6 +558,11 @@ if [ "${MIGRATIONS_ONLY_STARTUP}" = "1" ]; then
     echo "Skipping redmine:plugins:migrate (RUN_PLUGIN_MIGRATE=${RUN_PLUGIN_MIGRATE}, REDMINE_PLUGINS_MIGRATE=${REDMINE_PLUGINS_MIGRATE:-unset})"
   fi
 
+  # Schema cache dump: runs after migrations to warm up schema cache
+  # This avoids SHOW FULL FIELDS queries during first requests
+  # In K8s, this can be done via init container; here it's part of startup
+  run_migration_phase schema_cache
+
   if [ "${ADMIN_BOOTSTRAP_ENABLE}" = "1" ]; then
     if ! timeout "${ADMIN_BOOTSTRAP_TIMEOUT}" bundle exec rails runner "
       password = ENV.fetch('ADMIN_BOOTSTRAP_PASSWORD', 'Admin123!')

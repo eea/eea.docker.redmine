@@ -689,37 +689,6 @@ Rails.application.config.to_prepare do
   Project.prepend(TaskmanProjectMembersCountCachePatch) unless Project.ancestors.include?(TaskmanProjectMembersCountCachePatch)
 end
 
-# SCHEMA_CACHE_ENABLED
-# Enable ActiveRecord schema caching to avoid SHOW FULL FIELDS queries
-# Original: Rails queries schema on first access for each model
-# Fixed: Load schema cache at startup
-# Toggle: TASKMAN_PATCH_SCHEMA_CACHE
-schema_cache_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('SCHEMA_CACHE')
-TaskmanRuntimeCompat.log_patch('SCHEMA_CACHE', schema_cache_patch_enabled)
-Rails.application.config.to_prepare do
-  next unless schema_cache_patch_enabled
-  next unless defined?(ActiveRecord::Base)
-
-  cache_path = Rails.root.join('tmp/schema_cache.dump')
-  cache_path.dirname.mkpath
-
-  begin
-    if File.exist?(cache_path)
-      ActiveRecord::Base.connection.schema_cache = ActiveRecord::ConnectionAdapters::SchemaCache.new(
-        ActiveRecord::Base.connection
-      )
-      ActiveRecord::Base.connection.schema_cache.load_from(cache_path)
-      Rails.logger.info("[SchemaCachePatch] Loaded schema cache from #{cache_path}")
-    else
-      # Dump cache for next startup
-      ActiveRecord::Base.connection.schema_cache.dump_to(cache_path)
-      Rails.logger.info("[SchemaCachePatch] Dumped schema cache to #{cache_path}")
-    end
-  rescue StandardError => e
-    Rails.logger.warn("[SchemaCachePatch] Schema cache error: #{e.class}: #{e.message}")
-  end
-end
-
 # PROJECT_ENABLED_MODULES_DEDUP
 # Avoid duplicate enabled_modules queries on project show
 # Original: enabled_modules queried multiple times for same project

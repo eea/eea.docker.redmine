@@ -5,13 +5,14 @@ require "open3"
 
 TASKS = {
   "db" => "db:migrate",
-  "plugins" => "redmine:plugins:migrate"
+  "plugins" => "redmine:plugins:migrate",
+  "schema_cache" => "db:schema:cache:dump"
 }.freeze
 
 task_key = ARGV.shift
 task_name = TASKS[task_key]
 unless task_name
-  warn "usage: #{File.basename(__FILE__)} [db|plugins]"
+  warn "usage: #{File.basename(__FILE__)} [db|plugins|schema_cache]"
   exit 1
 end
 
