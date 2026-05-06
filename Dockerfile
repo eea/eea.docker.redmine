@@ -190,6 +190,10 @@ RUN set -euo pipefail \
   && install -d ${REDMINE_PATH}/plugins/redmine_contacts_helpdesk/assets/images \
   && install -m 0644 ${REDMINE_PATH}/theme_overrides/a1/images/icons.svg ${REDMINE_PATH}/plugins/additionals/assets/images/icons.svg \
   && install -m 0644 ${REDMINE_PATH}/theme_overrides/a1/images/loading.gif ${REDMINE_PATH}/plugins/redmine_contacts_helpdesk/assets/images/loading.gif
+
+# Copy EEA performance patches plugin (must load AFTER plugins it patches)
+COPY plugins/redmine_eea_patches ${REDMINE_PATH}/plugins/redmine_eea_patches
+
 COPY start_redmine.sh /start_redmine.sh
 RUN chmod 0755 /start_redmine.sh
 
