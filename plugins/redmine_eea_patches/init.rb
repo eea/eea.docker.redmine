@@ -11,10 +11,8 @@ Redmine::Plugin.register :redmine_eea_patches do
   # Minimum Redmine version
   requires_redmine version_or_higher: '5.0.0'
 
-  # NOTE: redmine_contacts_helpdesk is not required as a hard dependency
-  # because this plugin only provides view overrides that gracefully skip
-  # when HelpdeskTicket is not defined. The skip_unless defined?(HelpdeskTicket)
-  # pattern in tests handles this.
+  # Must load AFTER redmine_contacts_helpdesk so view overrides take effect
+  requires_redmine_plugin :redmine_contacts_helpdesk, :version_or_higher => '4.0.0'
 end
 
 # Log that the plugin is loaded
