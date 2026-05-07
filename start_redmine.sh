@@ -93,7 +93,22 @@ if [ ! -z "${PLUGINS_URL}" ]; then
             unzip -d ${REDMINE_PATH}/plugins -o /install_plugins/$plugin_file
             REDMINE_PLUGINS_MIGRATE="yes"
      fi   
-  done
+   done
+
+  # EEA Performance Patch: replace slow helpdesk tickets view (default: enabled)
+  # Disable by setting HELPDESK_VIEW_PATCH=0 in helm values under redmine.environment
+  if [[ "${HELPDESK_VIEW_PATCH:-1}" != "0" ]]; then
+    cat > /usr/src/redmine/plugins/redmine_contacts_helpdesk/app/views/projects/_helpdesk_tickets.html.erb << 'VIEWEOF'
+<% if User.current.allowed_to?(:view_helpdesk_tickets, @project) %>
+  <% ticket_count = HelpdeskTicket.joins(:issue).where(:issues => { :project_id => @project.id }).count %>
+  <% customer_count = HelpdeskTicket.joins(:issue).where(:issues => { :project_id => @project.id }).where.not(:contact_id => nil).distinct.count(:contact_id) %>
+  <h3><%= l(:label_helpdesk_ticket_plural) %></h3>
+  <p><span class="icon icon-helpdesk"><%= sprite_icon("icon-helpdesk", l(:text_helpdesk_ticket_count, :count => ticket_count), plugin: :redmine_contacts_helpdesk) %></span></p>
+  <p><span class="icon icon-company-contact"><%= sprite_icon("user", l(:text_helpdesk_customer_count, :count => customer_count)) %></span></p>
+  <%= call_hook(:view_projects_show_helpdesk_sidebar_bottom, :project => @project) %>
+<% end %>
+VIEWEOF
+  fi
 
   #remove old plugins
   for file in  /install_plugins/*; do 
