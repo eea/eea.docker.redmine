@@ -7,4 +7,6 @@ test/*.md
 .sisyphus
 .sisyphus/*
 performance_findings
-performance_findings/*
+performance_findings/*helm
+.opencode/
+.opencode/**/

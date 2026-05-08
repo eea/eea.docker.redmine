@@ -120,6 +120,25 @@ if [ "${ADDONS_SYNC_SKIP_IF_PRESENT}" = "1" ] && addons_already_synced; then
   exit 0
 fi
 
+# --- ADDONS_SYNC_MODE=additive: preserve non-manifest plugins ---
+if [ "${ADDONS_SYNC_MODE:-full}" = "additive" ]; then
+  manifest_plugins=""
+  while IFS=: read -r kind name location archive; do
+    [ "${kind}" = "plugin" ] || continue
+    manifest_plugins="${manifest_plugins}${name}"$'\n'
+  done < <("${manifest_cmd[@]}" list)
+
+  for dir in "${plugins_dst}"/*/; do
+    [ -d "${dir}" ] || continue
+    name="$(basename "${dir}")"
+    if ! printf '%s' "${manifest_plugins}" | grep -qxF "${name}"; then
+      echo "[additive] Preserving non-manifest plugin: ${name}"
+      cp -a "${dir}" "${plugins_tmp}/${name}"
+    fi
+  done
+fi
+# --- end additive block ---
+
 clean_dir "${plugins_tmp}"
 clean_dir "${themes_tmp}"
 
