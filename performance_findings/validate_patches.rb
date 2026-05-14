@@ -74,11 +74,11 @@ classes.each do |name, defined|
   results << { name: "Plugin class: #{name}", passed: passed }
 end
 
-plugin_dir_exists = File.exist?('/usr/src/redmine/plugins/redmine_eea_patches')
-_, e = check('redmine_eea_patches plugin directory exists', plugin_dir_exists,
-             'Plugin directory /usr/src/redmine/plugins/redmine_eea_patches does not exist')
+plugin_dir_exists = File.exist?('/usr/src/redmine/plugins/zzzz_eea_patches')
+_, e = check('zzzz_eea_patches plugin directory exists', plugin_dir_exists,
+             'Plugin directory /usr/src/redmine/plugins/zzzz_eea_patches does not exist')
 e.nil? ? pass_count += 1 : fail_count += 1
-results << { name: 'Plugin: redmine_eea_patches', passed: e.nil? }
+results << { name: 'Plugin: zzzz_eea_patches', passed: e.nil? }
 
 helpdesk_defined = defined?(HelpdeskTicket) || defined?(HelpdeskTicket::Ticket)
 if helpdesk_defined
@@ -303,9 +303,9 @@ puts 'Section 6: View Override Files'
 puts '=' * 60
 
 plugin_views = {
-  '/usr/src/redmine/plugins/redmine_eea_patches/app/views/projects/_helpdesk_tickets.html.erb' => 'projects/_helpdesk_tickets.html.erb',
-  '/usr/src/redmine/plugins/redmine_eea_patches/app/views/context_menus/_sprints.html.erb' => 'context_menus/_sprints.html.erb',
-  '/usr/src/redmine/plugins/redmine_eea_patches/init.rb' => 'init.rb'
+  '/usr/src/redmine/plugins/zzzz_eea_patches/app/views/projects/_helpdesk_tickets.html.erb' => 'projects/_helpdesk_tickets.html.erb',
+  '/usr/src/redmine/plugins/zzzz_eea_patches/app/views/context_menus/_sprints.html.erb' => 'context_menus/_sprints.html.erb',
+  '/usr/src/redmine/plugins/zzzz_eea_patches/init.rb' => 'init.rb'
 }
 
 plugin_views.each do |path, name|

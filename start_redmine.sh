@@ -871,7 +871,7 @@ fi
 if [ "${PLUGIN_MOUNT:-0}" = "1" ]; then
   echo "Plugin mount enabled - using local plugin sources"
   # Symlink instead of copy if already mounted
-  if [ -L "/usr/src/redmine/plugins/redmine_eea_patches/init.rb" ]; then
+  if [ -L "/usr/src/redmine/plugins/zzzz_eea_patches/init.rb" ]; then
     echo "Plugin already mounted via volume"
   fi
 fi

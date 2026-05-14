@@ -69,11 +69,11 @@ Rails.application.config.to_prepare do
 
   unless defined?(TaskmanAgileIssuesIdsPatch)
     module TaskmanAgileIssuesIdsPatch
-      def issues_ids
+      def issues_ids(*args)
         issue_scope.unscope(:select, :order).pluck(:id)
       rescue ActiveRecord::StatementInvalid => e
         Rails.logger.warn("[AgileIssuesIdsPatch] issues_ids fallback: #{e.class}: #{e.message}")
-        super
+        super(*args)
       end
     end
   end
@@ -117,16 +117,28 @@ Rails.application.config.to_prepare do
 
   unless defined?(TaskmanAgileDoubleCountPatch)
     module TaskmanAgileDoubleCountPatch
-      def issue_board(options = {})
-        limit = options[:limit] || per_page_option
-        result = super(options.merge(limit: limit + 1))
-        if result.respond_to?(:size) && result.size > limit
-          result = result.first(limit)
-        end
-        result
+      # Safety rule: only apply limit+1 optimization when caller already paginates.
+      # If no explicit :limit is provided, delegate unchanged to avoid behavior drift.
+      def issue_board(*args, &block)
+        options_index = args.index { |a| a.is_a?(Hash) }
+        return super(*args, &block) unless options_index
+
+        options = args[options_index].dup
+        limit = options[:limit].to_i
+        return super(*args, &block) if limit <= 0
+
+        tuned_args = args.dup
+        tuned_args[options_index] = options.merge(limit: limit + 1)
+
+        result = super(*tuned_args, &block)
+        return result unless result.respond_to?(:size) && result.size > limit
+
+        result.first(limit)
+      rescue ArgumentError
+        super()
       rescue StandardError => e
         Rails.logger.warn("[AgileDoubleCountPatch] issue_board fallback: #{e.class}: #{e.message}")
-        super
+        super(*args, &block)
       end
     end
   end
