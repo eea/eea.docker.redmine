@@ -9,7 +9,7 @@ set -euo pipefail
 
 PLUGIN_NAME=${1:-}
 NEW_VERSION=${2:-}
-PATCHES_DIR="plugins/redmine_eea_patches"
+PATCHES_DIR="plugins/zzzz_eea_patches"
 
 if [ -z "$PLUGIN_NAME" ] || [ -z "$NEW_VERSION" ]; then
   echo "Usage: $0 <plugin_name> <new_version>"
