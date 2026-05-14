@@ -1,5 +1,5 @@
 enabled = ENV.fetch("RACK_MINI_PROFILER_ENABLED", "0") == "1"
-session_toggle_key = :mini_profiler_enabled
+MINI_PROFILER_SESSION_KEY = :mini_profiler_enabled unless defined?(MINI_PROFILER_SESSION_KEY)
 
 return unless defined?(Rack::MiniProfiler)
 
@@ -13,9 +13,9 @@ profiler_authorized = lambda do |env|
     #   ?miniprofiler=off -> disable profiling
     toggle = request.params["miniprofiler"].to_s.downcase
     if toggle == "on"
-      session[session_toggle_key] = true
+      session[MINI_PROFILER_SESSION_KEY] = true
     elsif toggle == "off"
-      session.delete(session_toggle_key)
+      session.delete(MINI_PROFILER_SESSION_KEY)
     end
 
     # Escape hatch for ops when explicitly requested
@@ -23,7 +23,7 @@ profiler_authorized = lambda do |env|
 
     user_id = session && session[:user_id]
     user = defined?(User) ? User.find_by(id: user_id) : nil
-    user&.admin? && session[session_toggle_key] == true
+    user&.admin? && session[MINI_PROFILER_SESSION_KEY] == true
   rescue StandardError
     false
   end
@@ -62,12 +62,12 @@ if defined?(Rails) && Rails.respond_to?(:application)
         def taskman_mini_profiler_authorize_request
           toggle = params[:miniprofiler].to_s.downcase
           if toggle == "on"
-            session[session_toggle_key] = true
+            session[MINI_PROFILER_SESSION_KEY] = true
           elsif toggle == "off"
-            session.delete(session_toggle_key)
+            session.delete(MINI_PROFILER_SESSION_KEY)
           end
 
-          return unless session[session_toggle_key] == true
+          return unless session[MINI_PROFILER_SESSION_KEY] == true
 
           allow_all = ENV.fetch("RACK_MINI_PROFILER_ALLOW_ALL", "0") == "1"
           uid = session && session[:user_id]
