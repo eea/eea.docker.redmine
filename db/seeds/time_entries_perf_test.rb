@@ -10,13 +10,13 @@
 # 2. enabled_modules per Project (11 queries for 11 projects)
 # 3. Separate SUM query for hours total
 
-puts "Creating time entries performance test data..."
+puts 'Creating time entries performance test data...'
 
 # ============================================================================
 # Setup: Ensure we have base data
 # ============================================================================
 unless Project.any?
-  puts "ERROR: No projects found. Run standard Redmine seeds first."
+  puts 'ERROR: No projects found. Run standard Redmine seeds first.'
   exit 1
 end
 
@@ -29,8 +29,8 @@ end
 # Create TimeEntryCustomField if needed
 # ============================================================================
 time_entry_cf = TimeEntryCustomField.find_or_create_by!(
-  name: "Test Time CF",
-  field_format: "string"
+  name: 'Test Time CF',
+  field_format: 'string'
 ) do |cf|
   cf.is_filter = true
   cf.position = 1
@@ -43,7 +43,7 @@ puts "Using TimeEntryCustomField: #{time_entry_cf.name} (id=#{time_entry_cf.id})
 # ============================================================================
 projects = Project.where(status: [1, 5]).limit(15).to_a
 if projects.size < 10
-  puts "Creating additional test projects..."
+  puts 'Creating additional test projects...'
   10.times do |i|
     p = Project.find_or_create_by!(
       identifier: "time_entry_perf_#{i + 1}"
@@ -59,25 +59,39 @@ puts "Using #{projects.size} projects"
 
 # Enable time_tracking module on all test projects
 projects.each do |project|
-  unless project.module_enabled?(:time_tracking)
-    project.enabled_modules.create!(name: 'time_tracking')
-  end
+  project.enabled_modules.create!(name: 'time_tracking') unless project.module_enabled?(:time_tracking)
 end
 
 # ============================================================================
 # Create time entries with custom values
 # ============================================================================
 activities = TimeEntryActivity.all.to_a
-users = User.active.where(type: 'User').limit(20).to_a
+all_users = User.active.where(type: 'User').limit(20).to_a
 issues = Issue.where(project_id: projects.map(&:id)).limit(100).to_a
 
-puts "Creating 50 time entries with custom values..."
+puts 'Creating 50 time entries with custom values...'
 
+# Ensure each selected user is a member of each project before creating time entries
+projects.each do |project|
+  role = Role.where(builtin: 0).first
+  all_users.each do |user|
+    next if project.members.where(user_id: user.id).exists?
+
+    begin
+      project.members.create!(user_id: user.id, role_ids: [role.id])
+    rescue StandardError
+      nil
+    end
+  end
+end
+
+# Get project members AFTER adding users (so they exist as members)
 time_entries_created = 0
 50.times do |i|
   project = projects.sample
   issue = issues.find { |iss| iss.project_id == project.id } || project.issues.sample
-  user = users.sample
+  project_member_ids = project.members.pluck(:user_id)
+  user = all_users.find { |u| project_member_ids.include?(u.id) } || User.find(project.members.first.user_id)
   activity = activities.sample
 
   te = TimeEntry.find_or_create_by!(
@@ -100,7 +114,7 @@ time_entries_created = 0
   end
 
   time_entries_created += 1
-  print "." if (i + 1) % 10 == 0
+  print '.' if (i + 1) % 10 == 0
 end
 
 puts "\nCreated #{time_entries_created} time entries"
@@ -108,17 +122,17 @@ puts "\nCreated #{time_entries_created} time entries"
 # ============================================================================
 # Summary
 # ============================================================================
-puts "\n" + "=" * 60
-puts "Time Entry Performance Test Data Summary"
-puts "=" * 60
+puts "\n" + '=' * 60
+puts 'Time Entry Performance Test Data Summary'
+puts '=' * 60
 puts "  Time Entries: #{TimeEntry.count}"
 puts "  Projects: #{projects.size}"
 puts "  Issues used: #{issues.size}"
-puts "  Users: #{users.size}"
+puts "  Users: #{all_users.size}"
 puts "  TimeEntryCustomField: #{time_entry_cf.name} (id=#{time_entry_cf.id})"
 puts "\nThis data exercises:"
-puts "  - N+1: custom_values per TimeEntry (no preload)"
-puts "  - N+1: enabled_modules per Project (no preload)"
-puts "  - Separate SUM query for total hours"
-puts ""
-puts "To test, visit: /time_entries (as a user with limited access)"
+puts '  - N+1: custom_values per TimeEntry (no preload)'
+puts '  - N+1: enabled_modules per Project (no preload)'
+puts '  - Separate SUM query for total hours'
+puts ''
+puts 'To test, visit: /time_entries (as a user with limited access)'

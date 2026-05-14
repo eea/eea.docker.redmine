@@ -29,8 +29,8 @@ services:
       context: ../.
       target: ${REDMINE_BUILD_TARGET:-runtime}
       args:
-        REDMINE_BASE: ${REDMINE_BASE_IMAGE:-redmine:ruby402-trixie-amd64}
-        RUBY_REQUIRED_PREFIX: ${RUBY_REQUIRED_PREFIX:-4.0.}
+        REDMINE_BASE: ${REDMINE_BASE_IMAGE:-redmine:6.1.2@sha256:e8a05d36d55f022d3709865cc2932cb87e6701a35ca89aeb8e5af5e8a67b31b0}
+        RUBY_REQUIRED_PREFIX: ${RUBY_REQUIRED_PREFIX:-3.4.}
     entrypoint:
     - /bin/bash
     - -lc
@@ -110,8 +110,8 @@ services:
       context: ../.
       target: ${REDMINE_BUILD_TARGET:-runtime}
       args:
-        REDMINE_BASE: ${REDMINE_BASE_IMAGE:-redmine:ruby402-trixie-amd64}
-        RUBY_REQUIRED_PREFIX: ${RUBY_REQUIRED_PREFIX:-4.0.}
+        REDMINE_BASE: ${REDMINE_BASE_IMAGE:-redmine:6.1.2@sha256:e8a05d36d55f022d3709865cc2932cb87e6701a35ca89aeb8e5af5e8a67b31b0}
+        RUBY_REQUIRED_PREFIX: ${RUBY_REQUIRED_PREFIX:-3.4.}
     environment:
       REDMINE_DB_MYSQL: mysql
       REDMINE_DB_DATABASE: redmine_test
