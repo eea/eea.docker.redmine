@@ -38,7 +38,7 @@ docker compose -f test/docker-compose.yml exec -T redmine grep "AGILE_QUERY" log
 
 ```bash
 docker compose -f test/docker-compose.yml exec -T redmine bundle exec rails test \
-  plugins/redmine_eea_patches/test/unit/patches/helpdesk_performance_test.rb -v
+  plugins/zzzz_eea_patches/test/unit/patches/helpdesk_performance_test.rb -v
 ```
 
 Expected output:
@@ -136,7 +136,7 @@ docker compose -f test/docker-compose.yml exec -T redmine rake db:wait
 
 # Run helpdesk performance test
 docker compose -f test/docker-compose.yml exec -T redmine bundle exec rails test \
-  plugins/redmine_eea_patches/test/unit/patches/helpdesk_performance_test.rb -v
+  plugins/zzzz_eea_patches/test/unit/patches/helpdesk_performance_test.rb -v
 
 # Run the benchmark script
 docker compose -f test/docker-compose.yml exec -T redmine bundle exec rails runner \
@@ -144,7 +144,7 @@ docker compose -f test/docker-compose.yml exec -T redmine bundle exec rails runn
 
 # Run all unit tests for the plugin
 docker compose -f test/docker-compose.yml exec -T redmine bundle exec rails test \
-  plugins/redmine_eea_patches/test/unit/patches/ -v
+  plugins/zzzz_eea_patches/test/unit/patches/ -v
 ```
 
 ---

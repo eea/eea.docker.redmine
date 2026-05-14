@@ -14,23 +14,25 @@
 # - issues.assigned_to_id
 # - issues.tracker_id
 
-puts "Creating performance test data..."
+puts 'Creating performance test data...'
 
 # Ensure we have base data
 unless Project.any?
-  puts "ERROR: No projects found. Please run standard Redmine seeds first."
+  puts 'ERROR: No projects found. Please run standard Redmine seeds first.'
   exit 1
 end
 
 # Helper to safely check if a class exists
 def class_exists?(klass_name)
-  klass_name.constantize rescue nil
+  klass_name.constantize
+rescue StandardError
+  nil
 end
 
 # ============================================================================
 # PROJECTS WITH SUBPROJECTS (Test project hierarchy + parent_id index)
 # ============================================================================
-puts "Creating projects with subprojects..."
+puts 'Creating projects with subprojects...'
 
 projects = []
 5.times do |i|
@@ -62,16 +64,16 @@ puts "  Created #{projects.size} projects (5 parents + 10 children)"
 # ISSUES WITH VARIOUS STATUSES, TRACKERS, ASSIGNEES
 # (Test issues.project_id, issues.status_id, issues.assigned_to_id, issues.tracker_id indexes)
 # ============================================================================
-puts "Creating issues..."
+puts 'Creating issues...'
 
 statuses = IssueStatus.all.to_a
 trackers = Tracker.all.to_a
 priorities = IssuePriority.all.to_a
 users = User.active.all.to_a
 
-raise "ERROR: No issue statuses found. Run Redmine seeds first." if statuses.empty?
-raise "ERROR: No trackers found. Run Redmine seeds first." if trackers.empty?
-raise "ERROR: No active users found. Run Redmine seeds first." if users.empty?
+raise 'ERROR: No issue statuses found. Run Redmine seeds first.' if statuses.empty?
+raise 'ERROR: No trackers found. Run Redmine seeds first.' if trackers.empty?
+raise 'ERROR: No active users found. Run Redmine seeds first.' if users.empty?
 
 # Create 50 issues across projects
 issue_count = 0
@@ -79,7 +81,7 @@ projects.each do |project|
   next if project.parent.nil? # Only create issues on leaf projects
 
   5.times do |i|
-    issue = Issue.find_or_create_by!(
+    Issue.find_or_create_by!(
       project: project,
       subject: "Perf Test Issue #{project.identifier}-#{i + 1}",
       tracker: trackers.sample,
@@ -88,7 +90,7 @@ projects.each do |project|
       assigned_to: users.sample
     ) do |t|
       t.author = users.sample
-      t.description = "Performance test issue for benchmarking query optimizations"
+      t.description = 'Performance test issue for benchmarking query optimizations'
     end
     issue_count += 1
   end
@@ -100,7 +102,7 @@ puts "  Created #{issue_count} issues across #{projects.select { |p| p.parent }.
 # HELPDEK TICKETS LINKED TO ISSUES
 # (Test helpdesk_tickets.issue_id index + joins optimization)
 # ============================================================================
-puts "Creating helpdesk tickets..."
+puts 'Creating helpdesk tickets...'
 
 helpdesk_klass = class_exists?('HelpdeskTicket')
 if helpdesk_klass && helpdesk_klass.table_exists?
@@ -116,7 +118,7 @@ if helpdesk_klass && helpdesk_klass.table_exists?
       issue_id: issue.id,
       source: 0, # email
       from_address: "perf_test_#{tickets_created}@example.com",
-      to_address: "support@eea.europa.eu",
+      to_address: 'support@eea.europa.eu',
       ticket_date: Time.now
     }
 
@@ -126,20 +128,24 @@ if helpdesk_klass && helpdesk_klass.table_exists?
       ticket_attributes[:contact_id] = contact.id if contact
     end
 
-    helpdesk_klass.create!(ticket_attributes) rescue nil
+    begin
+      helpdesk_klass.create!(ticket_attributes)
+    rescue StandardError
+      nil
+    end
     tickets_created += 1
   end
 
   puts "  Created #{tickets_created} helpdesk tickets"
 else
-  puts "  SKIPPED: HelpdeskTicket class not available"
+  puts '  SKIPPED: HelpdeskTicket class not available'
 end
 
 # ============================================================================
 # DEALS WITH DIFFERENT STATUSES AND CURRENCIES
 # (Test deals + CRM optimizations)
 # ============================================================================
-puts "Creating deals..."
+puts 'Creating deals...'
 
 deal_klass = class_exists?('Deal')
 if deal_klass && deal_klass.table_exists?
@@ -150,9 +156,7 @@ if deal_klass && deal_klass.table_exists?
 
   10.times do |i|
     contact = nil
-    if contact_klass && contact_klass.table_exists?
-      contact = contact_klass.offset(rand(contact_klass.count)).first
-    end
+    contact = contact_klass.offset(rand(contact_klass.count)).first if contact_klass && contact_klass.table_exists?
 
     deal_klass.find_or_create_by!(
       name: "Perf Test Deal #{i + 1}",
@@ -160,21 +164,21 @@ if deal_klass && deal_klass.table_exists?
     ) do |d|
       d.contact_id = contact.id if contact
       d.status = deal_statuses.sample
-      d.amount = rand(1000..100000)
+      d.amount = rand(1000..100_000)
       d.currency = currencies.sample
       d.estimated_hours = rand(1..100)
     end
   end
 
-  puts "  Created 10 deals"
+  puts '  Created 10 deals'
 else
-  puts "  SKIPPED: Deal class not available"
+  puts '  SKIPPED: Deal class not available'
 end
 
 # ============================================================================
 # CONTACTS (Test contacts + CRM query optimization)
 # ============================================================================
-puts "Creating contacts..."
+puts 'Creating contacts...'
 
 contact_klass = class_exists?('Contact')
 if contact_klass && contact_klass.table_exists?
@@ -189,20 +193,20 @@ if contact_klass && contact_klass.table_exists?
       company: companies.sample
     ) do |c|
       c.email = "perf_test_contact_#{i}@example.com"
-      c.phone = "+1234567890"
+      c.phone = '+1234567890'
     end
   end
 
-  puts "  Created 10 contacts"
+  puts '  Created 10 contacts'
 else
-  puts "  SKIPPED: Contact class not available"
+  puts '  SKIPPED: Contact class not available'
 end
 
 # ============================================================================
 # RESOURCE BOOKINGS WITH ASSIGNMENTS
 # (Test redmine_resources plugin optimization)
 # ============================================================================
-puts "Creating resource bookings..."
+puts 'Creating resource bookings...'
 
 resource_klass = class_exists?('ResourceBooking')
 if resource_klass && resource_klass.table_exists?
@@ -220,16 +224,16 @@ if resource_klass && resource_klass.table_exists?
     end
   end
 
-  puts "  Created 5 resource bookings"
+  puts '  Created 5 resource bookings'
 else
-  puts "  SKIPPED: ResourceBooking class not available"
+  puts '  SKIPPED: ResourceBooking class not available'
 end
 
 # ============================================================================
 # WIKI PAGES WITH CROSS-LINKS
 # (Test wiki link optimization + project_id index)
 # ============================================================================
-puts "Creating wiki pages..."
+puts 'Creating wiki pages...'
 
 projects.each do |project|
   next unless project.wiki
@@ -244,22 +248,26 @@ projects.each do |project|
     end
 
     # Add cross-links to other wiki pages in same project
-    if wiki_page.content && wiki_page.content.text
-      other_pages = project.wiki.pages.where.not(id: wiki_page.id).limit(2)
-      other_pages.each do |other|
-        wiki_page.content.text += "\n\nSee also: [[#{other.title}]]"
-      end
-      wiki_page.content.save rescue nil
+    next unless wiki_page.content && wiki_page.content.text
+
+    other_pages = project.wiki.pages.where.not(id: wiki_page.id).limit(2)
+    other_pages.each do |other|
+      wiki_page.content.text += "\n\nSee also: [[#{other.title}]]"
+    end
+    begin
+      wiki_page.content.save
+    rescue StandardError
+      nil
     end
   end
 end
 
-puts "  Created wiki pages with cross-links"
+puts '  Created wiki pages with cross-links'
 
 # ============================================================================
 # ISSUE RELATIONS (Test issue relations optimization)
 # ============================================================================
-puts "Creating issue relations..."
+puts 'Creating issue relations...'
 
 issues = Issue.limit(20).to_a
 if issues.size >= 2
@@ -276,15 +284,15 @@ if issues.size >= 2
     end
   end
 
-  puts "  Created issue relations"
+  puts '  Created issue relations'
 else
-  puts "  SKIPPED: Not enough issues for relations"
+  puts '  SKIPPED: Not enough issues for relations'
 end
 
 # ============================================================================
 # TIME ENTRIES (Test time entry queries)
 # ============================================================================
-puts "Creating time entries..."
+puts 'Creating time entries...'
 
 time_entry_klass = class_exists?('TimeEntry')
 if time_entry_klass && time_entry_klass.table_exists?
@@ -300,20 +308,20 @@ if time_entry_klass && time_entry_klass.table_exists?
       hours: rand(0.5..8.0)
     ) do |t|
       t.activity = activities.sample if activities.any?
-      t.comments = "Performance test time entry"
+      t.comments = 'Performance test time entry'
       t.spent_on = Date.today - rand(30)
     end
   end
 
-  puts "  Created time entries"
+  puts '  Created time entries'
 else
-  puts "  SKIPPED: TimeEntry class not available"
+  puts '  SKIPPED: TimeEntry class not available'
 end
 
 # ============================================================================
 # DOCUMENTS (Test document queries)
 # ============================================================================
-puts "Creating documents..."
+puts 'Creating documents...'
 
 document_klass = class_exists?('Document')
 if document_klass && document_klass.table_exists?
@@ -327,39 +335,33 @@ if document_klass && document_klass.table_exists?
       title: "Perf Test Document #{project.identifier}"
     ) do |d|
       d.category = categories.sample if categories.any?
-      d.description = "Performance test document"
+      d.description = 'Performance test document'
     end
   end
 
-  puts "  Created documents"
+  puts '  Created documents'
 else
-  puts "  SKIPPED: Document class not available"
+  puts '  SKIPPED: Document class not available'
 end
 
 # ============================================================================
 # SUMMARY
 # ============================================================================
-puts "\n" + "=" * 60
-puts "Performance test data seeding complete!"
-puts "=" * 60
+puts "\n" + '=' * 60
+puts 'Performance test data seeding complete!'
+puts '=' * 60
 puts "\nSummary:"
 puts "  - Projects: #{Project.where('identifier LIKE ?', 'perf%').count}"
 puts "  - Issues: #{Issue.where(project_id: Project.where('identifier LIKE ?', 'perf%')).count}"
-if helpdesk_klass && helpdesk_klass.table_exists?
-  puts "  - Helpdesk tickets: #{helpdesk_klass.count}"
-end
-if deal_klass && deal_klass.table_exists?
-  puts "  - Deals: #{deal_klass.count}"
-end
-if contact_klass && contact_klass.table_exists?
-  puts "  - Contacts: #{contact_klass.count}"
-end
+puts "  - Helpdesk tickets: #{helpdesk_klass.count}" if helpdesk_klass && helpdesk_klass.table_exists?
+puts "  - Deals: #{deal_klass.count}" if deal_klass && deal_klass.table_exists?
+puts "  - Contacts: #{contact_klass.count}" if contact_klass && contact_klass.table_exists?
 puts "\nThis data is designed to exercise the following indexes:"
-puts "  - issues(project_id)"
-puts "  - issues(status_id)"
-puts "  - issues(assigned_to_id)"
-puts "  - issues(tracker_id)"
-puts "  - helpdesk_tickets(issue_id)"
-puts "  - projects(parent_id)"
-puts "  - contacts(id)"
+puts '  - issues(project_id)'
+puts '  - issues(status_id)'
+puts '  - issues(assigned_to_id)'
+puts '  - issues(tracker_id)'
+puts '  - helpdesk_tickets(issue_id)'
+puts '  - projects(parent_id)'
+puts '  - contacts(id)'
 puts "\nRun benchmarks to verify optimization impact."

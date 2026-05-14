@@ -6,10 +6,10 @@
 
 require '/usr/src/redmine/config/environment'
 
-puts "Creating member performance test data..."
+puts 'Creating member performance test data...'
 
 test_project = Project.find_or_create_by!(identifier: 'members-perf-test') do |p|
-  p.name = "Members Performance Test"
+  p.name = 'Members Performance Test'
   p.is_public = false
 end
 
@@ -17,7 +17,7 @@ roles = Role.where.not(name: 'Anonymous').to_a
 users = User.active.where(type: 'User').to_a
 
 puts "Using #{users.size} users and #{roles.size} roles"
-puts "Creating 60,000 members..."
+puts 'Creating 60,000 members...'
 
 Member.where(project_id: test_project.id).delete_all
 MemberRole.delete_all
@@ -40,15 +40,23 @@ member_count.times do |i|
     mail_notification: 0
   }
 
-  if member_records.size >= 1000
-    Member.insert_all!(member_records) rescue nil
-    puts "  Inserted #{i + 1}/#{member_count}..."
-    member_records = []
+  next unless member_records.size >= 1000
+
+  begin
+    Member.insert_all!(member_records)
+  rescue StandardError
+    nil
   end
+  puts "  Inserted #{i + 1}/#{member_count}..."
+  member_records = []
 end
 
 if member_records.any?
-  Member.insert_all!(member_records) rescue nil
+  begin
+    Member.insert_all!(member_records)
+  rescue StandardError
+    nil
+  end
 end
 
 puts "Members inserted: #{Member.where(project_id: test_project.id).count}"
@@ -66,10 +74,8 @@ Member.where(project_id: test_project.id).find_each.with_index do |member, i|
   end
 end
 
-if member_role_records.any?
-  MemberRole.insert_all!(member_role_records)
-end
+MemberRole.insert_all!(member_role_records) if member_role_records.any?
 
 puts "Member roles inserted: #{MemberRole.count}"
-puts ""
+puts ''
 puts "Test project: /projects/#{test_project.identifier}"

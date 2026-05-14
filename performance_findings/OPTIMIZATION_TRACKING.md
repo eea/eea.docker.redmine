@@ -44,7 +44,7 @@ This document tracks all 11 planned and completed query optimizations for Redmin
   <% ticket_count = HelpdeskTicket.joins(:issue).where(:issues => { :project_id => @project.id }).count %>
   ```
 - **Performance:** >120s → <100ms (>99.9% improvement)
-- **Implemented:** Via `redmine_eea_patches` plugin
+- **Implemented:** Via `zzzz_eea_patches` plugin
 
 ### OPT-002: Helpdesk Customer Count
 - **File:** `plugins/redmine_contacts_helpdesk/app/views/projects/_helpdesk_tickets.html.erb`
@@ -58,7 +58,7 @@ This document tracks all 11 planned and completed query optimizations for Redmin
   <% customer_count = HelpdeskTicket.joins(:issue).where(:issues => { :project_id => @project.id }).where.not(:contact_id => nil).distinct.count(:contact_id) %>
   ```
 - **Performance:** >120s → <100ms (>99.9% improvement)
-- **Implemented:** Via `redmine_eea_patches` plugin
+- **Implemented:** Via `zzzz_eea_patches` plugin
 
 ### OPT-003/004/008: Runtime compat monkey patches
 - **Task 1 (agile_query.rb:640):** DONE - Patched via `runtime_compat.rb` `TASKMAN_PATCH_AGILE_ISSUES_IDS`

@@ -1,0 +1,22 @@
+intentionally_undeclared:
+  # Active patch toggles intentionally omitted from deployment config;
+  # they remain disabled by default via TaskmanRuntimeCompat.patch_enabled?(..., default: false)
+  - AGILE_DESCENDANTS_JOIN
+  - AGILE_DOUBLE_COUNT
+  - AGILE_ISSUES_IDS
+  - AGILE_SPRINTS_QUERY
+  - AGILE_SPRINT_HOURS_SUM
+  - AGILE_SPRINT_PROJECTS
+  - AGILE_VERSIONS_QUERY
+  - CONTACTS_CONTROLLER_CAN
+  - CONTACTS_IDS
+  - CONTACT_GROUPS_IDS
+  - CONTACT_NOTES_ATTACHMENTS
+  - DEAL_LINES_SUM
+  - HELPDESK_COLLECTOR
+  - HELPDESK_PROJECT_CHILDREN
+  - PROJECT_MEMBERS_COUNT
+  - RESOURCE_BOOKING_BLANK_ISSUE
+  - RESOURCE_BOOKING_QUERY
+  - TIME_ENTRY_PROJECT_MODULES
+  - TIME_ENTRY_SUM_HOURS

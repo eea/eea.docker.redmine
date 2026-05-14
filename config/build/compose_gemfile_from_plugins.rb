@@ -1,13 +1,13 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-redmine_path = ENV.fetch("REDMINE_PATH", "/usr/src/redmine")
-gemfile_path = File.join(redmine_path, "Gemfile")
-plugins_dir = File.join(redmine_path, "plugins")
-overrides_path = File.join(redmine_path, "config", "overrides", "gem_overrides.rb")
+redmine_path = ENV.fetch('REDMINE_PATH', '/usr/src/redmine')
+gemfile_path = File.join(redmine_path, 'Gemfile')
+plugins_dir = File.join(redmine_path, 'plugins')
+overrides_path = File.join(redmine_path, 'config', 'overrides', 'gem_overrides.rb')
 
-begin_marker = "# BEGIN managed addon gems"
-end_marker = "# END managed addon gems"
+begin_marker = '# BEGIN managed addon gems'
+end_marker = '# END managed addon gems'
 
 gem_decl = /^\s*gem\s+['"]([^'"]+)['"]/
 
@@ -27,7 +27,7 @@ if start_idx && end_idx && end_idx > start_idx
 end
 
 plugin_entries = []
-Dir.glob(File.join(plugins_dir, "*", "Gemfile")).sort.each do |plugin_gemfile|
+Dir.glob(File.join(plugins_dir, '*', 'Gemfile')).sort.each do |plugin_gemfile|
   File.readlines(plugin_gemfile, chomp: true).each do |line|
     next unless line.match?(gem_decl)
 
@@ -45,11 +45,11 @@ if File.exist?(overrides_path)
 end
 
 managed_block = []
-managed_block << ""
+managed_block << ''
 managed_block << begin_marker
-managed_block << "# from plugin Gemfiles in /plugins/*/Gemfile"
+managed_block << '# from plugin Gemfiles in /plugins/*/Gemfile'
 plugin_entries.each { |gem_line| managed_block << gem_line }
-managed_block << "# from config/overrides/gem_overrides.rb (documented overrides)"
+managed_block << '# from config/overrides/gem_overrides.rb (documented overrides)'
 override_entries.each { |line| managed_block << line }
 managed_block << end_marker
 

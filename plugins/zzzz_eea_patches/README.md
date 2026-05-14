@@ -1,32 +1,12 @@
-# EEA Performance Patches Plugin
+# Taskman Plugin Patches (`zzzz_eea_patches`)
 
 Redmine plugin providing performance optimizations and compatibility patches.
 
-## Current Patches
+## Patch Documentation
 
-### 1. Helpdesk Ticket Count Performance Fix
+Single source of truth for all patches (full standardized format with code blocks):
 
-**File:** `app/views/projects/_helpdesk_tickets.html.erb`
-
-**Problem:** The `redmine_contacts_helpdesk` plugin loads all 17K+ helpdesk tickets with expensive LEFT JOINs before counting them, causing page hangs (>120s timeout) for large private projects.
-
-**Solution:** Replace eager-loading queries with indexed COUNT queries:
-
-```ruby
-# Before (Slow - >120s)
-tickets = HelpdeskTicket.includes(:issue => [:project]).where(:projects => {:id => @project})
-tickets.count
-
-# After (Fast - <100ms)
-HelpdeskTicket.joins(:issue).where(:issues => { :project_id => @project.id }).count
-```
-
-**Performance:**
-- Query time: >120s → <100ms (>99.9% improvement)
-- Data transfer: 1M+ values → 2 integers
-
-**Affected Projects:**
-- nanyt (EEA enquiries): 17,156 tickets, 11,244 customers
+- `docs/patches/CURRENT_PATCHES.md`
 
 ## Installation
 
@@ -35,8 +15,8 @@ HelpdeskTicket.joins(:issue).where(:issues => { :project_id => @project.id }).co
 Add to Dockerfile:
 
 ```dockerfile
-COPY plugins/redmine_eea_patches /usr/src/redmine/plugins/redmine_eea_patches
-RUN chown -R redmine:redmine /usr/src/redmine/plugins/redmine_eea_patches
+COPY plugins/zzzz_eea_patches /usr/src/redmine/plugins/zzzz_eea_patches
+RUN chown -R redmine:redmine /usr/src/redmine/plugins/zzzz_eea_patches
 ```
 
 ### Option 2: Kubernetes ConfigMap (Development)
@@ -55,7 +35,7 @@ Mount in deployment:
 ```yaml
 volumeMounts:
   - name: eea-patches
-    mountPath: /usr/src/redmine/plugins/redmine_eea_patches
+    mountPath: /usr/src/redmine/plugins/zzzz_eea_patches
 volumes:
   - name: eea-patches
     configMap:
@@ -74,12 +54,18 @@ After deployment:
 
 ## Maintenance
 
+Additional maintainer references:
+
+- `CHANGES.md` — side-by-side original vs optimized file diff and SQL impact
+- `PLUGIN_UPGRADE_GUIDE.md` — upgrade workflow and compatibility strategy
+- `LEGACY_PATCHES.md` — legacy/ad-hoc patch notes and migration guidance
+
 ### When Upstream Plugin Updates
 
 1. Check if `app/views/projects/_helpdesk_tickets.html.erb` changed:
    ```bash
    diff plugins/redmine_contacts_helpdesk/app/views/projects/_helpdesk_tickets.html.erb \
-        plugins/redmine_eea_patches/app/views/projects/_helpdesk_tickets.html.erb.original
+        plugins/zzzz_eea_patches/app/views/projects/_helpdesk_tickets.html.erb.original
    ```
 
 2. If changed:
@@ -95,7 +81,7 @@ To disable patches:
 
 ```bash
 # Rename plugin directory
-mv plugins/redmine_eea_patches plugins/redmine_eea_patches.disabled
+mv plugins/zzzz_eea_patches plugins/zzzz_eea_patches.disabled
 
 # Restart Redmine
 ```

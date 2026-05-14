@@ -1,4 +1,9 @@
-# Plugin Upgrade Management
+# Taskman Plugin Upgrade Management
+
+> Canonical patch content (Problem/Solution/Code/Performance/Affected Projects) is maintained only in:
+> `docs/patches/CURRENT_PATCHES.md`
+>
+> Current plugin name/path is `zzzz_eea_patches`.
 
 ## The Challenge
 
@@ -87,7 +92,7 @@ jobs:
             --build-arg HELPDESK_VERSION=${{ matrix.plugin_version }} \
             -t redmine:test .
           
-          docker run redmine:test rails test:plugins:redmine_eea_patches
+          docker run redmine:test rails test:plugins:zzzz_eea_patches
 ```
 
 **Pros:**
@@ -110,7 +115,7 @@ jobs:
 
 **Structure:**
 ```
-plugins/redmine_eea_patches/
+plugins/zzzz_eea_patches/
 ├── patches/
 │   ├── redmine_contacts_helpdesk/
 │   │   ├── 4.2.6/
@@ -148,7 +153,7 @@ plugins/redmine_eea_patches/
 PLUGIN=$1
 VERSION=$2
 
-for patch in plugins/redmine_eea_patches/patches/${PLUGIN}/${VERSION}/*.patch; do
+for patch in plugins/zzzz_eea_patches/patches/${PLUGIN}/${VERSION}/*.patch; do
   echo "Applying: $patch"
   patch -p1 < "$patch" || {
     echo "ERROR: Failed to apply $patch"
@@ -217,30 +222,30 @@ diff plugins/redmine_contacts_helpdesk/app/views/projects/_helpdesk_tickets.html
 **Step 1: Extract original new version**
 ```bash
 cp /tmp/new_version/redmine_contacts_helpdesk/app/views/projects/_helpdesk_tickets.html.erb \
-   plugins/redmine_eea_patches/app/views/projects/_helpdesk_tickets.html.erb.v4.3.0.original
+   plugins/zzzz_eea_patches/app/views/projects/_helpdesk_tickets.html.erb.v4.3.0.original
 ```
 
 **Step 2: Re-apply optimization to new version**
 ```bash
 # Create new patched version
 # Option A: Manual edit
-cp plugins/redmine_eea_patches/app/views/projects/_helpdesk_tickets.html.erb.v4.3.0.original \
-   plugins/redmine_eea_patches/app/views/projects/_helpdesk_tickets.html.erb
+cp plugins/zzzz_eea_patches/app/views/projects/_helpdesk_tickets.html.erb.v4.3.0.original \
+   plugins/zzzz_eea_patches/app/views/projects/_helpdesk_tickets.html.erb
 
 # Edit and apply same optimizations
-vim plugins/redmine_eea_patches/app/views/projects/_helpdesk_tickets.html.erb
+vim plugins/zzzz_eea_patches/app/views/projects/_helpdesk_tickets.html.erb
 
 # Option B: Sed/Script if changes are consistent
 sed -i 's/includes(:issue => \[:project\])/joins(:issue)/g' \
-  plugins/redmine_eea_patches/app/views/projects/_helpdesk_tickets.html.erb
+  plugins/zzzz_eea_patches/app/views/projects/_helpdesk_tickets.html.erb
 ```
 
 **Step 3: Generate new diff**
 ```bash
 diff -u \
-  plugins/redmine_eea_patches/app/views/projects/_helpdesk_tickets.html.erb.v4.3.0.original \
-  plugins/redmine_eea_patches/app/views/projects/_helpdesk_tickets.html.erb \
-  > plugins/redmine_eea_patches/patches/redmine_contacts_helpdesk/4.3.0/_helpdesk_tickets.html.erb.patch
+  plugins/zzzz_eea_patches/app/views/projects/_helpdesk_tickets.html.erb.v4.3.0.original \
+  plugins/zzzz_eea_patches/app/views/projects/_helpdesk_tickets.html.erb \
+  > plugins/zzzz_eea_patches/patches/redmine_contacts_helpdesk/4.3.0/_helpdesk_tickets.html.erb.patch
 ```
 
 ---
@@ -258,7 +263,7 @@ open http://localhost:3000/projects/nanyt
 
 **2. Automated tests**
 ```bash
-docker run redmine:test rails test:plugins:redmine_eea_patches
+docker run redmine:test rails test:plugins:zzzz_eea_patches
 ```
 
 **3. Staging deployment**
@@ -459,7 +464,7 @@ kubectl set image deployment/taskman-redmine taskman-redmine=eeacms/redmine:v1.1
 ```bash
 # Disable the patch plugin
 kubectl exec <pod> -n taskman -c taskman-redmine -- \
-  mv plugins/redmine_eea_patches plugins/redmine_eea_patches.disabled
+  mv plugins/zzzz_eea_patches plugins/zzzz_eea_patches.disabled
 
 # Restart
 kubectl rollout restart deployment/taskman-redmine

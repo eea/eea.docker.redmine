@@ -9,6 +9,7 @@ Taskman is a web application based on Redmine that facilitates Agile project man
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
+- [Patch System Operations](#patch-system-operations)
 - [Plugins](#plugins)
 - [Themes](#themes)
 - [Shell Access](#shell-access)
@@ -86,7 +87,31 @@ You now have the Redmine application up and ready for testing. If you want to us
 
 See (https://hub.docker.com/_/redmine)
 
+### Patch System Operations
+
+Runtime patching in this repository is managed through `config/initializers/runtime_compat.rb` and `TASKMAN_PATCH_*` toggles.
+
+- Canonical patch inventory: `docs/patches/PATCHES.md`
+- Disabled patch archive: `config/stale/runtime_compat_disabled_patches.rb`
+- Runtime status check: `bundle exec rails runner performance_findings/scripts/runtime_patch_status.rb`
+- Static toggle drift audit: `ruby performance_findings/scripts/audit_patches.rb`
+- Operational workflow and rollback checklist: `performance_findings/PATCH_OPERATIONS.md`
+
+CI (warn mode) command path:
+
+```bash
+ruby performance_findings/scripts/audit_patches.rb || true
+```
+
+CI (enforced mode) command path:
+
+```bash
+ruby performance_findings/scripts/audit_patches.rb
+```
+
 ### Structure Map
+
+- `docs/README.md`: documentation map and canonical doc entrypoints
 
 - `config/build/`: build-time scripts and composition
 - `config/runtime/`: runtime/startup orchestration
@@ -141,6 +166,12 @@ Switch back off:
 ```bash
 REDMINE_BASE_IMAGE=redmine:6.1.2@sha256:e8a05d36d55f022d3709865cc2932cb87e6701a35ca89aeb8e5af5e8a67b31b0 MT_NO_PLUGINS=1 \
 docker compose -f test/docker-compose.yml -f test/docker-compose.amd64.yml up -d --build
+```
+
+If needed explicitly:
+
+```bash
+RUBY_REQUIRED_PREFIX=3.4.
 ```
 
 Gem overrides are documented in:

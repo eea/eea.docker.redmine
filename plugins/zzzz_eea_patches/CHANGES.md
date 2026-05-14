@@ -1,8 +1,12 @@
-# View File Comparison: Original vs Optimized
+# Taskman Patch Diff: Original vs Optimized View
+
+> This file documents one concrete view diff only.
+> Authoritative patch catalog for all patches:
+> `docs/patches/CURRENT_PATCHES.md`
 
 ## File Location
 - **Original:** `plugins/redmine_contacts_helpdesk/app/views/projects/_helpdesk_tickets.html.erb`
-- **Patched:** `plugins/redmine_eea_patches/app/views/projects/_helpdesk_tickets.html.erb`
+- **Patched:** `plugins/zzzz_eea_patches/app/views/projects/_helpdesk_tickets.html.erb`
 
 ---
 
@@ -171,7 +175,7 @@ To verify the changes work:
 1. **Check file is loaded:**
    ```bash
    kubectl exec <pod> -n taskman -c taskman-redmine -- \
-     cat /usr/src/redmine/plugins/redmine_eea_patches/app/views/projects/_helpdesk_tickets.html.erb
+     cat /usr/src/redmine/plugins/zzzz_eea_patches/app/views/projects/_helpdesk_tickets.html.erb
    ```
 
 2. **Test page load:**
@@ -197,12 +201,12 @@ If issues occur:
 ```bash
 # Option 1: Rename plugin to disable it
 kubectl exec <pod> -n taskman -c taskman-redmine -- \
-  mv /usr/src/redmine/plugins/redmine_eea_patches \
-     /usr/src/redmine/plugins/redmine_eea_patches.disabled
+  mv /usr/src/redmine/plugins/zzzz_eea_patches \
+     /usr/src/redmine/plugins/zzzz_eea_patches.disabled
 
 # Option 2: Delete the plugin directory
 kubectl exec <pod> -n taskman -c taskman-redmine -- \
-  rm -rf /usr/src/redmine/plugins/redmine_eea_patches
+  rm -rf /usr/src/redmine/plugins/zzzz_eea_patches
 
 # Restart Redmine to clear view cache
 kubectl rollout restart deployment/taskman-redmine -n taskman

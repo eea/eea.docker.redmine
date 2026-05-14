@@ -70,8 +70,8 @@ Rails.application.config.to_prepare do
   unless defined?(TaskmanAgileIssuesIdsPatch)
     module TaskmanAgileIssuesIdsPatch
       def issues_ids
-        @issues_ids ||= issue_scope.unscope(:select, :order).pluck(:id)
-      rescue StandardError => e
+        issue_scope.unscope(:select, :order).pluck(:id)
+      rescue ActiveRecord::StatementInvalid => e
         Rails.logger.warn("[AgileIssuesIdsPatch] issues_ids fallback: #{e.class}: #{e.message}")
         super
       end
@@ -103,30 +103,6 @@ Rails.application.config.to_prepare do
   end
 
   ResourceBookingQuery.prepend(TaskmanResourceBookingQueryPatch) unless ResourceBookingQuery.ancestors.include?(TaskmanResourceBookingQueryPatch)
-end
-
-# redmine_resources ResourceBooking total_hours_sum - DB aggregation instead of Ruby sum
-# Original: to_a.sum(&:total_hours)
-# Fixed: sum(:total_hours)
-# Toggle: TASKMAN_PATCH_RESOURCE_BOOKING_SUM
-resource_booking_sum_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('RESOURCE_BOOKING_SUM')
-TaskmanRuntimeCompat.log_patch('RESOURCE_BOOKING_SUM', resource_booking_sum_patch_enabled)
-Rails.application.config.to_prepare do
-  next unless resource_booking_sum_patch_enabled
-  next unless defined?(ResourceBooking)
-
-  unless defined?(TaskmanResourceBookingSumPatch)
-    module TaskmanResourceBookingSumPatch
-      def total_hours_sum
-        sum(:total_hours)
-      rescue StandardError => e
-        Rails.logger.warn("[ResourceBookingSumPatch] total_hours_sum fallback: #{e.class}: #{e.message}")
-        super
-      end
-    end
-  end
-
-ResourceBooking.prepend(TaskmanResourceBookingSumPatch) unless ResourceBooking.ancestors.include?(TaskmanResourceBookingSumPatch)
 end
 
 # redmine_agile issue_board - avoid double COUNT/SELECT by limit+1 fetch
@@ -251,9 +227,9 @@ Rails.application.config.to_prepare do
           @spent_hours = @issues.joins(:time_entries).sum('time_entries.hours')
           @story_points = @issues.joins(:agile_data).sum('agile_data.story_points')
         end
-      rescue StandardError => e
-        Rails.logger.warn("[AgileSprintHoursSumPatch] show fallback: #{e.class}: #{e.message}")
-        super
+      rescue ActiveRecord::StatementInvalid => e
+        Rails.logger.warn("[AgileSprintHoursSumPatch] post-super aggregation failed: #{e.class}: #{e.message}")
+        # Keep original super result; do not call super again.
       end
     end
   end
@@ -411,32 +387,6 @@ Rails.application.config.to_prepare do
   end
 
   ContactsController.prepend(TaskmanContactsControllerCanPatch) unless ContactsController.ancestors.include?(TaskmanContactsControllerCanPatch)
-end
-
-# DEALS_CONTROLLER_INTERSECTION
-deals_controller_intersection_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('DEALS_CONTROLLER_INTERSECTION')
-TaskmanRuntimeCompat.log_patch('DEALS_CONTROLLER_INTERSECTION', deals_controller_intersection_patch_enabled)
-Rails.application.config.to_prepare do
-  next unless deals_controller_intersection_patch_enabled
-  next unless defined?(DealsController)
-
-  unless defined?(TaskmanDealsControllerIntersectionPatch)
-    module TaskmanDealsControllerIntersectionPatch
-      def index
-        super
-        if @projects && @projects.any?
-          @available_statuses    = @projects.map(&:deal_statuses).reduce(:&) || []
-          @available_categories  = @projects.map(&:deal_categories).reduce(:&) || []
-          @assignables           = @projects.map(&:assignable_users).reduce(:&) || []
-        end
-      rescue StandardError => e
-        Rails.logger.warn("[DealsControllerIntersectionPatch] index fallback: #{e.class}: #{e.message}")
-        super
-      end
-    end
-  end
-
-  DealsController.prepend(TaskmanDealsControllerIntersectionPatch) unless DealsController.ancestors.include?(TaskmanDealsControllerIntersectionPatch)
 end
 
 # CONTACT_GROUPS_IDS
@@ -610,9 +560,11 @@ Rails.application.config.to_prepare do
 end
 
 # PROJECT_MEMBERS_PRELOAD
-# Preload members with user and roles to avoid N+1 queries
-# Original: principals_by_role causes N+1 as each member's user/roles loaded separately
-# Fixed: Use includes() to preload all needed associations in optimized query
+# Fix N+1 in principals_by_role (used by additionals plugin and Redmine core).
+# Root cause: `m.roles.each` triggers N+1 because `roles` is not a direct
+# Membership association — it goes through member_roles.
+# Fix: use includes(:principal, member_roles: :role) and iterate mr.role.
+# Also: use memberships.active (not members) to include Group principals.
 # Toggle: TASKMAN_PATCH_PROJECT_MEMBERS_PRELOAD
 project_members_preload_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('PROJECT_MEMBERS_PRELOAD')
 TaskmanRuntimeCompat.log_patch('PROJECT_MEMBERS_PRELOAD', project_members_preload_patch_enabled)
@@ -623,31 +575,30 @@ Rails.application.config.to_prepare do
   unless defined?(TaskmanProjectMembersPreloadPatch)
     module TaskmanProjectMembersPreloadPatch
       def principals_by_role
-        @principals_by_role ||= begin
-          # Preload user and roles to avoid N+1
-          members_scope = members
-                           .includes(:user, :member_roles => :role)
-                           .where("users.status = ?", User::STATUS_ACTIVE)
-                           .references(:user)
+        scope = memberships.active
+                         .includes(:principal, member_roles: :role)
 
-          principals = {}
-          members_scope.each do |member|
-            next unless member.user
+        result = {}
+        scope.each do |m|
+          next unless m.principal
 
-            member.member_roles.each do |mr|
-              next unless mr.role
+          m.member_roles.each do |mr|
+            r = mr.role
+            next unless r
+            # Honour hidden-role filtering when additionals plugin is present
+            next if r.respond_to?(:hide) && r.hide && respond_to?(:consider_hidden_roles?) && consider_hidden_roles?
 
-              principals[mr.role] ||= []
-              principals[mr.role] << member.user
-            end
+            result[r] ||= []
+            result[r] << m.principal
           end
 
-          principals.values.each { |users| users.uniq! }
-          principals
-        rescue StandardError => e
-          Rails.logger.warn("[ProjectMembersPreloadPatch] principals_by_role fallback: #{e.class}: #{e.message}")
-          super
         end
+
+        result.each_value(&:uniq!)
+        result
+      rescue ActiveRecord::StatementInvalid => e
+          Rails.logger.warn("[ProjectMembersPreloadPatch] principals_by_role fallback: #{e.class}: #{e.message}")
+        super
       end
     end
   end
@@ -689,27 +640,107 @@ Rails.application.config.to_prepare do
   Project.prepend(TaskmanProjectMembersCountCachePatch) unless Project.ancestors.include?(TaskmanProjectMembersCountCachePatch)
 end
 
-# PROJECT_ENABLED_MODULES_DEDUP
-# Avoid duplicate enabled_modules queries on project show
-# Original: enabled_modules queried multiple times for same project
-# Fixed: Preload once and cache in instance variable
-# Toggle: TASKMAN_PATCH_PROJECT_ENABLED_MODULES
-project_enabled_modules_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('PROJECT_ENABLED_MODULES')
-TaskmanRuntimeCompat.log_patch('PROJECT_ENABLED_MODULES', project_enabled_modules_patch_enabled)
+# USER_ROLES_PRELOAD
+# Fix N+1 in User#roles: called per-user, each fires Role.joins(members: :project).distinct.
+# Fresh-data safe fix: avoid global/shared caches and compute roles with scoped AR queries
+# each call to prevent stale permissions in issue-board flows.
+# Toggle: TASKMAN_PATCH_USER_ROLES_PRELOAD
+user_roles_preload_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('USER_ROLES_PRELOAD')
+TaskmanRuntimeCompat.log_patch('USER_ROLES_PRELOAD', user_roles_preload_patch_enabled)
 Rails.application.config.to_prepare do
-  next unless project_enabled_modules_patch_enabled
-  next unless defined?(Project)
+  next unless user_roles_preload_patch_enabled
+  next unless defined?(User)
 
-  unless defined?(TaskmanProjectEnabledModulesPatch)
-    module TaskmanProjectEnabledModulesPatch
-      def enabled_modules
-        @cached_enabled_modules ||= super
-      rescue StandardError => e
-        Rails.logger.warn("[ProjectEnabledModulesPatch] enabled_modules fallback: #{e.class}: #{e.message}")
+  unless defined?(TaskmanUserRolesPreloadPatch)
+    module TaskmanUserRolesPreloadPatch
+      def roles
+        if logged?
+          Role.joins(members: :project)
+              .where("#{Project.table_name}.status <> ?", Project::STATUS_ARCHIVED)
+              .where(members: { user_id: id })
+              .distinct
+              .to_a
+        else
+          roles_for_anonymous_or_non_member
+        end
+      rescue ActiveRecord::StatementInvalid, ActiveRecord::ConnectionNotEstablished => e
+          Rails.logger.warn("[UserRolesPreloadPatch] roles fallback: #{e.class}: #{e.message}")
         super
+      end
+
+      private
+
+      def roles_for_anonymous_or_non_member
+        group_class = anonymous? ? GroupAnonymous : GroupNonMember
+        gid = group_class.pick(:id)
+        return [] if gid.nil?
+
+        sql = <<-SQL.squish
+          SELECT DISTINCT r.id
+          FROM roles r
+          INNER JOIN member_roles mr ON mr.role_id = r.id
+          INNER JOIN members m ON m.id = mr.member_id
+          INNER JOIN projects p ON p.id = m.project_id
+          WHERE p.status <> #{Project::STATUS_ARCHIVED}
+            AND p.is_public = #{ActiveRecord::Base.connection.quote(true)}
+            AND m.user_id = #{gid.to_i}
+        SQL
+
+        role_ids = ActiveRecord::Base.connection.execute(sql).map { |row| row["id"].to_i }
+        Role.where(id: role_ids).to_a
       end
     end
   end
 
-  Project.prepend(TaskmanProjectEnabledModulesPatch) unless Project.ancestors.include?(TaskmanProjectEnabledModulesPatch)
+  User.prepend(TaskmanUserRolesPreloadPatch) unless User.ancestors.include?(TaskmanUserRolesPreloadPatch)
+
+  [:GroupNonMember, :GroupAnonymous].each do |grp_sym|
+    next unless Object.const_defined?(grp_sym.to_s)
+    grp_class = Object.const_get(grp_sym)
+    grp_class.prepend(TaskmanUserRolesPreloadPatch) unless grp_class.ancestors.include?(TaskmanUserRolesPreloadPatch)
+  end
+end
+
+# Activity page author N+1 fix - bulk preload authors after events fetched
+# Original: each event triggers separate author query via event_author
+# Fixed: bulk preload all authors in one query after events are grouped by class
+# Toggle: TASKMAN_PATCH_ACTIVITY_AUTHOR_PRELOAD
+activity_author_preload_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('ACTIVITY_AUTHOR_PRELOAD', default: true)
+TaskmanRuntimeCompat.log_patch('ACTIVITY_AUTHOR_PRELOAD', activity_author_preload_patch_enabled)
+Rails.application.config.to_prepare do
+  next unless activity_author_preload_patch_enabled
+  next unless defined?(Redmine::Activity::Fetcher)
+
+  unless defined?(TaskmanActivityAuthorPreloadPatch)
+    module TaskmanActivityAuthorPreloadPatch
+      def events(from = nil, to = nil, options = {})
+        events = super
+
+        # Only apply to HTML format (not Atom which uses limit and is already optimized)
+        return events if options[:limit]
+        return events if events.empty?
+
+        # Group events by class and bulk preload authors
+        events.group_by(&:class).each do |klass, class_events|
+          next unless klass.respond_to?(:reflect_on_association)
+          next unless klass.reflect_on_association(:author)
+          next unless class_events.first.respond_to?(:event_author)
+
+          # Bulk preload authors for all events of this class
+          # Uses Rails 7+ Preloader API
+          ActiveRecord::Associations::Preloader.new(
+            records: class_events,
+            associations: :author
+          ).call
+        end
+
+        events
+      rescue StandardError => e
+        Rails.logger.warn("[ActivityAuthorPreloadPatch] fallback: #{e.class}: #{e.message}")
+        events
+      end
+    end
+  end
+
+  Redmine::Activity::Fetcher.prepend(TaskmanActivityAuthorPreloadPatch) unless Redmine::Activity::Fetcher.ancestors.include?(TaskmanActivityAuthorPreloadPatch)
 end
