@@ -43,5 +43,48 @@ apply_config = lambda do
   end
 end
 
+# In production allow_authorized mode, Rack::MiniProfiler.authorize_request
+# must be called during a controller request. We keep a session toggle driven by
+# ?miniprofiler=on|off and only authorize admin sessions.
+if defined?(Rails) && Rails.respond_to?(:application)
+  Rails.application.config.to_prepare do
+    next unless enabled
+    next unless defined?(ApplicationController)
+
+    unless defined?(TaskmanMiniProfilerAuthorization)
+      module TaskmanMiniProfilerAuthorization
+        def self.included(base)
+          base.before_action :taskman_mini_profiler_authorize_request
+        end
+
+        private
+
+        def taskman_mini_profiler_authorize_request
+          toggle = params[:miniprofiler].to_s.downcase
+          if toggle == "on"
+            session[session_toggle_key] = true
+          elsif toggle == "off"
+            session.delete(session_toggle_key)
+          end
+
+          return unless session[session_toggle_key] == true
+
+          allow_all = ENV.fetch("RACK_MINI_PROFILER_ALLOW_ALL", "0") == "1"
+          uid = session && session[:user_id]
+          is_admin = defined?(User) ? (User.find_by(id: uid)&.admin? || false) : false
+
+          return unless allow_all || is_admin
+
+          Rack::MiniProfiler.authorize_request
+        rescue StandardError
+          nil
+        end
+      end
+    end
+
+    ApplicationController.include(TaskmanMiniProfilerAuthorization) unless ApplicationController.ancestors.include?(TaskmanMiniProfilerAuthorization)
+  end
+end
+
 apply_config.call
 Rails.application.config.after_initialize { apply_config.call } if defined?(Rails) && Rails.respond_to?(:application)
