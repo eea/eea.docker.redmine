@@ -93,6 +93,10 @@ if defined?(Rails) && Rails.respond_to?(:application)
 
     ApplicationController.include(TaskmanMiniProfilerAuthorization) unless ApplicationController.ancestors.include?(TaskmanMiniProfilerAuthorization)
   end
+
+  # Ensure MiniProfiler middleware is placed before routing so resource paths
+  # (/mini-profiler-resources/*) are served by the middleware, not Rails router.
+  Rails.application.config.middleware.insert_before(ActionDispatch::Routing, Rack::MiniProfiler) unless Rails.application.config.middleware.any? { |m| m.klass == Rack::MiniProfiler }
 end
 
 apply_config.call
