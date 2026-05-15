@@ -8,6 +8,12 @@ profiler_authorized = lambda do |env|
     request = ActionDispatch::Request.new(env)
     session = request.session
 
+    # Always allow access to MiniProfiler static resources.
+    base_path = Rack::MiniProfiler.config.base_url_path.to_s
+    if base_path != "" && request.path.to_s.start_with?(base_path)
+      return true
+    end
+
     # Admin-only runtime toggle via URL for current session:
     #   ?miniprofiler=on  -> enable profiling
     #   ?miniprofiler=off -> disable profiling
