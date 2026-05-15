@@ -1,18 +1,25 @@
 enabled = ENV.fetch("RACK_MINI_PROFILER_ENABLED", "0") == "1"
 MINI_PROFILER_SESSION_KEY = :mini_profiler_enabled unless defined?(MINI_PROFILER_SESSION_KEY)
 
+begin
+  require "rack-mini-profiler"
+rescue LoadError
+  nil
+end
+
 return unless defined?(Rack::MiniProfiler)
 
 profiler_authorized = lambda do |env|
   begin
     request = ActionDispatch::Request.new(env)
-    session = request.session
 
     # Always allow access to MiniProfiler static resources.
     base_path = Rack::MiniProfiler.config.base_url_path.to_s
     if base_path != "" && request.path.to_s.start_with?(base_path)
       return true
     end
+
+    session = request.session
 
     # Admin-only runtime toggle via URL for current session:
     #   ?miniprofiler=on  -> enable profiling
@@ -40,7 +47,7 @@ apply_config = lambda do
   Rack::MiniProfiler.config.enabled = enabled if Rack::MiniProfiler.config.respond_to?(:enabled=)
   Rack::MiniProfiler.config.auto_inject = enabled
   Rack::MiniProfiler.config.base_url_path = "/mini-profiler-resources/" if Rack::MiniProfiler.config.respond_to?(:base_url_path=)
-  Rack::MiniProfiler.config.authorization_mode = :allow_authorized
+  Rack::MiniProfiler.config.authorization_mode = :allow_all
   if Rack::MiniProfiler.config.respond_to?(:enable_hotwire_turbo_drive_support=)
     Rack::MiniProfiler.config.enable_hotwire_turbo_drive_support = true
   end
@@ -96,14 +103,14 @@ if defined?(Rails) && Rails.respond_to?(:application)
 
   # Ensure MiniProfiler middleware is placed before routing so resource paths
   # (/mini-profiler-resources/*) are served by the middleware, not Rails router.
-  middleware = Rails.application.config.middleware
-  already_added = if middleware.respond_to?(:middlewares)
-                    middleware.middlewares.any? { |m| m.klass == Rack::MiniProfiler }
-                  else
-                    false
-                  end
-  middleware.insert_before(ActionDispatch::Routing, Rack::MiniProfiler) unless already_added
 end
 
 apply_config.call
-Rails.application.config.after_initialize { apply_config.call } if defined?(Rails) && Rails.respond_to?(:application)
+if defined?(Rails) && Rails.respond_to?(:application)
+  Rails.application.config.after_initialize do
+    apply_config.call
+
+    Rack::MiniProfiler.config.authorization_mode = :allow_all
+    Rack::MiniProfiler.config.pre_authorize_cb = profiler_authorized
+  end
+end
