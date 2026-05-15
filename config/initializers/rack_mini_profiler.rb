@@ -37,7 +37,9 @@ profiler_authorized = lambda do |env|
 end
 
 apply_config = lambda do
+  Rack::MiniProfiler.config.enabled = enabled if Rack::MiniProfiler.config.respond_to?(:enabled=)
   Rack::MiniProfiler.config.auto_inject = enabled
+  Rack::MiniProfiler.config.base_url_path = "/mini-profiler-resources/" if Rack::MiniProfiler.config.respond_to?(:base_url_path=)
   Rack::MiniProfiler.config.authorization_mode = :allow_authorized
   if Rack::MiniProfiler.config.respond_to?(:enable_hotwire_turbo_drive_support=)
     Rack::MiniProfiler.config.enable_hotwire_turbo_drive_support = true
