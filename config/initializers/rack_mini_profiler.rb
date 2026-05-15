@@ -96,7 +96,9 @@ if defined?(Rails) && Rails.respond_to?(:application)
 
   # Ensure MiniProfiler middleware is placed before routing so resource paths
   # (/mini-profiler-resources/*) are served by the middleware, not Rails router.
-  Rails.application.config.middleware.insert_before(ActionDispatch::Routing, Rack::MiniProfiler) unless Rails.application.config.middleware.any? { |m| m.klass == Rack::MiniProfiler }
+  middleware = Rails.application.config.middleware
+  already_added = middleware.to_a.any? { |m| m.klass == Rack::MiniProfiler }
+  middleware.insert_before(ActionDispatch::Routing, Rack::MiniProfiler) unless already_added
 end
 
 apply_config.call
