@@ -18,12 +18,13 @@ profiler_authorized = lambda do |env|
       session.delete(MINI_PROFILER_SESSION_KEY)
     end
 
-    # Escape hatch for ops when explicitly requested
-    return true if ENV.fetch("RACK_MINI_PROFILER_ALLOW_ALL", "0") == "1"
-
+    allow_all = ENV.fetch("RACK_MINI_PROFILER_ALLOW_ALL", "0") == "1"
     user_id = session && session[:user_id]
     user = defined?(User) ? User.find_by(id: user_id) : nil
-    user&.admin? && session[MINI_PROFILER_SESSION_KEY] == true
+    allowed = allow_all || (user&.admin? && session[MINI_PROFILER_SESSION_KEY] == true)
+
+    Rack::MiniProfiler.authorize_request if allowed
+    allowed
   rescue StandardError
     false
   end
