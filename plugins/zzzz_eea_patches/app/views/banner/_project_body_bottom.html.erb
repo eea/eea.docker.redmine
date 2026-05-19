@@ -1,0 +1,49 @@
+<%# 
+  EEA Patch - Fix link_to/url_for routes inside engine scope
+  
+  Original file: plugins/redmine_banner/app/views/banner/_project_body_bottom.html.erb
+  Plugin version: 0.3.5
+  
+  ISSUE: When rendered inside an engine (e.g. ai_helper), link_to and url_for
+  resolve controller paths relative to the engine's routes instead of main_app.
+  
+  FIX: Prefix all link_to/url_for calls with main_app to use main Rails routes.
+%>
+<div id="project_banner_area" class="banner_area">
+<div class="banner banner_<%= banner.style %>" id="banner_content">
+  <%= textilizable banner.banner_description %>
+</div>
+
+<%
+if authorize_for(:banner, :edit)
+%>
+  <div class="banner_edit">
+<%= link_to l(:button_edit),
+  { controller: 'main_app/banner', action: 'show', project_id: @project },
+  { class: 'icon banner-icon-edit', title: l(:button_edit) } %>
+
+<a class="icon banner-icon-off"
+   href="#"
+   onclick="if (confirm('<%= l(:text_are_you_sure) %> ')) {
+   $.ajax({
+          url: '<%= url_for(controller: :"main_app/banner", action: :project_banner_off, project_id: @project) %>',
+          type: 'get',
+          success: function(data){
+            $('#project_banner_area').remove(); return false;
+          }
+        });
+   }"
+   title="<%= l(:banner_off) %>"><%= l(:button_off) %></a>
+  </div>
+<% end %>
+
+</div>
+<script type="text/javascript">
+  document.addEventListener('DOMContentLoaded', function() {
+    let content = document.getElementById('content');
+    content.insertBefore(
+      document.getElementById('project_banner_area'),
+      content.firstChild
+    );
+  });
+</script>

@@ -484,6 +484,39 @@ Role.joins(members: :project).where(...).where(members: { user_id: id }).distinc
 
 **Affected Projects:** Permission-sensitive issue/board flows
 
+### 26. BANNER_ENGINE_ROUTES
+**File:** `plugins/zzzz_eea_patches/app/views/banner/_body_bottom.html.erb`
+**File:** `plugins/zzzz_eea_patches/app/views/banner/_project_body_bottom.html.erb`
+
+**Problem:** When `redmine_banner` partials are rendered inside another engine's scope (e.g. `ai_helper`), `link_to` and `url_for` resolve controller paths relative to the engine's routes. This produces routes like `ai_helper/global_banner/zope` which don't exist, causing `ActionController::UrlGenerationError: No route matches`.
+
+**Solution:** Override both banner partials and prefix all `controller:` references with `main_app/` to force resolution against the main application's routes.
+
+```erb
+# Before (original redmine_banner partial)
+<%= link_to l(:button_edit),
+  { controller: 'global_banner', action: 'show' },
+  { class: 'icon banner-icon-edit', title: l(:button_edit)} if User.current.admin? %>
+
+# After (EEA patch override)
+<%= link_to l(:button_edit),
+  { controller: 'main_app/global_banner', action: 'show' },
+  { class: 'icon banner-icon-edit', title: l(:button_edit)} if User.current.admin? %>
+```
+
+Same fix applied to:
+- `controller: 'banner'` → `controller: 'main_app/banner'` (global banner off toggle)
+- `controller: 'banner'` → `controller: 'main_app/banner'` (project banner show)
+- `url_for(controller: :banner, ...)` → `url_for(controller: 'main_app/banner', ...)` (project banner off AJAX)
+
+**Performance:** No performance impact — purely a routing correctness fix.
+
+**Affected Engines/Plugins:**
+- redmine_ai_helper (triggering `AiHelper::CustomCommandsController#new`)
+- Any other Redmine engine that triggers `view_layouts_base_body_bottom` hooks
+
+---
+
 ### 25. ACTIVITY_AUTHOR_PRELOAD
 **File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_ACTIVITY_AUTHOR_PRELOAD`)
 
