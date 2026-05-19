@@ -26,7 +26,7 @@ if defined?(Rails) && Rails.respond_to?(:application)
     # Define a middleware that runs AFTER Rails has processed the request.
     # It sets a flag in the response headers that MiniProfiler can read
     # to decide whether to skip profiling.
-    Rails.application.middleware.insert_after(
+    Rails.application.config.middleware.insert_after(
       ActionDispatch::Session::CookieStore,
       Class.new do
         def initialize(app)
