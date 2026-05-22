@@ -12,5 +12,11 @@ opencode/
 opencode/**/
 openspec/
 openspec/**/
+opensec/
+opensec/**/
+ospx/
+ospx/**/
 docs/patch-notes/archive/
 test/archive/
+.fusion
+.pi

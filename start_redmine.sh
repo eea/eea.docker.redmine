@@ -852,6 +852,33 @@ fi
 
 apply_a1_theme_backport_overrides
 
+# Optional runtime toggle for banner engine route patch.
+# Disable with: TASKMAN_PATCH_BANNER_ENGINE_ROUTES=0|false|no|off
+case "${TASKMAN_PATCH_BANNER_ENGINE_ROUTES:-1}" in
+  0|false|FALSE|no|NO|off|OFF)
+    echo "Disabling banner engine route patch (TASKMAN_PATCH_BANNER_ENGINE_ROUTES=${TASKMAN_PATCH_BANNER_ENGINE_ROUTES})"
+    if [ -d "${REDMINE_PATH}/plugins/redmine_banner/.git" ]; then
+      (
+        git config --global --add safe.directory "${REDMINE_PATH}/plugins/redmine_banner" || true
+        cd "${REDMINE_PATH}/plugins/redmine_banner" && \
+        git checkout -- app/views/banner/_body_bottom.html.erb app/views/banner/_project_body_bottom.html.erb
+      ) || echo "Warning: failed to restore original redmine_banner partials"
+    else
+      echo "Warning: redmine_banner git metadata not found; cannot restore from git"
+    fi
+
+    if [ -d "${REDMINE_PATH}/plugins/zzzz_eea_patches/app/views/banner" ]; then
+      cp -f "${REDMINE_PATH}/plugins/redmine_banner/app/views/banner/_body_bottom.html.erb" \
+        "${REDMINE_PATH}/plugins/zzzz_eea_patches/app/views/banner/_body_bottom.html.erb" 2>/dev/null || true
+      cp -f "${REDMINE_PATH}/plugins/redmine_banner/app/views/banner/_project_body_bottom.html.erb" \
+        "${REDMINE_PATH}/plugins/zzzz_eea_patches/app/views/banner/_project_body_bottom.html.erb" 2>/dev/null || true
+    fi
+    ;;
+  *)
+    :
+    ;;
+esac
+
 if [ "${RUNTIME_ADDONS_CHANGED}" = "1" ] || ! bundle check >/dev/null 2>&1; then
   bundle config set path '/usr/local/bundle' >/dev/null 2>&1 || true
   bundle config set --local without 'development test' >/dev/null 2>&1 || true
