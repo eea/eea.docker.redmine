@@ -756,3 +756,96 @@ Rails.application.config.to_prepare do
 
   Redmine::Activity::Fetcher.prepend(TaskmanActivityAuthorPreloadPatch) unless Redmine::Activity::Fetcher.ancestors.include?(TaskmanActivityAuthorPreloadPatch)
 end
+
+# Wiki links inside mounted engines can incorrectly resolve to engine-scoped
+# controllers (e.g. ai_helper/wiki). Force main app routing for wiki links.
+# Toggle: TASKMAN_PATCH_WIKI_LINKS_MAIN_APP
+wiki_links_main_app_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('WIKI_LINKS_MAIN_APP', default: true)
+TaskmanRuntimeCompat.log_patch('WIKI_LINKS_MAIN_APP', wiki_links_main_app_patch_enabled)
+Rails.application.config.to_prepare do
+  next unless wiki_links_main_app_patch_enabled
+  next unless defined?(ApplicationHelper)
+
+  unless defined?(TaskmanWikiLinksMainAppPatch)
+    module TaskmanWikiLinksMainAppPatch
+      def parse_wiki_links(text, project, obj, attr, only_path, options)
+        text.gsub!(/(!)?(\[\[([^\n\|]+?)(\|([^\n\|]+?))?\]\])/) do |_m|
+          link_project = project
+          esc, all, page, title = $1, $2, $3, $5
+          if esc.nil?
+            page = CGI.unescapeHTML(page)
+            if page =~ /^\#(.+)$/
+              anchor = sanitize_anchor_name($1)
+              url = "##{anchor}"
+              next link_to(title.present? ? title.html_safe : h(page), url, class: 'wiki-page')
+            end
+
+            if page =~ /^([^\:]+)\:(.*)$/
+              identifier, page = $1, $2
+              link_project = Project.find_by_identifier(identifier) || Project.find_by_name(identifier)
+              title ||= identifier if page.blank?
+            end
+
+            if link_project && link_project.wiki && User.current.allowed_to?(:view_wiki_pages, link_project)
+              anchor = nil
+              if page =~ /^(.+?)\#(.+)$/
+                page, anchor = $1, $2
+              end
+              anchor = sanitize_anchor_name(anchor) if anchor.present?
+
+              wiki_page = link_project.wiki.find_page(page)
+              url =
+                if anchor.present? && wiki_page.present? &&
+                     (obj.is_a?(WikiContent) || obj.is_a?(WikiContentVersion)) &&
+                     obj.page == wiki_page
+                  "##{anchor}"
+                else
+                  case options[:wiki_links]
+                  when :local
+                    "#{page.present? ? Wiki.titleize(page) : ''}.html" + (anchor.present? ? "##{anchor}" : '')
+                  when :anchor
+                    "##{page.present? ? Wiki.titleize(page) : title}" + (anchor.present? ? "_#{anchor}" : '')
+                  else
+                    wiki_page_id = page.present? ? Wiki.titleize(page) : nil
+                    parent =
+                      if wiki_page.nil? && obj.is_a?(WikiContent) &&
+                           obj.page && project == link_project
+                        obj.page.title
+                      else
+                        nil
+                      end
+
+                    route_options = {
+                      only_path: only_path,
+                      controller: '/wiki',
+                      action: 'show',
+                      project_id: link_project,
+                      id: wiki_page_id,
+                      version: nil,
+                      anchor: anchor,
+                      parent: parent
+                    }
+
+                    if respond_to?(:main_app) && main_app.respond_to?(:url_for)
+                      main_app.url_for(route_options)
+                    else
+                      url_for(route_options)
+                    end
+                  end
+                end
+
+              link_to(title.present? ? title.html_safe : h(page),
+                      url, class: ('wiki-page' + (wiki_page ? '' : ' new')))
+            else
+              all
+            end
+          else
+            all
+          end
+        end
+      end
+    end
+  end
+
+  ApplicationHelper.prepend(TaskmanWikiLinksMainAppPatch) unless ApplicationHelper.ancestors.include?(TaskmanWikiLinksMainAppPatch)
+end
