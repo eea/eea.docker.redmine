@@ -19,7 +19,7 @@ git checkout b191144a8e758a85dc31a6d317aea55a8dad9415
 cd ..
 
 git clone -b 0.3.5 https://github.com/agileware-jp/redmine_banner.git "${REDMINE_PATH}/plugins/redmine_banner"
-git clone https://github.com/enricohuang/redmine_mermaid.git "${REDMINE_PATH}/plugins/redmine_mermaid"
+git clone https://github.com/alecghica/redmine_mermaid.git "${REDMINE_PATH}/plugins/redmine_mermaid"
 git clone -b main https://github.com/alphanodes/additionals.git "${REDMINE_PATH}/plugins/additionals"
 (
   cd "${REDMINE_PATH}/plugins/additionals"
