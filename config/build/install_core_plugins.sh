@@ -41,4 +41,5 @@ git checkout 087afa403b34a32313e7761cd018879f05f19e3c
 cd ..
 
 git clone -b master https://github.com/eea/redmine_entra_id.git "${REDMINE_PATH}/plugins/entra_id"
-git clone -b 3.1.1 https://github.com/haru/redmine_ai_helper.git "${REDMINE_PATH}/plugins/redmine_ai_helper"
+# git clone -b 3.1.1 https://github.com/haru/redmine_ai_helper.git "${REDMINE_PATH}/plugins/redmine_ai_helper"
+git clone -b main https://github.com/alecghica/redmine_ai_helper.git "${REDMINE_PATH}/plugins/redmine_ai_helper"
