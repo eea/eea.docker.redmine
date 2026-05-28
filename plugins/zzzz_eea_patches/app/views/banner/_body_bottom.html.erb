@@ -1,14 +1,29 @@
+<%# 
+  EEA Patch - Fix link_to routes inside engine scope
+  
+  Original file: plugins/redmine_banner/app/views/banner/_body_bottom.html.erb
+  Plugin version: 0.3.5
+  
+  ISSUE: When rendered inside an engine (e.g. ai_helper), link_to resolves
+  controller paths relative to the engine's routes instead of main_app.
+  This causes ActionController::UrlGenerationError: No route matches
+  {action: "show", controller: "ai_helper/global_banner", id: "zope"}
+  
+  FIX: Prefix all controller: references with main_app/ to use main Rails routes.
+  Routes: GET /global_banner/:id => global_banner#show
+          GET /banner/off => banner#off
+%>
 <div class="banner_area global_banner">
 <div class="banner banner_<%= setting['type'] %>" id="banner_content">
   <%= textilizable setting['banner_description'] %>
 </div>
   <div class="banner_edit">
     <%= link_to l(:button_edit),
-      main_app.global_banner_index_path,
+      { controller: 'main_app/global_banner', action: 'show', id: setting['id'] },
       { class: 'icon banner-icon-edit', title: l(:button_edit)} if User.current.admin? %>
     <%= link_to l(:button_off),
-      main_app.off_banner_index_path(moderate: 'yes'),
-      { class: 'icon banner-icon-off', title: l(:banner_off), remote: true } if User.current.logged? %>
+      { controller: 'main_app/banner', action: 'off', moderate: 'yes' },
+      { class: 'icon banner-icon-off', title: l(:banner_off)} if User.current.logged? %>
   </div>
 
   <% if setting['related_link'].present? %>
