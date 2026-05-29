@@ -1,0 +1,189 @@
+<%= stylesheet_link_tag 'mermaid', plugin: 'redmine_mermaid' %>
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+
+// The browser cannot list this folder directly; the file list must be generated from Ruby/ERB.
+
+<%
+  require 'json'
+
+  icon_pack_dir = Rails.root.join(
+    'plugins',
+    'redmine_mermaid',
+    'assets',
+    'images',
+    'redmine_mermaid',
+    'iconpacks'
+  )
+
+  icon_packs = Dir.glob(icon_pack_dir.join('*.json')).sort.map do |path|
+    filename = File.basename(path)
+
+    json = JSON.parse(File.read(path))
+    pack_name = json['prefix'].presence || File.basename(path, '.json')
+
+    {
+      name: pack_name,
+      url: asset_path("plugin_assets/redmine_mermaid/redmine_mermaid/iconpacks/#{filename}")
+    }
+  end
+%>
+
+const iconPacks = <%= raw icon_packs.to_json %>;
+
+console.log('[redmine_mermaid] iconPacks =', iconPacks);
+
+mermaid.registerIconPacks(
+  iconPacks.map(({ name, url }) => ({
+    name,
+    loader: async () => {
+      console.log(`[redmine_mermaid] cargando icon pack ${name} desde`, url);
+
+      const response = await fetch(url, { cache: 'force-cache' });
+
+      if (!response.ok) {
+        throw new Error(`No se pudo cargar el icon pack ${name}: HTTP ${response.status}`);
+      }
+
+      const json = await response.json();
+
+      console.log(
+        `[redmine_mermaid] icon pack ${name} cargado. prefix=`,
+        json.prefix,
+        'icons=',
+        json.icons ? Object.keys(json.icons).length : 0
+      );
+
+      return json;
+    },
+  }))
+);
+
+
+
+
+mermaid.initialize({ startOnLoad: false, theme: 'default' });
+
+const MERMAID_CODE_SELECTOR = 'pre > code[data-language="mermaid"], pre > code.language-mermaid, pre > code.mermaid';
+const MERMAID_BLOCK_SELECTOR = 'pre.mermaid:not([data-processed]), div.mermaid:not([data-processed])';
+const TEXTILE_PRE_SELECTOR = '.wiki div.pre-wrapper > pre:not([data-processed])';
+const MERMAID_ANY_SELECTOR = [
+  MERMAID_CODE_SELECTOR,
+  MERMAID_BLOCK_SELECTOR,
+  TEXTILE_PRE_SELECTOR,
+].join(', ');
+
+let renderScheduled = false;
+let renderInProgress = false;
+let renderPending = false;
+
+function looksLikeMermaid(source) {
+  if (!source) return false;
+
+  const text = source.replace(/\r\n?/g, '\n').trim();
+  if (!text) return false;
+
+  const firstMeaningfulLine = text
+    .split('\n')
+    .map(function(line) { return line.trim(); })
+    .find(function(line) { return line.length > 0; });
+
+  if (!firstMeaningfulLine) return false;
+
+  return /^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|journey|gantt|pie|gitGraph|mindmap|timeline|quadrantChart|requirementDiagram|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment|packet|kanban|architecture)(\s|$)/.test(firstMeaningfulLine);
+}
+
+function collectMermaidNodes(scope) {
+  const nodes = [];
+  const root = scope || document;
+
+  // CommonMark/Textile code blocks: <pre><code ...>...</code></pre>
+  root.querySelectorAll(MERMAID_CODE_SELECTOR).forEach(function(code) {
+    const pre = code.parentElement;
+    pre.classList.add('mermaid');
+    pre.textContent = code.textContent;
+    nodes.push(pre);
+  });
+
+  // Textile: <pre class="mermaid"> ... </pre>
+  root.querySelectorAll('pre.mermaid:not([data-processed])').forEach(function(pre) {
+    nodes.push(pre);
+  });
+
+  // Standard mermaid.js: <div class="mermaid"> ... </div>
+  root.querySelectorAll('div.mermaid:not([data-processed])').forEach(function(div) {
+    nodes.push(div);
+  });
+
+  // Redmine Textile can strip class="mermaid" and render the block as a plain
+  // <div class="pre-wrapper"><pre>...</pre></div>. Detect only content that
+  // starts with a Mermaid diagram declaration to avoid hijacking regular code.
+  root.querySelectorAll(TEXTILE_PRE_SELECTOR).forEach(function(pre) {
+    if (!pre.classList.contains('mermaid') && looksLikeMermaid(pre.textContent)) {
+      pre.classList.add('mermaid');
+      nodes.push(pre);
+    }
+  });
+
+  return nodes;
+}
+
+async function renderMermaid(scope) {
+  if (renderInProgress) {
+    renderPending = true;
+    return;
+  }
+
+  const nodes = collectMermaidNodes(scope);
+  if (nodes.length === 0) return;
+
+  renderInProgress = true;
+  try {
+    await mermaid.run({ nodes: nodes });
+  } catch (error) {
+    console.error('redmine_mermaid: failed to render diagram(s)', error);
+  } finally {
+    renderInProgress = false;
+    if (renderPending) {
+      renderPending = false;
+      scheduleMermaidRender();
+    }
+  }
+}
+
+function scheduleMermaidRender(scope) {
+  if (renderScheduled) return;
+  renderScheduled = true;
+  requestAnimationFrame(function() {
+    renderScheduled = false;
+    renderMermaid(scope);
+  });
+}
+
+function containsMermaidContent(node) {
+  if (!node || node.nodeType !== Node.ELEMENT_NODE) return false;
+  if (node.matches && node.matches(MERMAID_ANY_SELECTOR)) return true;
+  return Boolean(node.querySelector && node.querySelector(MERMAID_ANY_SELECTOR));
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  scheduleMermaidRender();
+
+  const observer = new MutationObserver(function(mutations) {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (containsMermaidContent(node)) {
+          scheduleMermaidRender();
+          return;
+        }
+      }
+    }
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  // Backup hooks for Redmine preview/tab updates that replace HTML asynchronously.
+  document.addEventListener('ajax:success', function() { scheduleMermaidRender(); });
+  document.addEventListener('turbo:load', function() { scheduleMermaidRender(); });
+});
+</script>
