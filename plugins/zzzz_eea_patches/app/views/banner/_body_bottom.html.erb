@@ -22,7 +22,7 @@
       { controller: 'main_app/global_banner', action: 'show', id: setting['id'] },
       { class: 'icon banner-icon-edit', title: l(:button_edit)} if User.current.admin? && setting['id'].present? %>
     <%= link_to l(:button_off),
-      { controller: 'main_app/banner', action: 'off', moderate: 'yes' },
+      off_banner_index_path(moderate: 'yes'),
       { class: 'icon banner-icon-off', title: l(:banner_off)} if User.current.logged? %>
   </div>
 
