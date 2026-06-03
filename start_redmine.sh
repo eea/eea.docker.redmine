@@ -148,6 +148,13 @@ link_mounted_addons() {
       [ -e "${source}" ] || continue
       name="$(basename "${source}")"
       dest="${REDMINE_PATH}/plugins/${name}"
+
+      # If image already contains a real directory/file for this addon,
+      # replace it so mounted addons are always authoritative.
+      if [ -e "${dest}" ] && [ ! -L "${dest}" ]; then
+        rm -rf "${dest}"
+      fi
+
       if [ -L "${dest}" ]; then
         rm -f "${dest}"
       fi
