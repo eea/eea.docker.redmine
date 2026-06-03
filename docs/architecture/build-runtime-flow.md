@@ -51,6 +51,12 @@ Addon handling:
 - Shared runtime helpers: `config/runtime/common.sh`
 - Migration orchestrator: `config/runtime/migration_runner.rb`
 
+Addon sync modes:
+- `ADDONS_SYNC_MODE=full` (default): refreshes the runtime plugin/theme directories from the manifest-backed addon source.
+- `ADDONS_SYNC_MODE=additive`: refreshes manifest plugins from the addon source while preserving existing plugin directories that are not listed in `addons.cfg`.
+- Theme sync is still a full refresh in both modes.
+- `ADDONS_SYNC_SKIP_IF_PRESENT=1` exits before refresh when all manifest plugins and the theme are already present. Use `ADDONS_SYNC_SKIP_IF_PRESENT=0` when a forced additive refresh is required.
+
 ## 4) Deployment Contract (k8s parity)
 
 | Role | Required env | Typical values | Notes |
@@ -58,7 +64,7 @@ Addon handling:
 | Web pod | `RUN_DB_MIGRATE`, `RUN_PLUGIN_MIGRATE`, `START_SERVER`, `START_SOLID_QUEUE`, `REQUIRE_MOUNTED_ADDONS`, `MOUNTED_ADDONS_ROOT`, `REDMINE_DB_POOL` | `0`, `auto`, `1`, `0`, `1`, `/addons/current`, `12` | Serves HTTP only; cron disabled when `CRON_IN_ASYNC_JOBS_ONLY=1`. |
 | Jobs pod | `RUN_DB_MIGRATE`, `START_SERVER`, `START_SOLID_QUEUE`, `WAIT_FOR_DB_TABLES`, `REQUIRE_MOUNTED_ADDONS`, `MOUNTED_ADDONS_ROOT`, `REDMINE_DB_POOL` | `0`, `0`, `1`, `solid_queue_jobs,solid_queue_recurring_tasks`, `1`, `/addons/current`, `12` | Runs Solid Queue dispatcher/worker/scheduler. |
 | Migrate pod | `RUN_DB_MIGRATE`, `RUN_PLUGIN_MIGRATE`, `START_SERVER`, `START_SOLID_QUEUE`, `REQUIRE_MOUNTED_ADDONS`, `MOUNTED_ADDONS_ROOT`, `REDMINE_DB_POOL` | `1`, `auto`, `0`, `0`, `1`, `/addons/current`, `12` | Single migration authority; runs DB then plugin migrations. |
-| Addon sync pod | `ADDONS_SYNC_SOURCE`, `ADDONS_BASE_URL` or `PLUGINS_URL`, `PLUGINS_USER`, `PLUGINS_PASSWORD`, `ADDONS_VOLUME_ROOT` | `share` or `dir`, `...`, runtime secret, runtime secret, `/addons` | Syncs addons into shared PVC and applies override assets. |
+| Addon sync pod | `ADDONS_SYNC_SOURCE`, `ADDONS_BASE_URL` or `PLUGINS_URL`, `PLUGINS_USER`, `PLUGINS_PASSWORD`, `ADDONS_VOLUME_ROOT`, `ADDONS_SYNC_MODE`, `ADDONS_SYNC_SKIP_IF_PRESENT` | `share` or `dir`, `...`, runtime secret, runtime secret, `/addons`, `full` or `additive`, `1` | Syncs addons into shared PVC and applies override assets. Use `additive` only when non-manifest plugins must survive a refresh. |
 
 Helm chart is maintained in a separate repository and should consume this contract directly.
 

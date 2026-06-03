@@ -115,14 +115,9 @@ normalize_theme_dir() {
   fi
 }
 
-if [ "${ADDONS_SYNC_SKIP_IF_PRESENT}" = "1" ] && addons_already_synced; then
-  echo "Addons already present in ${ADDONS_CURRENT_DIR}, skipping share download"
-  exit 0
-fi
+preserve_non_manifest_plugins() {
+  local kind="" name="" location="" archive="" dir="" manifest_plugins=""
 
-# --- ADDONS_SYNC_MODE=additive: preserve non-manifest plugins ---
-if [ "${ADDONS_SYNC_MODE:-full}" = "additive" ]; then
-  manifest_plugins=""
   while IFS=: read -r kind name location archive; do
     [ "${kind}" = "plugin" ] || continue
     manifest_plugins="${manifest_plugins}${name}"$'\n'
@@ -136,11 +131,19 @@ if [ "${ADDONS_SYNC_MODE:-full}" = "additive" ]; then
       cp -a "${dir}" "${plugins_tmp}/${name}"
     fi
   done
+}
+
+if [ "${ADDONS_SYNC_SKIP_IF_PRESENT}" = "1" ] && addons_already_synced; then
+  echo "Addons already present in ${ADDONS_CURRENT_DIR}, skipping share download"
+  exit 0
 fi
-# --- end additive block ---
 
 clean_dir "${plugins_tmp}"
 clean_dir "${themes_tmp}"
+
+if [ "${ADDONS_SYNC_MODE:-full}" = "additive" ]; then
+  preserve_non_manifest_plugins
+fi
 
 while IFS=: read -r kind name location archive_name; do
   [ "${kind}" = "plugin" ] || continue
