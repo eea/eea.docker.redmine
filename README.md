@@ -133,6 +133,7 @@ The Dockerfile is intentionally split into clear stages:
 
 Addon source-of-truth is `addons.cfg` (`type:name:location:archive`).
 Paid plugins/themes are not embedded by default (`EMBED_PRO_ASSETS=0`) and are expected via runtime sync/PVC.
+Share-based runtime sync supports `ADDONS_SYNC_MODE=full` (default replacement) and `ADDONS_SYNC_MODE=additive` (preserve non-manifest plugins while refreshing manifest plugins).
 Build target for local/CI compose is selected via `REDMINE_BUILD_TARGET` (`runtime` by default, `ci-runtime` for Jenkins).
 For amd64 local runs, compose files are layered:
 `docker compose -f test/docker-compose.yml -f test/docker-compose.amd64.yml ...`.
