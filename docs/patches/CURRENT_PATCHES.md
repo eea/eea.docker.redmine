@@ -490,7 +490,7 @@ Role.joins(members: :project).where(...).where(members: { user_id: id }).distinc
 
 **Problem:** When `redmine_banner` partials are rendered inside another engine's scope (e.g. `ai_helper`), `link_to` and `url_for` resolve controller paths relative to the engine's routes. This produces routes like `ai_helper/global_banner/zope` which don't exist, causing `ActionController::UrlGenerationError: No route matches`.
 
-**Solution:** Override both banner partials and prefix all `controller:` references with `main_app/` to force resolution against the main application's routes.
+**Solution:** Override both banner partials and resolve banner routes through `main_app` to force resolution against the main application's routes.
 
 ```erb
 # Before (original redmine_banner partial)
@@ -505,7 +505,7 @@ Role.joins(members: :project).where(...).where(members: { user_id: id }).distinc
 ```
 
 Same fix applied to:
-- `controller: 'banner'` → `controller: 'main_app/banner'` (global banner off toggle)
+- `controller: 'banner'` → `main_app.off_banner_index_path(...)` (global banner off toggle)
 - `controller: 'banner'` → `controller: 'main_app/banner'` (project banner show)
 - `url_for(controller: :banner, ...)` → `url_for(controller: 'main_app/banner', ...)` (project banner off AJAX)
 
