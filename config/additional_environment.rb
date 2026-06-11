@@ -66,7 +66,6 @@ config.cache_classes = true
 config.eager_load = true
 config.action_view.cache_template_loading = true
 config.active_record.default_timezone = :utc if config.respond_to?(:active_record)
-config.active_record.cache_schema = true if config.respond_to?(:active_record)
 
 # Keep job backend explicit and configurable across web/cron containers.
 if config.respond_to?(:active_job)
