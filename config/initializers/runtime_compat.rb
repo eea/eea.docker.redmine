@@ -587,8 +587,9 @@ Rails.application.config.to_prepare do
   unless defined?(TaskmanProjectMembersPreloadPatch)
     module TaskmanProjectMembersPreloadPatch
       def principals_by_role
-        scope = memberships.active
-                         .includes(:principal, member_roles: :role)
+        # Remove includes(:roles) to avoid 210K row JOIN explosion
+        # m.roles already deduplicates via DISTINCT — N+1 is faster than includes here
+        scope = memberships.active.includes(:principal)
 
         result = {}
         scope.each do |m|
