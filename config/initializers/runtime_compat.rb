@@ -595,9 +595,7 @@ Rails.application.config.to_prepare do
         scope.each do |m|
           next unless m.principal
 
-          m.member_roles.each do |mr|
-            r = mr.role
-            next unless r
+          m.roles.each do |r|
             # Honour hidden-role filtering when additionals plugin is present
             next if r.respond_to?(:hide) && r.hide && respond_to?(:consider_hidden_roles?) && consider_hidden_roles?
 
