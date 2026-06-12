@@ -30,3 +30,6 @@ performance_findings/
 
 # Local repo backup (created before force-push after history rewrite)
 ../eea.docker.redmine.bak
+
+# Local cluster-specific deployment files (generated artifacts, not source)
+local/
