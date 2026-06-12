@@ -1,541 +1,414 @@
-# Current Patches (Single Source of Truth)
+# Current Patches
 
-This is the **only authoritative patch catalog**.
+All runtime patches are in `config/initializers/runtime_compat.rb`, deployed via ConfigMap `taskman-runtime-compat`. Toggle each with `TASKMAN_PATCH_<NAME>=1|0` as a deployment env var. No image rebuild required.
 
-Format used for every patch:
-- File
-- Problem
-- Solution
-- Code (`Before` / `After`)
-- Performance
-- Affected Projects
+For the patch inventory/status table see `docs/patches/PATCHES.md`.
 
 ---
 
-## Current Patches
+## Member Roles Patches
 
-### 1. Helpdesk Ticket Count Performance Fix
+These three patches work together to fix slow load times on projects with deep inheritance hierarchies where `member_roles` has many inherited rows.
 
-**File:** `plugins/zzzz_eea_patches/app/views/projects/_helpdesk_tickets.html.erb`
+### PROJECT_MEMBERS_PRELOAD
+**Toggle:** `TASKMAN_PATCH_PROJECT_MEMBERS_PRELOAD=1`
+**Target:** `Project#principals_by_role` — called from `ProjectsController#show`
 
-**Problem:** The `redmine_contacts_helpdesk` plugin loaded very large relations before counting, causing page hangs on big private projects.
+**Problem:** The original implementation used `includes(member_roles: :role)` which loaded all inherited member_roles rows for the project via an IN-clause query into Ruby memory.
 
-**Solution:** Replace eager-loading count path with indexed SQL aggregate counts.
+**Solution:** Load members with principals once, then use a single `DISTINCT` query on the `(member_id, role_id)` composite index — a covering index scan that returns only distinct role assignments.
+
+```ruby
+# Before
+scope = memberships.active.includes(:principal, member_roles: :role)
+scope.each { |m| m.roles.each { |r| result[r] << m.principal } }
+
+# After
+pairs = MemberRole.where(member_id: member_ids).distinct.pluck(:member_id, :role_id)
+roles_by_id = Role.where(id: pairs.map(&:last).uniq).index_by(&:id)
+# build {role => [principals]} from hash lookups — zero N+1
+```
+
+**Performance:** Significant improvement on affected projects
+
+---
+
+### SORTED_SCOPE
+**Toggle:** `TASKMAN_PATCH_SORTED_SCOPE=1`
+**Target:** `Member.sorted` class method via `Member.singleton_class.prepend`
+
+**Problem:** `Member.sorted` uses `includes(:member_roles, :roles, :principal)`. Because `:roles` is `has_many :through :member_roles`, this JOINs all inherited member_roles rows — the result set can be tens of megabytes.
+
+**Solution:** Correlated scalar subquery for MIN(role.position) per member, plus `preload(:principal)` for the principal association. Only activates when `taskman_member_roles_bulk_map` is set (i.e. inside the settings action) — falls back to the original scope everywhere else.
+
+```ruby
+# Before
+scope :sorted, -> {
+  includes(:member_roles, :roles, :principal)
+    .reorder("#{Role.table_name}.position")
+    .order(Principal.fields_for_order_statement)
+}
+
+# After (settings action only, guarded by thread-local)
+joins(:principal)
+  .select("members.*, (SELECT COALESCE(MIN(r.position), 999)
+     FROM member_roles mr INNER JOIN roles r ON r.id = mr.role_id
+     WHERE mr.member_id = members.id) AS taskman_min_role_pos")
+  .reorder("taskman_min_role_pos")
+  .order(Principal.fields_for_order_statement)
+  .preload(:principal)
+```
+
+**Performance:** Settings/members page: eliminates the JOIN explosion
+
+---
+
+### MEMBER_ROLES_SETTINGS_BULK_PRELOAD
+**Toggle:** `TASKMAN_PATCH_MEMBER_ROLES_SETTINGS_BULK_PRELOAD` (default: on)
+**Target:** `ProjectsController#settings` + `Member#roles` + `Member#any_inherited_role?`
+
+**Problem:** After `sorted.to_a` loads members, the view calls `member.roles` and `member.deletable?` per member in the loop — each firing SQL queries.
+
+**Solution:** Patch `ProjectsController#settings` to run before `super`. Two DISTINCT queries (kept separate to preserve covering index usage) pre-load all needed data into thread-locals before the view renders. The view loop fires zero SQL.
+
+```ruby
+# Before (per member in view loop)
+member.roles        # SELECT DISTINCT roles.* ... WHERE member_id=X
+member.deletable?   # → any_inherited_role? → SELECT 1 FROM member_roles WHERE member_id=X LIMIT 1
+
+# After (once, before view renders)
+pairs = MemberRole.where(member_id: member_ids).distinct.pluck(:member_id, :role_id)
+# → Thread.current[:taskman_member_roles_bulk_map] = { member_id => [roles] }
+inherited_ids = MemberRole.where(member_id: member_ids).where.not(inherited_from: nil).distinct.pluck(:member_id)
+# → Thread.current[:taskman_inherited_member_ids] = Set<member_id>
+
+# In view loop: O(1) hash/Set lookups, zero SQL
+```
+
+**Why two queries instead of one GROUP BY:** Adding `MAX(inherited_from IS NOT NULL)` to the GROUP BY forces MySQL off the `(member_id, role_id)` covering index because `inherited_from` is not in that index. Two separate DISTINCT queries each use their own covering index.
+
+**Performance:** Significant improvement on affected projects
+
+---
+
+## Plugin Performance Patches
+
+### AGILE_QUERY
+**Toggle:** `TASKMAN_PATCH_AGILE_QUERY=1`
+**Target:** `AgileQuery#board_issue_statuses`
+
+**Problem:** Board status lookup joined through tracker/project to workflows.
+
+**Solution:** Fetch tracker IDs first, then query workflow transitions directly.
+
+```ruby
+# Before
+statuses = expensive_workflow_join(issue_scope)
+
+# After
+tracker_ids = issue_scope.unscope(:select, :order).where.not(tracker_id: nil).distinct.pluck(:tracker_id)
+status_ids = WorkflowTransition.where(tracker_id: tracker_ids).distinct.pluck(:old_status_id, :new_status_id).flatten.uniq
+IssueStatus.where(id: status_ids)
+```
+
+---
+
+### AGILE_ISSUES_IDS
+**Toggle:** `TASKMAN_PATCH_AGILE_ISSUES_IDS=1`
+**Target:** `AgileQuery#issues_ids`
+
+```ruby
+# Before
+ids = issue_scope.map(&:id)
+# After
+ids = issue_scope.unscope(:select, :order).pluck(:id)
+```
+
+---
+
+### RESOURCE_BOOKING_QUERY
+**Toggle:** `TASKMAN_PATCH_RESOURCE_BOOKING_QUERY=1`
+**Target:** `ResourceBookingQuery#booked_issue_ids`
+
+```ruby
+# Before
+ids = approved_bookings.map(&:issue_id)
+# After
+ids = approved_bookings.pluck(:issue_id)
+```
+
+---
+
+### AGILE_DOUBLE_COUNT
+**Toggle:** `TASKMAN_PATCH_AGILE_DOUBLE_COUNT=1`
+**Target:** `AgileQuery#issue_board`
+
+**Problem:** Separate COUNT query before data fetch.
+
+**Solution:** Fetch limit+1 rows and trim in Ruby. Only applies when `limit` is provided.
+
+```ruby
+# Before
+count = scope.count; rows = scope.limit(limit).to_a
+# After
+rows = scope.limit(limit + 1).to_a; rows = rows.first(limit) if rows.size > limit
+```
+
+---
+
+### AGILE_DESCENDANTS_JOIN
+**Toggle:** `TASKMAN_PATCH_AGILE_DESCENDANTS_JOIN=1`
+**Target:** `AgileQuery#agile_subproject_ids`
+
+```ruby
+# Before
+project.descendants.select { |p| p.module_enabled?('agile') }.map(&:id)
+# After
+project.descendants.joins(:enabled_modules).where(enabled_modules: { name: 'agile' }).pluck(:id)
+```
+
+---
+
+### AGILE_SPRINT_PROJECTS
+**Toggle:** `TASKMAN_PATCH_AGILE_SPRINT_PROJECTS=1`
+**Target:** `AgileQuery#shared_sprint_project_ids`
+
+```ruby
+# Before
+project.shared_agile_sprints.map(&:shared_projects).map { |ps| ps.map(&:id) }.flatten.uniq
+# After
+AgileSprint.joins(:shared_projects).where(agile_sprints: { id: project.shared_agile_sprints.pluck(:id) }).pluck('projects.id').uniq
+```
+
+---
+
+### HELPDESK_COLLECTOR
+**Toggle:** `TASKMAN_PATCH_HELPDESK_COLLECTOR=1`
+**Target:** `HelpdeskDataCollectorBusiestTime#customer_ids_for_issues`
+
+```ruby
+# Before
+issues_scope.joins(:customer).map(&:customer).map(&:id)
+# After
+issues_scope.joins(:customer).pluck("#{Contact.table_name}.id")
+```
+
+---
+
+### AGILE_SPRINT_HOURS_SUM
+**Toggle:** `TASKMAN_PATCH_AGILE_SPRINT_HOURS_SUM=1`
+**Target:** `AgileSprintsController#show`
+
+**Solution:** DB aggregate sums after `super`.
+
+```ruby
+@estimated_hours = @issues.sum(:estimated_hours)
+@spent_hours = @issues.joins(:time_entries).sum('time_entries.hours')
+@story_points = @issues.joins(:agile_data).sum('agile_data.story_points')
+```
+
+---
+
+### HELPDESK_PROJECT_CHILDREN
+**Toggle:** `TASKMAN_PATCH_HELPDESK_PROJECT_CHILDREN=1`
+**Target:** `HelpdeskTicket#project_ids_with_children`
+
+```ruby
+# Before
+[project.id] + project.children.select { |c| c.module_enabled?(:contacts_helpdesk) }.map(&:id)
+# After
+[project.id] + project.children.joins(:enabled_modules).where(enabled_modules: { name: :contacts_helpdesk }).pluck(:id)
+```
+
+---
+
+### RESOURCE_BOOKING_BLANK_ISSUE
+**Toggle:** `TASKMAN_PATCH_RESOURCE_BOOKING_BLANK_ISSUE=1`
+**Target:** `WeekPlan`, `MonthPlan`, `Plan`
+
+```ruby
+# Before
+resource_bookings.select { |rb| rb.issue.blank? }.map(&:project_id)
+# After
+resource_bookings.where(issue_id: nil).pluck(:project_id)
+```
+
+---
+
+### DEAL_LINES_SUM
+**Toggle:** `TASKMAN_PATCH_DEAL_LINES_SUM=1`
+**Target:** `Deal#tax_amount`, `#total_amount`, `#total_quantity`
+
+**Problem:** Original code used Ruby loops over loaded objects. A previous patch attempt used `where(marked_for_destruction: false)` — `marked_for_destruction` is not a DB column and would raise `StatementInvalid`. Fixed to use SQL SUM directly.
+
+```ruby
+# Before
+lines.select { |l| !l.marked_for_destruction? }.inject(0) { |sum, l| sum + l.tax_amount }
+# After
+lines.sum(:tax_amount)
+```
+
+---
+
+### CONTACT_NOTES_ATTACHMENTS
+**Toggle:** `TASKMAN_PATCH_CONTACT_NOTES_ATTACHMENTS=1`
+**Target:** `Contact#contact_attachments`
+
+```ruby
+# Before
+Attachment.where(container_type: 'Note', container_id: notes.map(&:id))
+# After
+Attachment.where(container_type: 'Note', container_id: notes.pluck(:id))
+```
+
+---
+
+### CONTACT_GROUPS_IDS
+**Toggle:** `TASKMAN_PATCH_CONTACT_GROUPS_IDS=1`
+**Target:** `Contact#visible?`
+
+**Solution:** Narrow project set through SQL JOIN/subquery before checking permissions.
+
+```ruby
+projects_with_contacts = Project.joins(:enabled_modules)
+  .where(enabled_modules: { name: 'contacts' })
+  .where(id: ContactsProject.where(contact_id: id).select(:project_id))
+projects_with_contacts.any? { |project| usr.allowed_to?(:view_contacts, project) }
+```
+
+---
+
+### AGILE_VERSIONS_QUERY
+**Toggle:** `TASKMAN_PATCH_AGILE_VERSIONS_QUERY=1`
+**Target:** `AgileVersionsQuery#roadmap_tracker_ids`
+
+```ruby
+# Before
+project.trackers.where(is_in_roadmap: true).map(&:id)
+# After
+project.trackers.where(is_in_roadmap: true).pluck(:id)
+```
+
+---
+
+### AGILE_SPRINTS_QUERY
+**Toggle:** `TASKMAN_PATCH_AGILE_SPRINTS_QUERY=1`
+**Target:** `AgileSprintsQuery#project_ids_with_descendants`
+
+```ruby
+# Before
+ids += project.descendants.map(&:id)
+# After
+ids += project.descendants.pluck(:id)
+```
+
+---
+
+### TIME_ENTRY_CUSTOM_VALUES
+**Toggle:** `TASKMAN_PATCH_TIME_ENTRY_CUSTOM_VALUES=1`
+**Target:** `TimeEntryQuery#results_scope`
+
+**Problem:** N+1 loading custom values per time entry.
+
+```ruby
+# After
+scope.preload(custom_values: :custom_field)
+```
+
+---
+
+### TIME_ENTRY_PROJECT_MODULES
+**Toggle:** `TASKMAN_PATCH_TIME_ENTRY_PROJECT_MODULES=1`
+**Target:** `TimelogController#index`
+
+**Problem:** `project.module_enabled?` queried per project.
+
+**Solution:** Batch preload `enabled_modules` and inject into project instances.
+
+```ruby
+modules_map = EnabledModule.where(project_id: project_ids).group_by(&:project_id)
+time_entries.each { |te| te.project.instance_variable_set(:@enabled_modules, modules_map[te.project.id] || []) }
+```
+
+---
+
+### TIME_ENTRY_SUM_HOURS
+**Toggle:** `TASKMAN_PATCH_TIME_ENTRY_SUM_HOURS=1`
+**Target:** `TimeEntryQuery#default_total_hours`
+
+**Problem:** Sum query could run redundantly. `responseable?` and `base_scope` may not exist on all instances — guarded with `respond_to?`.
+
+```ruby
+return total if total.present? || !respond_to?(:responseable?) || !responseable?
+scope = respond_to?(:base_scope) ? base_scope : nil
+@cached_hours_sum ||= scope.sum(:hours)
+```
+
+---
+
+### ACTIVITY_AUTHOR_PRELOAD
+**Toggle:** `TASKMAN_PATCH_ACTIVITY_AUTHOR_PRELOAD` (default: on)
+**Target:** `Redmine::Activity::Fetcher#events`
+
+**Problem:** Activity rendering hit N+1 resolving `event_author` on large event sets.
+
+**Solution:** Bulk preload `:author` after events are grouped by class. HTML lane only (Atom already paginates).
+
+```ruby
+events.group_by(&:class).each do |klass, class_events|
+  next unless klass.reflect_on_association(:author)
+  ActiveRecord::Associations::Preloader.new(records: class_events, associations: :author).call
+end
+```
+
+---
+
+## Disabled Patches
+
+### USER_ROLES_PRELOAD
+**Toggle:** `TASKMAN_PATCH_USER_ROLES_PRELOAD=0`
+**Risk:** Full reimplementation of `User#roles` — a security-critical method that controls permissions across the entire app. Any subtle difference from the original (missing a project status check, wrong scope) could silently grant or deny access. Enable only after thorough testing.
+
+---
+
+### CONTACTS_CONTROLLER_CAN
+**Toggle:** `TASKMAN_PATCH_CONTACTS_CONTROLLER_CAN=0`
+**Risk:** Overwrites `@can[:edit]`, `@can[:delete]`, `@can[:send_mails]` set by `super`. If `super` applies additional permission restrictions, this patch silently discards them.
+
+---
+
+### WIKI_LINKS_MAIN_APP
+**Toggle:** `TASKMAN_PATCH_WIKI_LINKS_MAIN_APP=0`
+**Risk:** Full reimplementation of `ApplicationHelper#parse_wiki_links`. Any upstream change to this method in Redmine won't be reflected here. Re-enable only if the AI helper engine wiki routing bug recurs.
+
+---
+
+## Plugin View Fixes (not runtime_compat)
+
+### Helpdesk Sidebar Count
+**Location:** `plugins/zzzz_eea_patches/` view override of `projects/_helpdesk_tickets.html.erb`
+
+**Problem:** `HelpdeskTicket.includes(:issue => [:project]).where(...).count` loaded all helpdesk tickets with full JOINs before calling `.count` — timeout on large private projects.
+
+**Solution:** `JOIN + COUNT(*)` — returns 1 integer.
 
 ```ruby
 # Before
 tickets = HelpdeskTicket.includes(issue: [:project]).where(projects: { id: @project })
-tickets.count
+tickets.count   # loads all records into memory first
 
 # After
 ticket_count = HelpdeskTicket.joins(:issue).where(issues: { project_id: @project.id }).count
 customer_count = HelpdeskTicket.joins(:issue).where(issues: { project_id: @project.id }).where.not(contact_id: nil).distinct.count(:contact_id)
 ```
 
-**Performance:**
-- Query time: >120s → <100ms (>99.9% improvement)
-- Data transfer: ~1M+ values → 2 integers
-
-**Affected Projects:**
-- nanyt (EEA enquiries)
+**Performance:** Timeout eliminated
 
 ---
 
-### 2. AGILE_QUERY
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_AGILE_QUERY`)
+### Banner Engine Routes
+**Location:** `plugins/zzzz_eea_patches/` view overrides of banner partials
 
-**Problem:** Board status lookup used heavier tracker/workflow path.
+**Problem:** When `redmine_banner` partials render inside another engine's scope (e.g. `ai_helper`), `link_to` resolves routes relative to the engine, producing URLs like `ai_helper/global_banner/zope` which don't exist.
 
-**Solution:** Fetch tracker IDs first, then query workflow transitions directly.
-
-```ruby
-# Before
-statuses = expensive_workflow_lookup(issue_scope)
-
-# After
-tracker_ids = issue_scope.where.not(tracker_id: nil).distinct.pluck(:tracker_id)
-status_ids = WorkflowTransition.where(tracker_id: tracker_ids).pluck(:old_status_id, :new_status_id).flatten.uniq
-IssueStatus.where(id: status_ids)
-```
-
-**Performance:** ~4.8x speedup (benchmark snapshot)
-
-**Affected Projects:** Agile board-heavy projects
-
-### 3. AGILE_ISSUES_IDS
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_AGILE_ISSUES_IDS`)
-
-**Problem:** `map(&:id)` instantiated many objects just to get IDs.
-
-**Solution:** Use `pluck(:id)`.
-
-```ruby
-# Before
-ids = issue_scope.map(&:id)
-
-# After
-ids = issue_scope.pluck(:id)
-```
-
-**Performance:** ~17.4x speedup
-
-**Affected Projects:** Large agile issue scopes
-
-### 4. RESOURCE_BOOKING_QUERY
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_RESOURCE_BOOKING_QUERY`)
-
-**Problem:** Booking issue IDs collected with Ruby iteration.
-
-**Solution:** Direct `pluck(:issue_id)`.
-
-```ruby
-# Before
-ids = approved_bookings.map(&:issue_id)
-
-# After
-ids = approved_bookings.pluck(:issue_id)
-```
-
-**Performance:** ~25.1x speedup
-
-**Affected Projects:** Resource booking flows
-
-### 5. AGILE_DOUBLE_COUNT
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_AGILE_DOUBLE_COUNT`)
-
-**Problem:** Separate COUNT + SELECT added extra DB round-trip.
-
-**Solution:** `limit + 1` fetch in one query.
-
-```ruby
-# Before
-count = scope.count
-rows = scope.limit(limit).to_a
-
-# After
-rows = scope.limit(limit + 1).to_a
-rows = rows.first(limit) if rows.size > limit
-```
-
-**Performance:** ~16.8x speedup
-
-**Affected Projects:** Agile board pagination
-
-### 6. AGILE_DESCENDANTS_JOIN
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_AGILE_DESCENDANTS_JOIN`)
-
-**Problem:** Descendant filtering done in Ruby (`select/map`).
-
-**Solution:** SQL join on `enabled_modules` + `pluck(:id)`.
-
-```ruby
-# Before
-ids = project.descendants.select { |p| p.module_enabled?('agile') }.map(&:id)
-
-# After
-ids = project.descendants.joins(:enabled_modules).where(enabled_modules: { name: 'agile' }).pluck(:id)
-```
-
-**Performance:** ~2.6x speedup in deep trees
-
-**Affected Projects:** Multi-level project hierarchies
-
-### 7. AGILE_SPRINT_PROJECTS
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_AGILE_SPRINT_PROJECTS`)
-
-**Problem:** Nested Ruby map/flatten/uniq for shared sprint projects.
-
-**Solution:** SQL join + `pluck`.
-
-```ruby
-# Before
-ids = project.shared_agile_sprints.map(&:shared_projects).map { |ps| ps.map(&:id) }.flatten.uniq
-
-# After
-ids = AgileSprint.joins(:shared_projects).where(agile_sprints: { id: project.shared_agile_sprints.pluck(:id) }).pluck('projects.id').uniq
-```
-
-**Performance:** ~15.6x speedup
-
-**Affected Projects:** Sprint-sharing setups
-
-### 8. HELPDESK_COLLECTOR
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_HELPDESK_COLLECTOR`)
-
-**Problem:** Customer IDs in collector path mapped via Ruby.
-
-**Solution:** Join + direct `pluck`.
-
-```ruby
-# Before
-ids = issues_scope.joins(:customer).map(&:customer).map(&:id)
-
-# After
-ids = issues_scope.joins(:customer).pluck("#{Contact.table_name}.id")
-```
-
-**Performance:** improved in profiling (plugin-load dependent in some test lanes)
-
-**Affected Projects:** Helpdesk collector/analytics flows
-
-### 9. AGILE_SPRINT_HOURS_SUM
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_AGILE_SPRINT_HOURS_SUM`)
-
-**Problem:** Sprint totals used less efficient paths.
-
-**Solution:** DB aggregate sums after controller `super`.
-
-```ruby
-# Before
-@estimated_hours = @issues.map(&:estimated_hours).compact.sum
-
-# After
-@estimated_hours = @issues.sum(:estimated_hours)
-```
-
-**Performance:** reduced aggregation overhead (no standalone micro-benchmark)
-
-**Affected Projects:** Agile sprint dashboards
-
-### 10. CONTACTS_IDS
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_CONTACTS_IDS`)
-
-**Problem:** Contacts index lane needed compatibility-safe wrapper and fallback.
-
-**Solution:** Controller prepend with guarded fallback.
-
-```ruby
-# Before
-contacts_ids = contacts.map(&:id)
-
-# After
-contacts_ids = contacts.pluck(:id) # when applicable in query paths
-```
-
-**Performance:** compatibility-focused
-
-**Affected Projects:** CRM contacts pages
-
-### 11. HELPDESK_PROJECT_CHILDREN
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_HELPDESK_PROJECT_CHILDREN`)
-
-**Problem:** Child project filtering done with Ruby select/map.
-
-**Solution:** SQL join + `pluck(:id)`.
-
-```ruby
-# Before
-ids = [project.id] + project.children.select { |c| c.module_enabled?(:contacts_helpdesk) }.map(&:id)
-
-# After
-ids = [project.id] + project.children.joins(:enabled_modules).where(enabled_modules: { name: :contacts_helpdesk }).pluck(:id)
-```
-
-**Performance:** reduced iteration/query overhead
-
-**Affected Projects:** Helpdesk in project trees
-
-### 12. RESOURCE_BOOKING_BLANK_ISSUE
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_RESOURCE_BOOKING_BLANK_ISSUE`)
-
-**Problem:** Blank-issue checks iterated Ruby objects.
-
-**Solution:** SQL null filter + `pluck`.
-
-```ruby
-# Before
-ids = resource_bookings.select { |rb| rb.issue.blank? }.map(&:project_id)
-
-# After
-ids = resource_bookings.where(issue_id: nil).pluck(:project_id)
-```
-
-**Performance:** reduced object materialization
-
-**Affected Projects:** Resource planning boards
-
-### 13. DEAL_LINES_SUM
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_DEAL_LINES_SUM`)
-
-**Problem:** Deal totals computed with Ruby loops.
-
-**Solution:** Use DB aggregate sums.
-
-```ruby
-# Before
-tax = lines.select { |l| !l.marked_for_destruction? }.inject(0) { |sum, l| sum + l.tax_amount }
-
-# After
-tax = lines.where(marked_for_destruction: false).sum(:tax_amount)
-```
-
-**Performance:** reduced CPU/iteration
-
-**Affected Projects:** CRM deals
-
-### 14. CONTACT_NOTES_ATTACHMENTS
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_CONTACT_NOTES_ATTACHMENTS`)
-
-**Problem:** Note IDs built with Ruby `map`.
-
-**Solution:** Use `pluck(:id)`.
-
-```ruby
-# Before
-Attachment.where(container_type: 'Note', container_id: notes.map(&:id))
-
-# After
-Attachment.where(container_type: 'Note', container_id: notes.pluck(:id))
-```
-
-**Performance:** ~7.3x speedup
-
-**Affected Projects:** Contact notes history
-
-### 15. CONTACTS_CONTROLLER_CAN
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_CONTACTS_CONTROLLER_CAN`)
-
-**Problem:** Bulk permission flags could drift and repeat checks.
-
-**Solution:** Normalize in one bulk pass.
-
-```ruby
-# Before
-@can[:edit] = @contacts.collect { |c| c.editable? }.inject { |a, b| a && b }
-
-# After
-@can[:edit] = @contacts.all?(&:editable?)
-```
-
-**Performance:** consistency-focused
-
-**Affected Projects:** Contacts bulk action screens
-
-### 16. CONTACT_GROUPS_IDS
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_CONTACT_GROUPS_IDS`)
-
-**Problem:** Visibility path used heavier traversal.
-
-**Solution:** Narrow projects through SQL join/subquery lane first.
-
-```ruby
-# Before
-projects.any? { |project| usr.allowed_to?(:view_contacts, project) }
-
-# After
-projects_with_contacts = Project.joins(:enabled_modules).where(enabled_modules: { name: 'contacts' }).where(id: ContactsProject.where(contact_id: id).select(:project_id))
-projects_with_contacts.any? { |project| usr.allowed_to?(:view_contacts, project) }
-```
-
-**Performance:** reduced query/iteration overhead
-
-**Affected Projects:** Private contacts visibility checks
-
-### 17. AGILE_VERSIONS_QUERY
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_AGILE_VERSIONS_QUERY`)
-
-**Problem:** Tracker IDs collected with Ruby mapping.
-
-**Solution:** `pluck(:id)`.
-
-```ruby
-# Before
-ids = project.trackers.where(is_in_roadmap: true).map(&:id)
-
-# After
-ids = project.trackers.where(is_in_roadmap: true).pluck(:id)
-```
-
-**Performance:** ~9.4x speedup
-
-**Affected Projects:** Agile roadmap views
-
-### 18. AGILE_SPRINTS_QUERY
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_AGILE_SPRINTS_QUERY`)
-
-**Problem:** Descendant IDs collected with Ruby mapping.
-
-**Solution:** `pluck(:id)` with guards.
-
-```ruby
-# Before
-ids += project.descendants.map(&:id)
-
-# After
-ids += project.descendants.pluck(:id)
-```
-
-**Performance:** ~15.3x speedup
-
-**Affected Projects:** Sprint query flows
-
-### 19. TIME_ENTRY_CUSTOM_VALUES
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_TIME_ENTRY_CUSTOM_VALUES`)
-
-**Problem:** Time entries triggered N+1 for custom values.
-
-**Solution:** Preload `custom_values` and `custom_field`.
-
-```ruby
-# Before
-scope = super
-
-# After
-scope = super.preload(custom_values: :custom_field)
-```
-
-**Performance:** ~25 queries → 1 (lane-specific)
-
-**Affected Projects:** Time entries pages/reports
-
-### 20. TIME_ENTRY_PROJECT_MODULES
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_TIME_ENTRY_PROJECT_MODULES`)
-
-**Problem:** `module_enabled?` checked per project and could query repeatedly.
-
-**Solution:** Batch load `enabled_modules` and inject per-project cache.
-
-```ruby
-# Before
-time_entries.each { |te| te.project.module_enabled?(:timelog) }
-
-# After
-modules_map = EnabledModule.where(project_id: project_ids).group_by(&:project_id)
-time_entries.each { |te| te.project.instance_variable_set(:@enabled_modules, modules_map[te.project.id] || []) }
-```
-
-**Performance:** ~11 queries → 1 (lane-specific)
-
-**Affected Projects:** Multi-project time entry lists
-
-### 21. TIME_ENTRY_SUM_HOURS
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_TIME_ENTRY_SUM_HOURS`)
-
-**Problem:** Sum query could run redundantly.
-
-**Solution:** Cache computed sum from base scope.
-
-```ruby
-# Before
-scope.sum(:hours) # repeated
-
-# After
-@cached_hours_sum ||= scope.sum(:hours)
-```
-
-**Performance:** removes duplicate sum query
-
-**Affected Projects:** Time log summaries
-
-### 22. PROJECT_MEMBERS_PRELOAD
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_PROJECT_MEMBERS_PRELOAD`)
-
-**Problem:** `principals_by_role` had N+1 across memberships/roles/principals.
-
-**Solution:** `includes(:principal, member_roles: :role)` and iterate preloaded associations.
-
-```ruby
-# Before
-members.each { |m| m.roles.each { |r| ... } }
-
-# After
-memberships.active.includes(:principal, member_roles: :role).each { |m| m.member_roles.each { |mr| r = mr.role; ... } }
-```
-
-**Performance:** significant reduction in role/member query chatter
-
-**Affected Projects:** Member/role rendering paths
-
-### 23. PROJECT_MEMBERS_COUNT
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_PROJECT_MEMBERS_COUNT`)
-
-**Problem:** Role counts required repeated joins/count scans.
-
-**Solution:** Use cache where present; fallback to SQL count.
-
-```ruby
-# Before
-members.joins(:member_roles).where(member_roles: { role_id: role_id }).count
-
-# After
-member_roles_count_cache[role_id] || members.joins(:member_roles).where(member_roles: { role_id: role_id }).count
-```
-
-**Performance:** faster with cache; safe fallback
-
-**Affected Projects:** Membership statistics
-
-### 24. USER_ROLES_PRELOAD
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_USER_ROLES_PRELOAD`)
-
-**Problem:** `User#roles` repeatedly executed heavy joins; stale-cache risk in permission paths.
-
-**Solution:** Fresh-data-safe scoped role query implementation.
-
-```ruby
-# Before
-Role.joins(members: :project).where(...).where(members: { user_id: id }).distinct.to_a
-
-# After
-# same logical query wrapped in patch lane with resilient fallback and anon/non-member handling
-```
-
-**Performance:** reduced repeated role-query overhead while preserving permission correctness
-
-**Affected Projects:** Permission-sensitive issue/board flows
-
-### 26. BANNER_ENGINE_ROUTES
-**File:** `plugins/zzzz_eea_patches/app/views/banner/_body_bottom.html.erb`
-**File:** `plugins/zzzz_eea_patches/app/views/banner/_project_body_bottom.html.erb`
-
-**Problem:** When `redmine_banner` partials are rendered inside another engine's scope (e.g. `ai_helper`), `link_to` and `url_for` resolve controller paths relative to the engine's routes. This produces routes like `ai_helper/global_banner/zope` which don't exist, causing `ActionController::UrlGenerationError: No route matches`.
-
-**Solution:** Override both banner partials and resolve banner routes through `main_app` to force resolution against the main application's routes.
-
-```erb
-# Before (original redmine_banner partial)
-<%= link_to l(:button_edit),
-  { controller: 'global_banner', action: 'show' },
-  { class: 'icon banner-icon-edit', title: l(:button_edit)} if User.current.admin? %>
-
-# After (EEA patch override)
-<%= link_to l(:button_edit),
-  { controller: 'main_app/global_banner', action: 'show' },
-  { class: 'icon banner-icon-edit', title: l(:button_edit)} if User.current.admin? %>
-```
-
-Same fix applied to:
-- `controller: 'banner'` → `main_app.off_banner_index_path(...)` (global banner off toggle)
-- `controller: 'banner'` → `controller: 'main_app/banner'` (project banner show)
-- `url_for(controller: :banner, ...)` → `url_for(controller: 'main_app/banner', ...)` (project banner off AJAX)
-
-**Performance:** No performance impact — purely a routing correctness fix.
-
-**Affected Engines/Plugins:**
-- redmine_ai_helper (triggering `AiHelper::CustomCommandsController#new`)
-- Any other Redmine engine that triggers `view_layouts_base_body_bottom` hooks
-
----
-
-### 25. ACTIVITY_AUTHOR_PRELOAD
-**File:** `config/initializers/runtime_compat.rb` (`TASKMAN_PATCH_ACTIVITY_AUTHOR_PRELOAD`)
-
-**Problem:** Activity rendering repeatedly resolved `event_author` on large event sets.
-
-**Solution:** Bulk preload `:author` in `Redmine::Activity::Fetcher#events` (HTML lane, guarded).
-
-```ruby
-# Before
-events.each { |e| e.event_author }
-
-# After
-events.group_by(&:class).each do |_klass, class_events|
-  ActiveRecord::Associations::Preloader.new(records: class_events, associations: :author).call
-end
-```
-
-**Performance:**
-- latency improved from ~30s timeout-prone behavior to ~12s in tested env
-- query count still high on very large windows; pagination/cap still recommended
-
-**Affected Projects:** High-volume `/projects/:identifier/activity`
+**Solution:** Route banner actions through `main_app` to force resolution against the main application's routes.

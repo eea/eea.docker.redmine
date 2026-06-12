@@ -20,3 +20,10 @@ docs/patch-notes/archive/
 test/archive/
 .fusion
 .pi
+*worktrees
+*worktrees/**
+*changeset
+.codex
+
+# Performance findings directory — kept private (may contain PII, internal metrics)
+performance_findings/
