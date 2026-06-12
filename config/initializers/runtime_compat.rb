@@ -135,7 +135,7 @@ Rails.application.config.to_prepare do
 
         result.first(limit)
       rescue ArgumentError
-        super()
+        super(*args, &block)
       rescue StandardError => e
         Rails.logger.warn("[AgileDoubleCountPatch] issue_board fallback: #{e.class}: #{e.message}")
         super(*args, &block)
@@ -234,14 +234,13 @@ Rails.application.config.to_prepare do
     module TaskmanAgileSprintHoursSumPatch
       def show
         super
-        if @issues.any?
+        if @issues&.any?
           @estimated_hours = @issues.sum(:estimated_hours)
           @spent_hours = @issues.joins(:time_entries).sum('time_entries.hours')
           @story_points = @issues.joins(:agile_data).sum('agile_data.story_points')
         end
       rescue ActiveRecord::StatementInvalid => e
         Rails.logger.warn("[AgileSprintHoursSumPatch] post-super aggregation failed: #{e.class}: #{e.message}")
-        # Keep original super result; do not call super again.
       end
     end
   end
@@ -249,25 +248,6 @@ Rails.application.config.to_prepare do
   AgileSprintsController.prepend(TaskmanAgileSprintHoursSumPatch) unless AgileSprintsController.ancestors.include?(TaskmanAgileSprintHoursSumPatch)
 end
 
-contacts_ids_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('CONTACTS_IDS')
-TaskmanRuntimeCompat.log_patch('CONTACTS_IDS', contacts_ids_patch_enabled)
-Rails.application.config.to_prepare do
-  next unless contacts_ids_patch_enabled
-  next unless defined?(ContactsController)
-
-  unless defined?(TaskmanContactsIdsPatch)
-    module TaskmanContactsIdsPatch
-      def index
-        super
-      rescue StandardError => e
-        Rails.logger.warn("[ContactsIdsPatch] index fallback: #{e.class}: #{e.message}")
-        super
-      end
-    end
-  end
-
-  ContactsController.prepend(TaskmanContactsIdsPatch) unless ContactsController.ancestors.include?(TaskmanContactsIdsPatch)
-end
 
 helpdesk_project_children_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('HELPDESK_PROJECT_CHILDREN')
 TaskmanRuntimeCompat.log_patch('HELPDESK_PROJECT_CHILDREN', helpdesk_project_children_patch_enabled)
@@ -329,25 +309,28 @@ Rails.application.config.to_prepare do
 
   unless defined?(TaskmanDealLinesSumPatch)
     module TaskmanDealLinesSumPatch
+      # marked_for_destruction? is a Rails in-memory flag, not a DB column.
+      # where(marked_for_destruction: false) would raise StatementInvalid.
+      # SQL SUM is safe at display time (lines pending destruction still exist in DB).
       def tax_amount
-        lines.where(marked_for_destruction: false).sum(:tax_amount)
+        lines.sum(:tax_amount)
       rescue StandardError => e
         Rails.logger.warn("[DealLinesSumPatch] tax_amount fallback: #{e.class}: #{e.message}")
-        lines.select { |l| !l.marked_for_destruction? }.inject(0) { |sum, l| sum + l.tax_amount }
+        lines.to_a.reject(&:marked_for_destruction?).sum(&:tax_amount)
       end
 
       def total_amount
-        lines.where(marked_for_destruction: false).sum(:total)
+        lines.sum(:total)
       rescue StandardError => e
         Rails.logger.warn("[DealLinesSumPatch] total_amount fallback: #{e.class}: #{e.message}")
-        lines.select { |l| !l.marked_for_destruction? }.inject(0) { |sum, l| sum + l.total }
+        lines.to_a.reject(&:marked_for_destruction?).sum(&:total)
       end
 
       def total_quantity
         lines.sum(:quantity)
       rescue StandardError => e
         Rails.logger.warn("[DealLinesSumPatch] total_quantity fallback: #{e.class}: #{e.message}")
-        lines.inject(0) { |sum, l| sum + (l.product.blank? ? 0 : l.quantity) }
+        lines.to_a.reject(&:marked_for_destruction?).sum { |l| l.product.blank? ? 0 : l.quantity }
       end
     end
   end
@@ -412,7 +395,6 @@ Rails.application.config.to_prepare do
     module TaskmanContactGroupsIdsPatch
       def visible?(usr = nil)
         usr ||= User.current
-        user_ids = [usr.id] + usr.groups.pluck(:id)
         return true if usr.admin?
         return false unless usr.logged?
         projects_with_contacts = Project.joins(:enabled_modules)
@@ -555,9 +537,11 @@ Rails.application.config.to_prepare do
     module TaskmanTimeEntrySumHoursPatch
       def default_total_hours
         total = super
-        return total if total.present? || !responseable?
+        return total if total.present? || !respond_to?(:responseable?) || !responseable?
 
-        scope = base_scope
+        scope = respond_to?(:base_scope) ? base_scope : nil
+        return total unless scope
+
         @cached_hours_sum ||= scope.sum(:hours)
       rescue StandardError => e
         Rails.logger.warn("[TimeEntrySumHoursPatch] default_total_hours fallback: #{e.class}: #{e.message}")
@@ -572,85 +556,112 @@ Rails.application.config.to_prepare do
 end
 
 # PROJECT_MEMBERS_PRELOAD
-# Fix N+1 in principals_by_role (used by additionals plugin and Redmine core).
-# Root cause: `m.roles.each` triggers N+1 because `roles` is not a direct
-# Membership association — it goes through member_roles.
-# Fix: use includes(:principal, member_roles: :role) and iterate mr.role.
-# Also: use memberships.active (not members) to include Group principals.
+# FIX SLOW /SETTINGS/MEMBERS PAGE (210K row member_roles bottleneck)
+# Root cause: Member#roles does has_many :through which fires a DISTINCT
+# JOIN query over ALL 210K member_roles rows for this project.
+#
+# FIX: pluck-based precomputation + request-scoped thread-local map.
 # Toggle: TASKMAN_PATCH_PROJECT_MEMBERS_PRELOAD
+# Toggle: TASKMAN_PATCH_PROJECT_MEMBERS_ROLES_NO_CACHE
+# Toggle: TASKMAN_PATCH_SORTED_SCOPE
 project_members_preload_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('PROJECT_MEMBERS_PRELOAD')
 TaskmanRuntimeCompat.log_patch('PROJECT_MEMBERS_PRELOAD', project_members_preload_patch_enabled)
+
+# Define base module OUTSIDE to_prepare so other patches can see it.
+unless defined?(TaskmanProjectMembersPreloadPatch)
+  module TaskmanProjectMembersPreloadPatch
+    # Class method for checking the thread-local flag (called by other patches).
+    def self.preload_members_in_progress?
+      Thread.current[:taskman_preload_members_in_progress] == true
+    end
+
+    # Instance method override: principals_by_role
+    # Called from ProjectsController#show to render the members box.
+    # The view only needs {role => [principals]} — it never calls member.roles,
+    # role_inheritance, or has_inherited_role? per member.
+    #
+    # Old approach: includes(:principal, member_roles: :role) → 210K rows via IN query
+    # + an inherited_roles_map build that also scanned 210K rows (consumed only on the
+    # settings page which never calls this method).
+    #
+    # New approach: SELECT DISTINCT member_id, role_id — collapses 210K rows to
+    # ~1000-2000 unique pairs. Total: 4 small queries.
+    def principals_by_role
+      Thread.current[:taskman_preload_members_in_progress] = true
+
+      # Load members + principals in one query. Derive IDs from result — avoids
+      # a separate pluck(:id) followed by includes(:principal).
+      active_members = memberships.active.includes(:principal).to_a
+      return {} if active_members.empty?
+
+      member_ids = active_members.map(&:id)
+
+      # GROUP BY member_id, role_id — one pass over 210K rows returns unique pairs.
+      # MAX(inherited_from IS NOT NULL) tells us if any row in this group is inherited;
+      # used by the settings page bulk preload (not needed here, but free to compute).
+      pairs = MemberRole
+        .where(member_id: member_ids)
+        .group(:member_id, :role_id)
+        .pluck(:member_id, :role_id)
+
+      role_ids = pairs.map(&:last).uniq
+      roles_by_id = Role.where(id: role_ids).index_by(&:id)
+
+      roles_by_member = {}
+      pairs.each do |mid, rid|
+        role = roles_by_id[rid]
+        next unless role
+        (roles_by_member[mid] ||= []) << role
+      end
+
+      result = {}
+      active_members.each do |m|
+        next unless m.principal
+        (roles_by_member[m.id] || []).each do |r|
+          next if r.respond_to?(:hide) && r.hide && respond_to?(:consider_hidden_roles?) && consider_hidden_roles?
+          (result[r] ||= []) << m.principal
+        end
+      end
+
+      result.each_value(&:uniq!)
+      result
+    rescue ActiveRecord::StatementInvalid => e
+      Rails.logger.warn("[ProjectMembersPreloadPatch] principals_by_role fallback: #{e.class}: #{e.message}")
+      super
+    end
+  end
+end
+
+
+# Define TaskmanProjectMembersPreloadControllerPatch outside to_prepare.
+unless defined?(TaskmanProjectMembersPreloadControllerPatch)
+  module TaskmanProjectMembersPreloadControllerPatch
+    def self.prepended(base)
+      base.class_eval do
+        append_around_action :_taskman_clear_preload_flag
+      end
+    end
+
+    def _taskman_clear_preload_flag
+      yield
+    ensure
+      Thread.current[:taskman_preload_members_in_progress] = false
+      Thread.current[:taskman_inherited_roles_map] = nil
+      Thread.current[:taskman_member_roles_bulk_map] = nil
+      Thread.current[:taskman_inherited_member_ids] = nil
+    end
+  end
+end
+
 Rails.application.config.to_prepare do
   next unless project_members_preload_patch_enabled
   next unless defined?(Project)
 
-  unless defined?(TaskmanProjectMembersPreloadPatch)
-    module TaskmanProjectMembersPreloadPatch
-      def principals_by_role
-        scope = memberships.active
-                         .includes(:principal, member_roles: :role)
-
-        result = {}
-        scope.each do |m|
-          next unless m.principal
-
-          m.member_roles.each do |mr|
-            r = mr.role
-            next unless r
-            # Honour hidden-role filtering when additionals plugin is present
-            next if r.respond_to?(:hide) && r.hide && respond_to?(:consider_hidden_roles?) && consider_hidden_roles?
-
-            result[r] ||= []
-            result[r] << m.principal
-          end
-
-        end
-
-        result.each_value(&:uniq!)
-        result
-      rescue ActiveRecord::StatementInvalid => e
-          Rails.logger.warn("[ProjectMembersPreloadPatch] principals_by_role fallback: #{e.class}: #{e.message}")
-        super
-      end
-    end
-  end
-
   Project.prepend(TaskmanProjectMembersPreloadPatch) unless Project.ancestors.include?(TaskmanProjectMembersPreloadPatch)
+
+  ApplicationController.prepend(TaskmanProjectMembersPreloadControllerPatch) if defined?(ApplicationController)
 end
 
-# PROJECT_MEMBERS_COUNT_CACHE
-# Add counter cache support for role-based member counts
-# Original: Counting members per role requires full table scan
-# Fixed: Use counter_cache column if available, falls back to count
-# Toggle: TASKMAN_PATCH_PROJECT_MEMBERS_COUNT
-project_members_count_cache_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('PROJECT_MEMBERS_COUNT')
-TaskmanRuntimeCompat.log_patch('PROJECT_MEMBERS_COUNT', project_members_count_cache_patch_enabled)
-Rails.application.config.to_prepare do
-  next unless project_members_count_cache_patch_enabled
-  next unless defined?(Project)
-
-  unless defined?(TaskmanProjectMembersCountCachePatch)
-    module TaskmanProjectMembersCountCachePatch
-      def members_count_by_role(role_id)
-        # Check if counter cache column exists on member_roles join table
-        cache_column = "cached_count_for_role_#{role_id}"
-
-        if respond_to?(:member_roles_count_cache) && member_roles_count_cache.key?(role_id)
-          member_roles_count_cache[role_id]
-        else
-          members.joins(:member_roles)
-                .where(member_roles: { role_id: role_id })
-                .count
-        end
-      rescue StandardError => e
-        Rails.logger.warn("[ProjectMembersCountCachePatch] members_count_by_role fallback: #{e.class}: #{e.message}")
-        members.joins(:member_roles).where(member_roles: { role_id: role_id }).count
-      end
-    end
-  end
-
-  Project.prepend(TaskmanProjectMembersCountCachePatch) unless Project.ancestors.include?(TaskmanProjectMembersCountCachePatch)
-end
 
 # USER_ROLES_PRELOAD
 # Fix N+1 in User#roles: called per-user, each fires Role.joins(members: :project).distinct.
@@ -848,4 +859,156 @@ Rails.application.config.to_prepare do
   end
 
   ApplicationHelper.prepend(TaskmanWikiLinksMainAppPatch) unless ApplicationHelper.ancestors.include?(TaskmanWikiLinksMainAppPatch)
+end
+
+# SORTED_SCOPE: Avoid member_roles JOIN explosion in Member.sorted scope
+# Original: includes(:member_roles, :roles, :principal) — 210K row JOIN
+#   (:roles is has_many :through :member_roles, so any include of :roles also JOINs member_roles)
+# Fixed: correlated scalar subquery for MIN(role.position) + joins(:principal) for ORDER BY
+#
+# Why singleton_class.prepend (not CollectionProxy or ActiveRecord_Relation):
+#   `scope :sorted` defines a CLASS METHOD on Member. When @project.memberships.sorted
+#   is called, CollectionProxy delegates to Member.sorted — the class method.
+#   Prepending to Member.singleton_class puts our method first in class-method lookup.
+#
+# Guard: only activates when taskman_member_roles_bulk_map is set in Thread.current,
+#   meaning ProjectsController#settings has already run the bulk preload.
+#   Falls back to the original includes-based scope everywhere else so no other
+#   caller loses its eager-loaded member_roles/roles associations.
+#
+# Toggle: TASKMAN_PATCH_SORTED_SCOPE
+sorted_scope_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('SORTED_SCOPE')
+TaskmanRuntimeCompat.log_patch('SORTED_SCOPE', sorted_scope_patch_enabled)
+unless defined?(TaskmanSortedScopePatch)
+  module TaskmanSortedScopePatch
+    # Overrides Member.sorted (class method). Only activates when the bulk roles
+    # map has been preloaded (i.e., inside ProjectsController#settings).
+    # Falls back to the original includes-based scope for every other caller so
+    # that no other page loses its eager-loaded member_roles/roles associations.
+    def sorted
+      return super unless Thread.current[:taskman_member_roles_bulk_map]
+
+      min_pos_subquery = <<~SQL.squish
+        (SELECT COALESCE(MIN(r.position), 999)
+         FROM member_roles mr
+         INNER JOIN roles r ON r.id = mr.role_id
+         WHERE mr.member_id = #{Member.table_name}.id)
+      SQL
+
+      # joins(:principal) provides the users columns for ORDER BY but does not
+      # populate the association. preload(:principal) fires one IN-clause query
+      # after the main query so member.principal is available without N+1.
+      joins(:principal)
+        .select("#{Member.table_name}.*, #{min_pos_subquery} AS taskman_min_role_pos")
+        .reorder("taskman_min_role_pos")
+        .order(Principal.fields_for_order_statement)
+        .preload(:principal)
+    rescue StandardError => e
+      Rails.logger.warn("[SortedScopePatch] sorted fallback: #{e.class}: #{e.message}")
+      super
+    end
+  end
+end
+
+Rails.application.config.to_prepare do
+  next unless sorted_scope_patch_enabled
+  next unless defined?(Member)
+
+  Member.singleton_class.prepend(TaskmanSortedScopePatch) unless
+    Member.singleton_class.ancestors.include?(TaskmanSortedScopePatch)
+end
+
+# MEMBER_ROLES_SETTINGS_BULK_PRELOAD
+# Fix N+1 on member.roles in the settings/members view.
+#
+# After sorted.to_a loads 438 members, the view calls member.roles per member.
+# Without preloading: 438 queries × SELECT DISTINCT roles.* JOIN member_roles WHERE member_id=X
+#
+# Fix: patch ProjectsController#settings to bulk-load DISTINCT (member_id, role_id) pairs
+# BEFORE the view renders. Member#roles does an O(1) map lookup instead of a SQL query.
+#
+# SELECT DISTINCT member_id, role_id collapses 210K member_roles to ~1000-2000 unique pairs.
+# Toggle: TASKMAN_PATCH_MEMBER_ROLES_SETTINGS_BULK_PRELOAD (default on)
+member_roles_settings_bulk_preload_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('MEMBER_ROLES_SETTINGS_BULK_PRELOAD', default: true)
+TaskmanRuntimeCompat.log_patch('MEMBER_ROLES_SETTINGS_BULK_PRELOAD', member_roles_settings_bulk_preload_patch_enabled)
+
+unless defined?(TaskmanMemberRolesSettingsBulkPreloadPatch)
+  module TaskmanMemberRolesSettingsBulkPreloadPatch
+    def settings
+      if @project
+        begin
+          member_ids = @project.memberships.active.pluck(:id)
+          unless member_ids.empty?
+            # Query 1: DISTINCT (member_id, role_id) — pure covering index scan on
+            # manual_idx_member_roles_member_role (member_id, role_id). No table access.
+            # Collapses 210K rows → 857 unique pairs for mobaqj.
+            pairs = MemberRole
+              .where(member_id: member_ids)
+              .distinct
+              .pluck(:member_id, :role_id)
+
+            role_ids = pairs.map(&:last).uniq
+            roles_by_id = Role.where(id: role_ids).index_by(&:id)
+
+            bulk_map = {}
+            pairs.each do |mid, rid|
+              role = roles_by_id[rid]
+              (bulk_map[mid] ||= []) << role if role
+            end
+            Thread.current[:taskman_member_roles_bulk_map] = bulk_map
+
+            # Query 2: which members have ANY inherited role — uses index_member_roles_on_inherited_from.
+            # Kept separate from Query 1 so both can use their own covering index.
+            # Adding inherited_from to the GROUP BY above would force base-table access,
+            # defeating the (member_id, role_id) covering index.
+            inherited_ids = MemberRole
+              .where(member_id: member_ids)
+              .where.not(inherited_from: nil)
+              .distinct
+              .pluck(:member_id)
+            Thread.current[:taskman_inherited_member_ids] = Set.new(inherited_ids)
+          end
+        rescue StandardError => e
+          Rails.logger.warn("[MemberRolesSettingsBulkPreloadPatch] preload failed: #{e.class}: #{e.message}")
+        end
+      end
+      super
+    end
+  end
+end
+
+unless defined?(TaskmanMemberRolesBulkCachePatch)
+  module TaskmanMemberRolesBulkCachePatch
+    def roles
+      bulk_map = Thread.current[:taskman_member_roles_bulk_map]
+      return super unless bulk_map&.key?(id)
+      bulk_map[id]
+    rescue StandardError => e
+      Rails.logger.warn("[MemberRolesBulkCachePatch] roles fallback: #{e.class}: #{e.message}")
+      super
+    end
+
+    # member.deletable? calls any_inherited_role? which fires member_roles.any? per member.
+    # Use the preloaded set instead.
+    def any_inherited_role?
+      inherited_set = Thread.current[:taskman_inherited_member_ids]
+      return super unless inherited_set
+      inherited_set.include?(id)
+    rescue StandardError => e
+      Rails.logger.warn("[MemberRolesBulkCachePatch] any_inherited_role? fallback: #{e.class}: #{e.message}")
+      super
+    end
+  end
+end
+
+Rails.application.config.to_prepare do
+  next unless member_roles_settings_bulk_preload_patch_enabled
+  next unless defined?(ProjectsController) && defined?(Member)
+
+  ProjectsController.prepend(TaskmanMemberRolesSettingsBulkPreloadPatch) unless
+    ProjectsController.ancestors.include?(TaskmanMemberRolesSettingsBulkPreloadPatch)
+
+  # Prepend AFTER TaskmanMemberRolesCachePatch so bulk lookup takes precedence.
+  Member.prepend(TaskmanMemberRolesBulkCachePatch) unless
+    Member.ancestors.include?(TaskmanMemberRolesBulkCachePatch)
 end

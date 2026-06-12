@@ -6,6 +6,7 @@ default: &default
   workers:
     - queues: "*"
       threads: <%= Integer(ENV.fetch("SOLID_QUEUE_THREADS", ENV.fetch("RAILS_MAX_THREADS", "5"))) %>
+      processes: <%= Integer(ENV.fetch("SOLID_QUEUE_PROCESSES", "4")) %>
       polling_interval: 0.1
 
 production:
