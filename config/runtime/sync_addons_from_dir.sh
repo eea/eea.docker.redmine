@@ -100,15 +100,21 @@ find "${plugins_dst}" -mindepth 2 -maxdepth 2 -name Gemfile -delete
 find "${plugins_dst}" -name '.DS_Store' -delete
 find "${themes_dst}" -name '.DS_Store' -delete
 
-if [ -x /usr/local/bin/apply_a1_theme_overrides.sh ] && [ -d "${themes_dst}/a1" ]; then
-  THEMES_DIR="${themes_dst}" A1_THEME_ID="${A1_THEME_ID:-a1}" /usr/local/bin/apply_a1_theme_overrides.sh
+A1_THEME_ID="${A1_THEME_ID:-a1}"
+if [ ! -d "${themes_dst}/${A1_THEME_ID}" ]; then
+  log_error "A1 theme directory missing after dir sync: ${themes_dst}/${A1_THEME_ID} (seed was ${themes_src})"
+  exit 1
+fi
+
+if [ -x /usr/local/bin/apply_a1_theme_overrides.sh ] && [ -d "${themes_dst}/${A1_THEME_ID}" ]; then
+  THEMES_DIR="${themes_dst}" A1_THEME_ID="${A1_THEME_ID}" /usr/local/bin/apply_a1_theme_overrides.sh
 fi
 
 if [ -x /usr/local/bin/prepare_addons_assets.sh ]; then
   ADDONS_CURRENT_DIR="${ADDONS_CURRENT_DIR}" \
   PLUGINS_DIR="${plugins_dst}" \
   THEMES_DIR="${themes_dst}" \
-  A1_THEME_ID="${A1_THEME_ID:-a1}" \
+  A1_THEME_ID="${A1_THEME_ID}" \
   /usr/local/bin/prepare_addons_assets.sh
 fi
 
