@@ -33,3 +33,6 @@ performance_findings/
 
 # Local cluster-specific deployment files (generated artifacts, not source)
 local/
+
+# Todo directory
+todo/

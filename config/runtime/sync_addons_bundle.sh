@@ -11,6 +11,7 @@ ADDONS_VERSION=${ADDONS_VERSION:-}
 ADDONS_SHA256=${ADDONS_SHA256:-}
 ADDONS_USER=${ADDONS_USER:-${PLUGINS_USER:-}}
 ADDONS_PASSWORD=${ADDONS_PASSWORD:-${PLUGINS_PASSWORD:-}}
+ADDONS_SKIP_SHA_VERIFY=${ADDONS_SKIP_SHA_VERIFY:-0}
 TMP_DIR=${TMP_DIR:-/tmp/addons-sync}
 
 if [ -z "${ADDONS_ARCHIVE_URL}" ]; then
@@ -67,7 +68,7 @@ mkdir -p "${extract_dir}"
 
 download_archive
 
-if [ -n "${ADDONS_SHA256}" ]; then
+if [ -n "${ADDONS_SHA256}" ] && [ "${ADDONS_SKIP_SHA_VERIFY}" != "1" ]; then
   echo "${ADDONS_SHA256}  ${archive_file}" | sha256sum -c -
 fi
 

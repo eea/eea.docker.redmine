@@ -141,6 +141,7 @@ CLUSTER="${1:-}"
 NAMESPACE="${2:-}"
 RELEASE="${3:-}"
 STORAGE_NAME="${4:-}"
+FLAG="${5:-}"
 DRY_RUN=false
 PROTECT_ONLY=false
 PROTECT_ACTION="protect"
@@ -150,33 +151,37 @@ if [[ "$STORAGE_NAME" == "--help" ]] || [[ "$STORAGE_NAME" == "-h" ]]; then
     usage
 fi
 
-if [[ "$STORAGE_NAME" == "--dry-run" ]]; then
-    DRY_RUN=true
-    STORAGE_NAME="${5:-}"
+# Support flag at $4 (no storage name, e.g. --list-protected) or $5 (after storage name)
+_FLAG="${STORAGE_NAME}"
+if [[ "$_FLAG" != --* ]]; then
+    _FLAG="${FLAG}"
 fi
 
-if [[ "$STORAGE_NAME" == "--sync-only" ]]; then
-    SYNC_ONLY=true
-    STORAGE_NAME="${5:-}"
-fi
-
-if [[ "$STORAGE_NAME" == "--protect-only" ]]; then
-    PROTECT_ONLY=true
-    PROTECT_ACTION="protect"
-    STORAGE_NAME="${5:-}"
-fi
-
-if [[ "$STORAGE_NAME" == "--unprotect-only" ]]; then
-    PROTECT_ONLY=true
-    PROTECT_ACTION="unprotect"
-    STORAGE_NAME="${5:-}"
-fi
-
-if [[ "$STORAGE_NAME" == "--list-protected" ]]; then
-    PROTECT_ONLY=true
-    PROTECT_ACTION="list"
-    STORAGE_NAME="${5:-}"
-fi
+case "$_FLAG" in
+    --dry-run)
+        DRY_RUN=true
+        [[ "$STORAGE_NAME" == --* ]] && STORAGE_NAME="${FLAG}"
+        ;;
+    --sync-only)
+        SYNC_ONLY=true
+        [[ "$STORAGE_NAME" == --* ]] && STORAGE_NAME="${FLAG}"
+        ;;
+    --protect-only)
+        PROTECT_ONLY=true
+        PROTECT_ACTION="protect"
+        [[ "$STORAGE_NAME" == --* ]] && STORAGE_NAME="${FLAG}"
+        ;;
+    --unprotect-only)
+        PROTECT_ONLY=true
+        PROTECT_ACTION="unprotect"
+        [[ "$STORAGE_NAME" == --* ]] && STORAGE_NAME="${FLAG}"
+        ;;
+    --list-protected)
+        PROTECT_ONLY=true
+        PROTECT_ACTION="list"
+        [[ "$STORAGE_NAME" == --* ]] && STORAGE_NAME="${FLAG}"
+        ;;
+esac
 
 # Validate arguments
 [[ -z "$CLUSTER" ]] && die "Cluster context is required"
@@ -272,7 +277,15 @@ OLD_PVC=$(kubectl get pvc "$OLD_CLAIM" -n "$NAMESPACE" -o json 2>/dev/null) || d
 
 OLD_ACCESS_MODE=$(echo "$OLD_PVC" | jq -r '.spec.accessModes[0]' 2>/dev/null || echo "unknown")
 OLD_SIZE=$(kubectl get pvc "$OLD_CLAIM" -n "$NAMESPACE" -o jsonpath='{.spec.resources.requests.storage}' 2>/dev/null || echo "unknown")
-OLD_STORAGE_CLASS=$(echo "$OLD_PVC" | jq -r '.spec.storageClassName' 2>/dev/null || echo "unknown")
+OLD_STORAGE_CLASS=$(echo "$OLD_PVC" | jq -r '.spec.storageClassName // ""' 2>/dev/null || true)
+
+# Resolve storage class: PVC > Helm values > fail
+if [[ -z "$OLD_STORAGE_CLASS" || "$OLD_STORAGE_CLASS" == "null" ]]; then
+    OLD_STORAGE_CLASS="$STORAGE_CLASS"
+fi
+if [[ -z "$OLD_STORAGE_CLASS" || "$OLD_STORAGE_CLASS" == "null" ]]; then
+    die "Cannot determine storage class for '$OLD_CLAIM'. Set storage.${STORAGE_NAME}.storageClassName in Helm values."
+fi
 
 echo ""
 log "=== Migration Plan ==="
@@ -281,7 +294,7 @@ echo "  Old PVC:            $OLD_CLAIM"
 echo "  New PVC (RWX):      $NEW_CLAIM"
 echo "  Old access mode:    $OLD_ACCESS_MODE"
 echo "  New access mode:    ReadWriteMany"
-echo "  Storage class:      ${OLD_STORAGE_CLASS:-nfs-client}"
+echo "  Storage class:      $OLD_STORAGE_CLASS"
 echo "  Size:               ${OLD_SIZE:-unknown}"
 echo ""
 
@@ -336,7 +349,7 @@ spec:
   resources:
     requests:
       storage: ${OLD_SIZE}
-  storageClassName: ${OLD_STORAGE_CLASS:-nfs-client}
+  storageClassName: ${OLD_STORAGE_CLASS}
 EOF
 
 if [[ "$SYNC_ONLY" == "true" ]]; then
@@ -382,6 +395,7 @@ else
     # Apply deletion protection to the new PVC
     protect_pvc "$NEW_CLAIM" "$NAMESPACE" "rwx-migrated-pvc"
 fi
+fi # end: SYNC_ONLY != true
 
 # Create a temporary pod to copy data
 TEMP_POD_NAME="data-migrator-$(echo "$STORAGE_NAME" | tr '[:upper:]' '[:lower:]')-$$"

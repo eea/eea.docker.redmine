@@ -1,0 +1,17 @@
+default: &default
+  scheduler:
+    polling_interval: 5
+    dynamic_tasks_enabled: true
+  dispatchers:
+    - polling_interval: 1
+      batch_size: 500
+      concurrency_maintenance_interval: 300
+
+production:
+  <<: *default
+
+development:
+  <<: *default
+
+test:
+  <<: *default
