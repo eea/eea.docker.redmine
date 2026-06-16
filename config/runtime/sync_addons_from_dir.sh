@@ -23,13 +23,8 @@ themes_tmp="${TMP_ROOT}/themes"
 mkdir -p "${plugins_dst}" "${themes_dst}" "${plugins_tmp}" "${themes_tmp}"
 
 if [ ! -d "${plugins_src}" ] || [ ! -d "${themes_src}" ]; then
-  log_info "Seed directories not present — skipping dir sync"
-  exit 0
-fi
-
-if [ -z "$(ls -A "${plugins_src}" 2>/dev/null)" ] && [ -z "$(ls -A "${themes_src}" 2>/dev/null)" ]; then
-  log_info "Seed directories are empty — skipping dir sync"
-  exit 0
+  log_error "Seed directories ${plugins_src} and ${themes_src} are required"
+  exit 1
 fi
 
 clean_dir() {
