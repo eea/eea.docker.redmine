@@ -133,3 +133,26 @@ div.wiki table {
   content: "\f0f6";
   font-family: FontAwesome;
 }
+
+/* #304781: print — keep time-entries table inside the page */
+@media print {
+  table.list.time-entries {
+    width: 100%;
+    max-width: 100%;
+  }
+  table.list.time-entries td.issue,
+  table.list.time-entries td.comments {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  table.list.time-entries th.spent_on,
+  table.list.time-entries td.spent_on,
+  table.list.time-entries th.hours,
+  table.list.time-entries td.hours {
+    white-space: nowrap;
+  }
+  table.list.time-entries tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
