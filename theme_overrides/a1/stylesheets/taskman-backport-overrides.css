@@ -140,13 +140,14 @@ div.wiki table {
   table.list.time-entries {
     width: 100%;
     max-width: 100%;
-    table-layout: fixed;
   }
-  table.list.time-entries th,
   table.list.time-entries td {
     white-space: normal;
     overflow-wrap: anywhere;
     word-break: break-word;
+  }
+  table.list.time-entries th {
+    white-space: normal;
   }
   table.list.time-entries tr {
     break-inside: avoid;
