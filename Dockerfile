@@ -217,7 +217,7 @@ RUN set -euo pipefail \
   && apt-get install -y --no-install-recommends python3 \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/* \
-  && for gem_name in ci_reporter_minitest minitest-reporters; do \
+  && for gem_name in ci_reporter_minitest minitest-reporters mocha; do \
        if ! grep -Eq "^[[:space:]]*gem ['\\\"]${gem_name}['\\\"]" /usr/src/redmine/Gemfile; then \
          echo "gem '${gem_name}'" >> /usr/src/redmine/Gemfile; \
        fi; \
