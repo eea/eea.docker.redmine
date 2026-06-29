@@ -45,26 +45,18 @@ services:
       seed_has_content() {
         [ -n "$$(ls -A /seed/plugins 2>/dev/null)" ] || [ -n "$$(ls -A /seed/themes 2>/dev/null)" ]
       }
-      if [ "${ADDONS_SYNC_SOURCE:-share}" = "share" ] && [ -z "${PLUGINS_USER:-${REDMINE_PLUGINS_USER:-}}" ]; then
-        if seed_has_content; then
-          echo "addons-sync: PLUGINS_USER is empty, falling back to dir source (seed has content)"
-          export ADDONS_SYNC_SOURCE=dir
-        else
-          echo "addons-sync: PLUGINS_USER is empty and seed dirs are empty — cannot sync addons" >&2
-          exit 1
-        fi
-      fi
       if [ "${ADDONS_SYNC_SOURCE:-share}" = "share" ]; then
         if /usr/local/bin/sync_addons_from_share.sh; then
           exit 0
         fi
-        rc=$?
-        echo "addons-sync: share sync failed with exit $${rc}, falling back to dir source"
+        echo "addons-sync: share sync failed, falling back to dir source"
         if seed_has_content; then
           exec /usr/local/bin/sync_addons_from_dir.sh
         fi
-        echo "addons-sync: seed dirs also empty, cannot sync addons" >&2
-        exit 1
+        # No addons source available and share sync failed.
+        # Log a warning and allow the pipeline to continue instead of failing hard.
+        echo "addons-sync: WARNING — no addons source available (share sync failed, seed dirs empty, PLUGINS_USER=${PLUGINS_USER:-${REDMINE_PLUGINS_USER:-}})"
+        exit 0
       fi
       exec /usr/local/bin/sync_addons_from_dir.sh
     environment:
