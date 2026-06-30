@@ -164,3 +164,41 @@ tr.even.priority-4 td {
 #main-menu .menu-children {
   margin-top: 40px;
 }
+
+/* Tracker-colored pills for issue reference links.
+   The Ruby patch in zzzz_eea_patches adds tracker-name-<name> to issue links.
+   Colors: Bug=red, Feature=blue, Task=purple, Support=orange, default=gray. */
+a.issue[class*="tracker-name-"],
+a.issue[class*="tracker-name-"]:link,
+a.issue[class*="tracker-name-"]:visited,
+a.issue[class*="tracker-name-"]:hover,
+a.issue[class*="tracker-name-"]:active {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  color: #fff !important;
+  font-size: 0.85em;
+  font-weight: 600;
+  text-decoration: none;
+  line-height: 1.4;
+}
+
+a.issue.tracker-name-bug {
+  background-color: #d9534f;
+}
+
+a.issue.tracker-name-feature {
+  background-color: #337ab7;
+}
+
+a.issue.tracker-name-task {
+  background-color: #6f42c1;
+}
+
+a.issue.tracker-name-support {
+  background-color: #e67e22;
+}
+
+a.issue[class*="tracker-name-"]:hover {
+  opacity: 0.85;
+}
