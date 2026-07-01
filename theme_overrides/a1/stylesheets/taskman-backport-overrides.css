@@ -135,6 +135,87 @@ div.wiki table {
   font-family: FontAwesome;
 }
 
+/* Urgent (priority-4) rows: match Immediate (priority-5) coloring. refs#304274
+   Upstream A1 leaves priority-4 unstyled, so Urgent issues get no row color. */
+tr.odd.priority-4,
+table.list tbody tr.odd.priority-4:hover {
+  color: #900;
+}
+tr.odd.priority-4 {
+  background: #ffc4c4;
+}
+tr.even.priority-4,
+table.list tbody tr.even.priority-4:hover {
+  color: #900;
+}
+tr.even.priority-4 {
+  background: #ffd4d4;
+}
+tr.priority-4 a {
+  color: #900;
+}
+tr.odd.priority-4 td,
+tr.even.priority-4 td {
+  border-color: #ffb4b4;
+}
+
+/* + dropdown usability: bring the menu 2px closer to the + button to close
+   the hover gap. Upstream A1 uses margin-top: 42px. */
+#main-menu .menu-children {
+  margin-top: 40px;
+}
+
+/* Tracker-colored pills for issue reference links.
+   The Ruby patch in zzzz_eea_patches adds tracker-name-<name> to issue links.
+   Colors: Bug=red, Feature=blue, Task=violet, Support=orange, default=gray.
+   Hover colors derived at ~80% of base (matching blue #0065FF -> #0051CC). */
+a.issue[class*="tracker-name-"],
+a.issue[class*="tracker-name-"]:link,
+a.issue[class*="tracker-name-"]:visited,
+a.issue[class*="tracker-name-"]:hover,
+a.issue[class*="tracker-name-"]:active {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  color: #fafbfc !important;
+  font-size: 0.85em;
+  font-weight: 600;
+  text-decoration: none;
+  line-height: 1.4;
+}
+
+a.issue.tracker-name-bug {
+  background-color: #e5123d;
+}
+
+a.issue.tracker-name-bug:hover {
+  background-color: #b70e31;
+}
+
+a.issue.tracker-name-feature {
+  background-color: #0065ff;
+}
+
+a.issue.tracker-name-feature:hover {
+  background-color: #0051cc;
+}
+
+a.issue.tracker-name-task {
+  background-color: #614ba6;
+}
+
+a.issue.tracker-name-task:hover {
+  background-color: #4e3c85;
+}
+
+a.issue.tracker-name-support {
+  background-color: #e67e22;
+}
+
+a.issue.tracker-name-support:hover {
+  background-color: #b8651b;
+}
+
 /* #304781: print — keep time-entries table inside the page */
 @media print {
   table.list.time-entries {

@@ -20,4 +20,7 @@ EeaPatches::MiniProfilerPatch.configure!
 require_relative 'lib/mini_profiler_authorization_patch'
 EeaPatches::MiniProfilerAuthorizationPatch.apply!
 
+# Add tracker-name-<name> CSS class to issue links for tracker-colored pills.
+require_relative 'lib/issue_tracker_color_patch'
+
 Rails.logger.info '[zzzz_eea_patches] Plugin registered (view overrides + MiniProfiler authorization)'
