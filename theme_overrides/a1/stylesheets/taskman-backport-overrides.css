@@ -167,7 +167,8 @@ tr.even.priority-4 td {
 
 /* Tracker-colored pills for issue reference links.
    The Ruby patch in zzzz_eea_patches adds tracker-name-<name> to issue links.
-   Colors: Bug=red, Feature=blue, Task=purple, Support=orange, default=gray. */
+   Colors: Bug=red, Feature=blue, Task=violet, Support=orange, default=gray.
+   Hover colors derived at ~80% of base (matching blue #0065FF -> #0051CC). */
 a.issue[class*="tracker-name-"],
 a.issue[class*="tracker-name-"]:link,
 a.issue[class*="tracker-name-"]:visited,
@@ -176,7 +177,7 @@ a.issue[class*="tracker-name-"]:active {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 10px;
-  color: #fff !important;
+  color: #FAFBFC !important;
   font-size: 0.85em;
   font-weight: 600;
   text-decoration: none;
@@ -184,21 +185,33 @@ a.issue[class*="tracker-name-"]:active {
 }
 
 a.issue.tracker-name-bug {
-  background-color: #d9534f;
+  background-color: #E5123D;
+}
+
+a.issue.tracker-name-bug:hover {
+  background-color: #B70E31;
 }
 
 a.issue.tracker-name-feature {
-  background-color: #337ab7;
+  background-color: #0065FF;
+}
+
+a.issue.tracker-name-feature:hover {
+  background-color: #0051CC;
 }
 
 a.issue.tracker-name-task {
-  background-color: #6f42c1;
+  background-color: #614BA6;
+}
+
+a.issue.tracker-name-task:hover {
+  background-color: #4E3C85;
 }
 
 a.issue.tracker-name-support {
   background-color: #e67e22;
 }
 
-a.issue[class*="tracker-name-"]:hover {
-  opacity: 0.85;
+a.issue.tracker-name-support:hover {
+  background-color: #B8651B;
 }
