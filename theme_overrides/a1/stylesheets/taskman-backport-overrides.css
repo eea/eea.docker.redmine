@@ -177,7 +177,7 @@ a.issue[class*="tracker-name-"]:active {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 10px;
-  color: #FAFBFC !important;
+  color: #fafbfc !important;
   font-size: 0.85em;
   font-weight: 600;
   text-decoration: none;
@@ -185,27 +185,27 @@ a.issue[class*="tracker-name-"]:active {
 }
 
 a.issue.tracker-name-bug {
-  background-color: #E5123D;
+  background-color: #e5123d;
 }
 
 a.issue.tracker-name-bug:hover {
-  background-color: #B70E31;
+  background-color: #b70e31;
 }
 
 a.issue.tracker-name-feature {
-  background-color: #0065FF;
+  background-color: #0065ff;
 }
 
 a.issue.tracker-name-feature:hover {
-  background-color: #0051CC;
+  background-color: #0051cc;
 }
 
 a.issue.tracker-name-task {
-  background-color: #614BA6;
+  background-color: #614ba6;
 }
 
 a.issue.tracker-name-task:hover {
-  background-color: #4E3C85;
+  background-color: #4e3c85;
 }
 
 a.issue.tracker-name-support {
@@ -213,5 +213,28 @@ a.issue.tracker-name-support {
 }
 
 a.issue.tracker-name-support:hover {
-  background-color: #B8651B;
+  background-color: #b8651b;
+}
+
+/* #304781: print — keep time-entries table inside the page */
+@media print {
+  table.list.time-entries {
+    width: 100%;
+    max-width: 100%;
+  }
+  table.list.time-entries td.issue,
+  table.list.time-entries td.comments {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  table.list.time-entries th.spent_on,
+  table.list.time-entries td.spent_on,
+  table.list.time-entries th.hours,
+  table.list.time-entries td.hours {
+    white-space: nowrap;
+  }
+  table.list.time-entries tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
 }
