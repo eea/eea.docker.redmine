@@ -216,6 +216,20 @@ a.issue.tracker-name-support:hover {
   background-color: #b8651b;
 }
 
+/* Status badge on issue detail page. */
+.status.attribute .value {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background-color: #614ba6;
+  color: #fafbfc;
+  font-size: 0.85em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+}
+
 /* #304781: print — keep time-entries table inside the page */
 @media print {
   table.list.time-entries {
