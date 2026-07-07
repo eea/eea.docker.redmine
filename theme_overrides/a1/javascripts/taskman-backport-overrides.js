@@ -339,6 +339,9 @@
 
         $container.each(function () {
           var $target = $(this);
+          if ($target.find(".overloaded-user-warning").length) {
+            return;
+          }
           var $icon = $("<span class='overloaded-user-warning' />").appendTo($target);
           if ($.fn && $.fn.dialog) {
             var $dialogContent = $panel.clone().appendTo($target).dialog({

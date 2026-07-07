@@ -259,3 +259,10 @@ a.issue.tracker-name-support:hover {
   height: 32px;
   line-height: 30px;
 }
+
+
+/* Hide duplicate overloaded-user warning icons injected by the WIP-limit JS.
+   The JS is not idempotent and can append multiple icons; keep only the first. */
+.overloaded-user-warning ~ .overloaded-user-warning {
+  display: none !important;
+}
