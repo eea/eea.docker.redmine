@@ -249,3 +249,13 @@ a.issue.tracker-name-support:hover {
     page-break-inside: avoid;
   }
 }
+
+/* Login button sizing: A1 theme sets padding: 1px on #login-submit, which
+   collapses the button and lets the form table stretch it full-width.
+   Restore the global submit-button padding/height and constrain width. */
+#login-form input#login-submit {
+  padding: 0 14px;
+  width: auto;
+  height: 32px;
+  line-height: 30px;
+}
