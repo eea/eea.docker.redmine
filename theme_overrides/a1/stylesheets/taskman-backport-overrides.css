@@ -274,3 +274,13 @@ a.issue.tracker-name-support:hover {
 .overloaded-user-warning ~ .overloaded-user-warning {
   display: none !important;
 }
+
+
+/* WIP popup close button: jQuery UI gives the titlebar close button no
+   border/background by default, so the close icon is invisible until hover.
+   Give it a visible border/background so it is always clickable. */
+.ui-dialog .ui-dialog-titlebar-close {
+  border: 1px solid #ccc;
+  background: #ededed;
+  color: #2b2b2b;
+}
