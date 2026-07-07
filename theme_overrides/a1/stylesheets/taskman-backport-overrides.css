@@ -128,7 +128,15 @@ div.wiki table {
   display: none;
 }
 
-/* admin wiki links icon fallback */
+/* Admin wiki links icon fallback.
+   Redmine 6 adds a default background-image sprite for .icon-wiki-page;
+   A1 adds a FontAwesome pseudo-element. Without suppression both render,
+   causing icon duplication on administration pages. */
+.icon.icon-wiki-page,
+.icon-wiki-page {
+  background-image: none !important;
+}
+
 .icon.icon-wiki-page::before,
 .icon-wiki-page::before {
   content: "\f0f6";
