@@ -135,27 +135,27 @@ div.wiki table {
   font-family: FontAwesome;
 }
 
-/* Urgent (priority-4) rows: match Immediate (priority-5) coloring. refs#304274
-   Upstream A1 leaves priority-4 unstyled, so Urgent issues get no row color. */
-tr.odd.priority-4,
-table.list tbody tr.odd.priority-4:hover {
+/* Urgent (priority-6) rows: match Immediate (priority-5) coloring. refs#304274
+   Upstream A1 leaves priority-6 unstyled, so Urgent issues get no row color. */
+tr.odd.priority-6,
+table.list tbody tr.odd.priority-6:hover {
   color: #900;
 }
-tr.odd.priority-4 {
+tr.odd.priority-6 {
   background: #ffc4c4;
 }
-tr.even.priority-4,
-table.list tbody tr.even.priority-4:hover {
+tr.even.priority-6,
+table.list tbody tr.even.priority-6:hover {
   color: #900;
 }
-tr.even.priority-4 {
+tr.even.priority-6 {
   background: #ffd4d4;
 }
-tr.priority-4 a {
+tr.priority-6 a {
   color: #900;
 }
-tr.odd.priority-4 td,
-tr.even.priority-4 td {
+tr.odd.priority-6 td,
+tr.even.priority-6 td {
   border-color: #ffb4b4;
 }
 
@@ -248,4 +248,39 @@ a.issue.tracker-name-support:hover {
     break-inside: avoid;
     page-break-inside: avoid;
   }
+}
+
+/* Login button sizing: A1 theme sets padding: 1px on #login-submit, which
+   collapses the button and lets the form table stretch it full-width.
+   Restore the global submit-button padding/height and constrain width. */
+#login-form input#login-submit {
+  padding: 0 14px;
+  width: auto;
+  height: 32px;
+  line-height: 30px;
+}
+
+
+/* Hide duplicate overloaded-user warning icons injected by the WIP-limit JS.
+   The JS is not idempotent and can append multiple icons; keep only the first. */
+.overloaded-user-warning ~ .overloaded-user-warning {
+  display: none !important;
+}
+
+
+/* WIP popup close button: jQuery UI gives the titlebar close button no
+   border/background by default, so the close icon is invisible until hover.
+   Give it a visible border/background so it is always clickable. */
+.ui-dialog .ui-dialog-titlebar-close {
+  border: 1px solid #ccc;
+  background: #ededed;
+  color: #2b2b2b;
+}
+
+/* Admin menu wiki-links icon: the plugin only sets background-image without
+   position/repeat/padding. Ensure the link icon displays on the left. */
+#admin-menu a.wiki-links {
+  background-position: 0% 50%;
+  background-repeat: no-repeat;
+  padding-left: 20px;
 }
