@@ -260,13 +260,11 @@ a.issue.tracker-name-support:hover {
   line-height: 30px;
 }
 
-
 /* Hide duplicate overloaded-user warning icons injected by the WIP-limit JS.
    The JS is not idempotent and can append multiple icons; keep only the first. */
 .overloaded-user-warning ~ .overloaded-user-warning {
   display: none !important;
 }
-
 
 /* WIP popup close button: jQuery UI gives the titlebar close button no
    border/background by default, so the close icon is invisible until hover.
@@ -283,4 +281,12 @@ a.issue.tracker-name-support:hover {
   background-position: 0% 50%;
   background-repeat: no-repeat;
   padding-left: 20px;
+}
+
+button span.ui-button-icon.ui-icon.ui-icon-closethick {
+  background-image: url("/assets/jquery/images/ui-icons_555555_256x240-b359e400.png");
+}
+
+.ms-signin-button {
+  padding: 30px 15px;
 }
