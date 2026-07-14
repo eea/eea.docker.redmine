@@ -21,9 +21,22 @@
     <%= link_to l(:button_edit),
       { controller: 'main_app/global_banner', action: 'show', id: setting['id'] },
       { class: 'icon banner-icon-edit', title: l(:button_edit)} if User.current.admin? && setting['id'].present? %>
-    <%= link_to l(:button_off),
-      main_app.off_banner_index_path(moderate: 'yes'),
-      { class: 'icon banner-icon-off', title: l(:banner_off)} if User.current.logged? %>
+    <% if User.current.logged? %>
+      <a class="icon banner-icon-off" href="#"
+         onclick="$.ajax({
+           url: '<%= main_app.off_banner_index_path(moderate: 'yes') %>',
+           type: 'get',
+           success: function(data){
+             var els = document.getElementsByClassName('global_banner');
+             els = Array.prototype.slice.call(els);
+             els.forEach(function(el){
+               el.classList.add('fadeout');
+               setTimeout(function(){ el.style.display = 'none'; }, 500);
+             });
+           }
+         }); return false;"
+         title="<%= l(:banner_off) %>"><%= l(:button_off) %></a>
+    <% end %>
   </div>
 
   <% if setting['related_link'].present? %>
