@@ -288,5 +288,5 @@ button span.ui-button-icon.ui-icon.ui-icon-closethick {
 }
 
 .ms-signin-button {
-  padding: 30px 15px;
+  padding: 30px 15px !important;
 }
