@@ -287,6 +287,7 @@ button span.ui-button-icon.ui-icon.ui-icon-closethick {
   background-image: url("/assets/jquery/images/ui-icons_555555_256x240-b359e400.png");
 }
 
-.ms-signin-button {
-  padding: 30px 15px !important;
+button.ms-signin-button {
+  white-space: nowrap;
+  height: auto;
 }
