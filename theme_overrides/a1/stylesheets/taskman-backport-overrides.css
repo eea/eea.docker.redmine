@@ -135,28 +135,120 @@ div.wiki table {
   font-family: FontAwesome;
 }
 
-/* Urgent (priority-6) rows: match Immediate (priority-5) coloring. refs#304274
-   Upstream A1 leaves priority-6 unstyled, so Urgent issues get no row color. */
-tr.odd.priority-6,
-table.list tbody tr.odd.priority-6:hover {
+/* Priority row colors override.
+   Maps Redmine priorities to the original Taskman palette:
+   Low=white/default, Normal=turquoise, High=yellow, Urgent=orange, Immediate=red. */
+
+/* Immediate (priority-7) - red */
+tr.odd.priority-7,
+table.list tbody tr.odd.priority-7:hover,
+tr.even.priority-7,
+table.list tbody tr.even.priority-7:hover {
   color: #900;
+  font-weight: bold;
 }
-tr.odd.priority-6 {
+tr.odd.priority-7 {
   background: #ffc4c4;
 }
-tr.even.priority-6,
-table.list tbody tr.even.priority-6:hover {
-  color: #900;
-}
-tr.even.priority-6 {
+tr.even.priority-7 {
   background: #ffd4d4;
 }
-tr.priority-6 a {
+tr.priority-7 a,
+tr.priority-7:hover a {
   color: #900;
+}
+tr.odd.priority-7 td,
+tr.even.priority-7 td {
+  border-color: #ffb4b4;
+}
+
+/* Urgent (priority-6) - orange */
+tr.odd.priority-6,
+table.list tbody tr.odd.priority-6:hover,
+tr.even.priority-6,
+table.list tbody tr.even.priority-6:hover {
+  color: #a04000;
+}
+tr.odd.priority-6 {
+  background: #ffe4cc;
+}
+tr.even.priority-6 {
+  background: #fff0e0;
+}
+tr.priority-6 a,
+tr.priority-6:hover a {
+  color: #a04000;
 }
 tr.odd.priority-6 td,
 tr.even.priority-6 td {
-  border-color: #ffb4b4;
+  border-color: #ffcc99;
+}
+
+/* High (priority-5) - yellow */
+tr.odd.priority-5,
+table.list tbody tr.odd.priority-5:hover,
+tr.even.priority-5,
+table.list tbody tr.even.priority-5:hover {
+  color: #8a6d00;
+}
+tr.odd.priority-5 {
+  background: #fffacd;
+}
+tr.even.priority-5 {
+  background: #fffde7;
+}
+tr.priority-5 a,
+tr.priority-5:hover a {
+  color: #8a6d00;
+}
+tr.odd.priority-5 td,
+tr.even.priority-5 td {
+  border-color: #ffe58a;
+}
+
+/* Normal (priority-4) - turquoise */
+tr.odd.priority-4,
+table.list tbody tr.odd.priority-4:hover,
+tr.even.priority-4,
+table.list tbody tr.even.priority-4:hover {
+  color: #006978;
+}
+tr.odd.priority-4 {
+  background: #e0f7fa;
+}
+tr.even.priority-4 {
+  background: #e8fbf9;
+}
+tr.priority-4 a,
+tr.priority-4:hover a {
+  color: #006978;
+}
+tr.odd.priority-4 td,
+tr.even.priority-4 td {
+  border-color: #b2ebf2;
+}
+
+/* Low (priority-3) - white/default */
+tr.odd.priority-3,
+table.list tbody tr.odd.priority-3:hover,
+tr.even.priority-3,
+table.list tbody tr.even.priority-3:hover {
+  color: inherit;
+  font-weight: normal;
+}
+tr.odd.priority-3 {
+  background: transparent;
+}
+tr.even.priority-3 {
+  background: transparent;
+}
+tr.priority-3 a,
+tr.priority-3:hover a {
+  color: inherit;
+}
+tr.odd.priority-3 td,
+tr.even.priority-3 td {
+  border-color: #d7d7d7;
 }
 
 /* + dropdown usability: bring the menu 2px closer to the + button to close
@@ -216,18 +308,77 @@ a.issue.tracker-name-support:hover {
   background-color: #b8651b;
 }
 
-/* Status badge on issue detail page. */
+a.issue.tracker-name-change-request-normal {
+  background-color: #6c757d;
+}
+
+a.issue.tracker-name-change-request-normal:hover {
+  background-color: #575e64;
+}
+
+a.issue.tracker-7 {
+  background-color: #008000;
+}
+
+a.issue.tracker-7:hover {
+  background-color: #006600;
+}
+
+a.issue.tracker-8 {
+  background-color: #c0392b;
+}
+
+a.issue.tracker-8:hover {
+  background-color: #9a2e23;
+}
+
+a.issue.tracker-10 {
+  background-color: #0056b3;
+}
+
+a.issue.tracker-10:hover {
+  background-color: #004590;
+}
+
+a.issue.tracker-12 {
+  background-color: #6c3483;
+}
+
+a.issue.tracker-12:hover {
+  background-color: #562a69;
+}
+
+a.issue.tracker-13 {
+  background-color: #d35400;
+}
+
+a.issue.tracker-13:hover {
+  background-color: #a94300;
+}
+
+/* Status badge on issue detail page.
+   Default = blue; closed = red.
+   Redmine's Issue#css_classes already emits "closed" on the issue wrapper
+   div when the issue is in a closed status, so no JS or Ruby patch needed. */
 .status.attribute .value {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 10px;
-  background-color: #614ba6;
+  background-color: #0065ff;
   color: #fafbfc;
   font-size: 0.85em;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.02em;
   line-height: 1.4;
+}
+
+.closed .status.attribute .value {
+  background-color: #e5123d;
+}
+
+.closed .status.attribute .value:hover {
+  background-color: #b70e31;
 }
 
 /* #304781: print — keep time-entries table inside the page */
@@ -290,4 +441,22 @@ button span.ui-button-icon.ui-icon.ui-icon-closethick {
 button.ms-signin-button {
   white-space: nowrap;
   height: auto;
+}
+
+/* Restore visibility of the "Remove EntraID identity" icon link on the user
+   edit form. Redmine 6 / A1 theme switches .icon to inline-flex and collapses
+   legacy background-image icons that have no text content. */
+.controller-users.action-edit form.edit_user a.icon-del {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+  vertical-align: middle;
+}
+
+.assigned-to.attribute a.icon.assign-to-me {
+  margin-left: 10px;
 }
