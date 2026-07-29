@@ -165,7 +165,7 @@ automatically by `compose_gemfile_from_plugins.rb` in this mode.
 Switch back off:
 
 ```bash
-REDMINE_BASE_IMAGE=redmine:6.1.2@sha256:e8a05d36d55f022d3709865cc2932cb87e6701a35ca89aeb8e5af5e8a67b31b0 MT_NO_PLUGINS=1 \
+REDMINE_BASE_IMAGE=redmine:6.1.3@sha256:157c712839fe9787eb5cfe8376c38de45042613c511228f01386e8aeab5cfa21 MT_NO_PLUGINS=1 \
 docker compose -f test/docker-compose.yml -f test/docker-compose.amd64.yml up -d --build
 ```
 
