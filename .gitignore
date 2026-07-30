@@ -2,7 +2,10 @@
 .local-artifacts
 .ckb
 .env
+node_modules/
 output/playwright
+playwright-report/
+test-results/
 test/*.md
 .sisyphus
 .sisyphus/*
@@ -36,3 +39,6 @@ local/
 
 # Todo directory
 todo/
+
+# Local regression/debug captures
+issue1/

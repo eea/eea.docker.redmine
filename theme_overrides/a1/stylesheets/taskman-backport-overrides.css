@@ -16,6 +16,18 @@ form label.block {
   display: none;
 }
 
+/* Redmine 6.1.3/plugin refresh: keep issue subject metadata beside the avatar. */
+.controller-issues.action-show .issue.details > .avatar-with-child {
+  float: inline-start;
+  margin-bottom: 6px;
+  margin-inline-end: 12px;
+}
+
+.controller-issues.action-show .issue.details > .avatar-with-child > .avatar {
+  float: none;
+  margin: 0;
+}
+
 /* 106078 / 29395: repository preview container height fix */
 .filecontent-container {
   height: auto !important;
