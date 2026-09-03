@@ -368,6 +368,18 @@ a.issue.tracker-13:hover {
   background-color: #a94300;
 }
 
+/* Strikethrough on closed issue pills (e.g. closed, invalid, expired).
+   Redmine's Issue#css_classes emits "closed" on the issue link whenever the
+   status is flagged is_closed, so this covers all closed statuses. */
+a.issue.closed,
+a.issue.closed:link,
+a.issue.closed:visited,
+a.issue.closed:hover,
+a.issue.closed:active {
+  text-decoration: line-through;
+  text-decoration-color: currentColor;
+}
+
 /* Status badge on issue detail page.
    Default = blue; closed = red.
    Redmine's Issue#css_classes already emits "closed" on the issue wrapper
