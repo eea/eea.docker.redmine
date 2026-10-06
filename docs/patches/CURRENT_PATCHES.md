@@ -363,6 +363,12 @@ end
 
 ---
 
+### WIKI_LINKS_MAIN_APP
+**Toggle:** `TASKMAN_PATCH_WIKI_LINKS_MAIN_APP` (default: on)
+**Risk:** Full reimplementation of `ApplicationHelper#parse_wiki_links`. Any upstream change to this method in Redmine won't be reflected here. The initializer enables this patch by default to preserve main application wiki routes inside plugin engines. Set the toggle to `0` to disable it.
+
+---
+
 ## Disabled Patches
 
 ### USER_ROLES_PRELOAD
@@ -376,10 +382,6 @@ end
 **Risk:** Overwrites `@can[:edit]`, `@can[:delete]`, `@can[:send_mails]` set by `super`. If `super` applies additional permission restrictions, this patch silently discards them.
 
 ---
-
-### WIKI_LINKS_MAIN_APP
-**Toggle:** `TASKMAN_PATCH_WIKI_LINKS_MAIN_APP=0`
-**Risk:** Full reimplementation of `ApplicationHelper#parse_wiki_links`. Any upstream change to this method in Redmine won't be reflected here. Re-enable only if the AI helper engine wiki routing bug recurs.
 
 ---
 

@@ -119,6 +119,21 @@ SCRIPT
       }
     }
 
+    stage("Verify Redmine upgrade") {
+      when { not { buildingTag() } }
+      steps {
+        sh '''
+docker-compose -f test/docker-compose.yml exec -T redmine bundle exec rails runner -e test '
+abort "Expected Redmine 6.1.5, got #{Redmine::VERSION}" unless Redmine::VERSION.to_s == "6.1.5"
+abort "Expected Rails 7.2.4, got #{Rails.version}" unless Rails.version == "7.2.4"
+abort "Expected Ruby 3.4.x, got #{RUBY_VERSION}" unless RUBY_VERSION.start_with?("3.4.")
+abort "Missing advisory-lock implementation" unless ActiveRecord::Base.respond_to?(:with_advisory_lock!)
+puts "Redmine=#{Redmine::VERSION} Rails=#{Rails.version} Ruby=#{RUBY_VERSION}"
+'
+'''
+      }
+    }
+
     stage("Install A1 theme (Redmine 6 only)") {
       when { not { buildingTag() } }
       steps {

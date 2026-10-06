@@ -4,112 +4,38 @@ class AgileQueryPerformancePatchTest < ActiveSupport::TestCase
   fixtures :projects, :issues, :users, :roles, :trackers, :issue_statuses, :workflows
 
   def setup
-    @project = Project.find(1)
-    @user = User.find(1) if User.table_exists?
-  end
-
-  def teardown; end
-
-  def test_board_issue_statuses_uses_optimized_query
+    super
     skip 'AgileQuery not available' unless defined?(AgileQuery)
-    skip 'WorkflowTransition not available' unless defined?(WorkflowTransition)
-    skip 'IssueStatus not available' unless IssueStatus.table_exists?
-
-    AgileQuery.instance_method(:board_issue_statuses)
-
-    issue_scope = Issue.where(project_id: @project.id)
-
-    tracker_ids = issue_scope.unscope(:select, :order)
-                             .where.not(tracker_id: nil)
-                             .distinct
-                             .pluck(:tracker_id)
-
-    assert tracker_ids.all? { |id| id.is_a?(Integer) }, 'Tracker IDs should be integers'
-
-    status_ids = WorkflowTransition.where(tracker_id: tracker_ids)
-                                   .distinct
-                                   .pluck(:old_status_id, :new_status_id)
-                                   .flatten
-                                   .uniq
-
-    result = IssueStatus.where(id: status_ids)
-
-    assert result.all? { |s| s.is_a?(IssueStatus) }, 'Results should be IssueStatus objects'
+    skip 'AGILE_QUERY patch not enabled' unless TaskmanRuntimeCompat.patch_enabled?('AGILE_QUERY')
+    assert_includes AgileQuery.ancestors, TaskmanAgileQueryPerfPatch
+    @query = AgileQuery.new
+    @issue_scope = Issue.where(project_id: 1)
+    @query.stubs(:issue_scope).returns(@issue_scope)
   end
 
-  def test_board_issue_statuses_returns_same_as_original_when_enabled
-    skip 'AgileQuery not available' unless defined?(AgileQuery)
-    skip 'WorkflowTransition not available' unless defined?(WorkflowTransition)
+  def test_board_issue_statuses_returns_workflow_statuses_for_scoped_trackers
+    tracker_ids = @issue_scope.distinct.pluck(:tracker_id)
+    assert_not_empty tracker_ids, 'Fixtures must exercise at least one tracker'
+    expected_ids = WorkflowTransition.where(tracker_id: tracker_ids)
+                                    .pluck(:old_status_id, :new_status_id).flatten.uniq
+    expected_ids = IssueStatus.where(id: expected_ids).pluck(:id).sort
+    assert_not_empty expected_ids, 'Fixtures must exercise workflow statuses'
 
-    patch_enabled = ENV.fetch('TASKMAN_PATCH_AGILE_QUERY', '0') == '1'
-    skip 'AGILE_QUERY patch not enabled' unless patch_enabled
-
-    issue_scope = Issue.where(project_id: @project.id)
-
-    tracker_ids = issue_scope.unscope(:select, :order)
-                             .where.not(tracker_id: nil)
-                             .distinct
-                             .pluck(:tracker_id)
-
-    return skip 'No tracker IDs found' if tracker_ids.empty?
-
-    status_ids = WorkflowTransition.where(tracker_id: tracker_ids)
-                                   .distinct
-                                   .pluck(:old_status_id, :new_status_id)
-                                   .flatten
-                                   .uniq
-
-    optimized_result = IssueStatus.where(id: status_ids).pluck(:id).sort
-    original_result = begin
-      original_scope = Issue.includes(%i[tracker project])
-                            .where(project_id: @project.id)
-
-      if defined?(AgileQuery)
-        AgileQuery.new.instance_variable_set(:@issue_scope, original_scope)
-        original_board = AgileQuery.new.board_issue_statuses
-        original_board.pluck(:id).sort
-      else
-        []
-      end
-    rescue StandardError
-      []
-    end
-
-    assert_equal original_result.length, optimized_result.length,
-                 'Optimized query should return same number of statuses'
+    assert_equal expected_ids, @query.board_issue_statuses.pluck(:id).sort
   end
 
-  def test_tracker_ids_fetched_efficiently
-    skip 'WorkflowTransition not available' unless defined?(WorkflowTransition)
+  def test_board_issue_statuses_handles_selected_and_ordered_issue_scopes
+    @query.stubs(:issue_scope).returns(@issue_scope.select(:subject).order(:subject))
+    expected = @query.board_issue_statuses.pluck(:id).sort
+    @query.stubs(:issue_scope).returns(@issue_scope)
 
-    time = Benchmark.measure do
-      Issue.where(project_id: @project.id)
-           .where.not(tracker_id: nil)
-           .distinct
-           .pluck(:tracker_id)
-    end
-
-    assert time.real < 0.5, "Tracker ID fetch took #{time.real}s, expected <0.5s"
+    assert_equal @query.board_issue_statuses.pluck(:id).sort, expected
   end
 
-  def test_workflow_status_ids_fetched_efficiently
-    skip 'WorkflowTransition not available' unless defined?(WorkflowTransition)
+  def test_board_issue_statuses_returns_no_statuses_for_empty_scope
+    @query.stubs(:issue_scope).returns(Issue.none)
+    WorkflowTransition.expects(:where).never
 
-    tracker_ids = Issue.where(project_id: @project.id)
-                       .where.not(tracker_id: nil)
-                       .distinct
-                       .pluck(:tracker_id)
-
-    skip 'No tracker IDs found' if tracker_ids.empty?
-
-    time = Benchmark.measure do
-      WorkflowTransition.where(tracker_id: tracker_ids)
-                        .distinct
-                        .pluck(:old_status_id, :new_status_id)
-                        .flatten
-                        .uniq
-    end
-
-    assert time.real < 0.5, "Workflow status fetch took #{time.real}s, expected <0.5s"
+    assert_empty @query.board_issue_statuses.to_a
   end
 end

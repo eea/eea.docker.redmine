@@ -22,7 +22,9 @@ Dockerfile to build a [Redmine](http://www.redmine.org/) container image based o
 
 #### Version
 
-See (https://hub.docker.com/_/redmine)
+The default base image is `redmine:6.1.5@sha256:f3e8567ccd59703c92f95e6da2e85c72b764cfa0f08b622e6b0a367b4da64b62` (Ruby 3.4.x, Rails 7.2.4).
+See [the 6.1.5 upgrade review](docs/patch-notes/2026-10-redmine-6.1.5-upgrade.md)
+for patch decisions, validation commands and remaining checks.
 
 ### Installation
 
@@ -154,6 +156,9 @@ docker compose -f test/docker-compose.yml -f test/docker-compose.amd64.yml up -d
 
 Ruby4 + plugins mode (on):
 
+This is an experimental custom image. Official Redmine 6.1.5 requires Ruby
+`>= 3.2, < 3.5`; adding stdlib gems alone does not make Ruby 4 supported.
+
 ```bash
 REDMINE_BASE_IMAGE=redmine:ruby402-trixie-amd64 RUBY_REQUIRED_PREFIX=4.0. MT_NO_PLUGINS=0 \
 docker compose -f test/docker-compose.yml -f test/docker-compose.amd64.yml up -d --build
@@ -165,7 +170,7 @@ automatically by `compose_gemfile_from_plugins.rb` in this mode.
 Switch back off:
 
 ```bash
-REDMINE_BASE_IMAGE=redmine:6.1.3@sha256:157c712839fe9787eb5cfe8376c38de45042613c511228f01386e8aeab5cfa21 MT_NO_PLUGINS=1 \
+REDMINE_BASE_IMAGE=redmine:6.1.5@sha256:f3e8567ccd59703c92f95e6da2e85c72b764cfa0f08b622e6b0a367b4da64b62 MT_NO_PLUGINS=1 \
 docker compose -f test/docker-compose.yml -f test/docker-compose.amd64.yml up -d --build
 ```
 
@@ -203,7 +208,12 @@ on concurrent migration lock errors, reducing rollout race failures.
 
 ### Upgrading
 
-To upgrade to newer redmine releases, simply follow this 4 step upgrade procedure.
+For the 6.1.3 → 6.1.5 upgrade, follow the
+[upgrade review and validation checklist](docs/patch-notes/2026-10-redmine-6.1.5-upgrade.md).
+Back up the database, attachments and addon data before stopping the running stack.
+Run DB and plugin migrations with the new image before starting web/jobs services.
+
+For a manually launched container, follow these steps.
 
 **Step 1**: Update the docker image.
 
@@ -235,7 +245,8 @@ docker exec mysql-redmine mysqldump -h localhost --add-drop-table redmine > redm
 docker run --name=redmine -d [OPTIONS] eeacms/redmine
 ```
 
-**Step 5**: Restore database from before
+**Rollback only**: Restore the previous database backup together with the previous image.
+Do not restore the old database after a successful upgrade.
 
 ```bash
 docker exec -i mysql-redmine mysql -h localhost redmine < redmine.sql

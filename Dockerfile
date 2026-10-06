@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-ARG REDMINE_BASE=redmine:6.1.3@sha256:157c712839fe9787eb5cfe8376c38de45042613c511228f01386e8aeab5cfa21
+ARG REDMINE_BASE=redmine:6.1.5@sha256:f3e8567ccd59703c92f95e6da2e85c72b764cfa0f08b622e6b0a367b4da64b62
 ARG RUBY_REQUIRED_PREFIX=3.4.
 
 FROM ${REDMINE_BASE} AS base
@@ -210,6 +210,9 @@ CMD []
 
 
 FROM runtime AS ci-runtime
+
+# Startup honors this empty value when writing local Bundler settings for CI.
+ENV BUNDLE_WITHOUT=
 
 # CI-only additions (kept out of production runtime image)
 RUN set -euo pipefail \

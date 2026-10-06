@@ -2,17 +2,8 @@ if Rails.env.test?
   require 'fileutils'
   require 'shellwords'
 
-  # Redmine 6.1 expects advisory-lock helpers in Issue nested set operations.
-  # Some runtime images do not include with_advisory_lock; provide a safe no-op fallback for tests.
-  unless ActiveRecord::Base.respond_to?(:with_advisory_lock!)
-    class << ActiveRecord::Base
-      def with_advisory_lock!(_lock_name = nil, **_options)
-        return yield if block_given?
-
-        true
-      end
-    end
-  end
+  # with_advisory_lock is installed through gem_overrides.rb. Use the real
+  # adapter locking implementation in tests too; do not mask a missing gem.
 
   # Keep plugin tests deterministic/offline by avoiding external LLM calls.
   # This only affects test env and only when a real provider would otherwise be used.

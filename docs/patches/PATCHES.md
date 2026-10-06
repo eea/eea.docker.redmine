@@ -9,6 +9,14 @@ Canonical inventory for runtime patches.
 
 ---
 
+## Redmine 6.1.5 review
+
+See [the upgrade review](../patch-notes/2026-10-redmine-6.1.5-upgrade.md).
+No runtime patches have been removed for this upgrade. The table below describes
+deployment status; most toggles default to off in the initializer and need an
+explicit environment setting. `WIKI_LINKS_MAIN_APP` actually defaults to on,
+as do `ACTIVITY_AUTHOR_PRELOAD` and `MEMBER_ROLES_SETTINGS_BULK_PRELOAD`.
+
 ## Active Patches
 
 All patches are in `config/initializers/runtime_compat.rb`, deployed via ConfigMap `taskman-runtime-compat`. Toggle with `TASKMAN_PATCH_<NAME>=1|0` env var — no image rebuild required.
@@ -37,6 +45,7 @@ All patches are in `config/initializers/runtime_compat.rb`, deployed via ConfigM
 | SORTED_SCOPE | `TASKMAN_PATCH_SORTED_SCOPE` | **on** | Settings/members: correlated subquery vs 210K JOIN |
 | MEMBER_ROLES_SETTINGS_BULK_PRELOAD | `TASKMAN_PATCH_MEMBER_ROLES_SETTINGS_BULK_PRELOAD` | **on** (default) | Settings/members: pre-load roles/deletable before view |
 | ACTIVITY_AUTHOR_PRELOAD | `TASKMAN_PATCH_ACTIVITY_AUTHOR_PRELOAD` | **on** (default) | Bulk preload event authors |
+| WIKI_LINKS_MAIN_APP | `TASKMAN_PATCH_WIKI_LINKS_MAIN_APP` | **on** (default) | Main application wiki routes inside plugin engines; full parser override requires upgrade review |
 
 ---
 
@@ -46,7 +55,6 @@ All patches are in `config/initializers/runtime_compat.rb`, deployed via ConfigM
 |---|---|---|
 | USER_ROLES_PRELOAD | `TASKMAN_PATCH_USER_ROLES_PRELOAD=0` | Full reimplementation of `User#roles` — security-critical, controls all permissions. Enable only after testing. |
 | CONTACTS_CONTROLLER_CAN | `TASKMAN_PATCH_CONTACTS_CONTROLLER_CAN=0` | Overwrites `@can` flags set by `super` — may bypass permission checks. |
-| WIKI_LINKS_MAIN_APP | `TASKMAN_PATCH_WIKI_LINKS_MAIN_APP=0` | Full reimplementation of `parse_wiki_links` — drifts on Redmine upgrades. Re-enable if AI helper routing bug recurs. |
 
 ---
 

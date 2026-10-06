@@ -478,7 +478,7 @@ run_assets_precompile_if_enabled() {
 
 ensure_bundle_ready() {
   bundle config set path '/usr/local/bundle' >/dev/null 2>&1 || true
-  bundle config set --local without 'development test' >/dev/null 2>&1 || true
+  bundle config set --local without "${BUNDLE_WITHOUT-development test}" >/dev/null 2>&1 || true
 
   if bundle check >/dev/null 2>&1; then
     return 0
@@ -911,7 +911,7 @@ esac
 
 if [ "${RUNTIME_ADDONS_CHANGED}" = "1" ] || ! bundle check >/dev/null 2>&1; then
   bundle config set path '/usr/local/bundle' >/dev/null 2>&1 || true
-  bundle config set --local without 'development test' >/dev/null 2>&1 || true
+  bundle config set --local without "${BUNDLE_WITHOUT-development test}" >/dev/null 2>&1 || true
 
   if [ "${FAST_BOOT}" != "1" ]; then
     echo "Installing runtime plugin/theme gem dependencies"

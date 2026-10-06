@@ -6,6 +6,7 @@ This repository documentation is intentionally small and task-oriented.
 
 - `../README.md` — project entry point, build/runtime overview, operational shortcuts
 - `architecture/build-runtime-flow.md` — build → migrate → runtime contract and upgrade-safe flow
+- `patch-notes/2026-10-redmine-6.1.5-upgrade.md` — upgrade review, validation and rollout checks
 - `patches/PATCHES.md` — canonical runtime patch inventory and changelog
 - `patch-notes/2026-05-runtime-and-plugin-developer-notes.md` — detailed patch notes for maintainers/plugin developers
 
