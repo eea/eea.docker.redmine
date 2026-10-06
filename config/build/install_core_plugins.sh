@@ -18,7 +18,7 @@ cd "${REDMINE_PATH}/plugins/redmine_wiki_backlinks"
 git checkout b191144a8e758a85dc31a6d317aea55a8dad9415
 cd ..
 
-git clone -b 0.3.5 https://github.com/agileware-jp/redmine_banner.git "${REDMINE_PATH}/plugins/redmine_banner"
+git clone -b v0.5.3 https://github.com/seraph3000/redmine_banner.git "${REDMINE_PATH}/plugins/redmine_banner"
 git clone https://github.com/alecghica/redmine_mermaid.git "${REDMINE_PATH}/plugins/redmine_mermaid"
 git clone -b 4.5.0 https://github.com/alphanodes/additionals.git "${REDMINE_PATH}/plugins/additionals"
 # Backward-compatible patch for releases that still use absolute require.

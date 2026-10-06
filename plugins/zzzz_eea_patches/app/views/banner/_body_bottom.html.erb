@@ -1,47 +1,40 @@
-<%# 
-  EEA Patch - Fix link_to routes inside engine scope
-  
-  Original file: plugins/redmine_banner/app/views/banner/_body_bottom.html.erb
-  Plugin version: 0.3.5
-  
-  ISSUE: When rendered inside an engine (e.g. ai_helper), link_to resolves
-  controller paths relative to the engine's routes instead of main_app.
-  This causes ActionController::UrlGenerationError: No route matches
-  {action: "show", controller: "ai_helper/global_banner", id: "zope"}
-  
-  FIX: Resolve banner routes through main_app to use main Rails routes.
-  Routes: GET /global_banner/:id => global_banner#show
-          GET /banner/off => banner#off
-%>
+<%# Seraph3000 v0.5.3 template: use main_app for Banner routes inside engines. %>
 <div class="banner_area global_banner">
-<div class="banner banner_<%= setting['type'] %>" id="banner_content">
-  <%= textilizable setting['banner_description'] %>
-</div>
-  <div class="banner_edit">
-    <%= link_to l(:button_edit),
-      { controller: 'main_app/global_banner', action: 'show', id: setting['id'] },
-      { class: 'icon banner-icon-edit', title: l(:button_edit)} if User.current.admin? && setting['id'].present? %>
-    <% if User.current.logged? %>
-      <a class="icon banner-icon-off" href="#"
-         onclick="$.ajax({
-           url: '<%= main_app.off_banner_index_path(moderate: 'yes') %>',
-           type: 'get',
-           success: function(data){
-             var els = document.getElementsByClassName('global_banner');
-             els = Array.prototype.slice.call(els);
-             els.forEach(function(el){
-               el.classList.add('fadeout');
-               setTimeout(function(){ el.style.display = 'none'; }, 500);
-             });
-           }
-         }); return false;"
-         title="<%= l(:banner_off) %>"><%= l(:button_off) %></a>
-    <% end %>
+  <div class="banner banner_<%= setting['type'] %>" id="banner_content">
+    <%#= textilizable setting['banner_description'] %>
+    <%= banner_expand_macros(
+        textilizable(setting['banner_description']),
+        popup_enabled: setting['popup_enabled'] == 'true',
+        popup_content: setting['popup_content'],
+        popup_source: 'global').html_safe %>
   </div>
 
-  <% if setting['related_link'].present? %>
+  <% if setting['popup_enabled'] == 'true' && setting['popup_content'].present? && !login_page? %>
+    <div class="banner-popup-source" data-source="global" style="display: none;">
+      <div class="banner-popup-body"><%= textilizable(banner_expand_macros(setting['popup_content'])) %></div>
+    </div>
+  <% end %>
+
+  <div class="banner_edit">
+    <%= link_to (banner_action_icon_edit + l(:button_edit)).html_safe,
+          main_app.global_banner_index_path,
+          { class: 'banner-icon-edit-link', title: l(:button_edit) } if User.current.admin? %>
+    <%= link_to(
+          (banner_action_icon_off + l(:button_off)).html_safe,
+          '#',
+          class: 'banner-icon-off-link',
+          title: l(:banner_off),
+          onclick: "$.ajax({" \
+                   "url: '#{main_app.off_banner_index_path}'," \
+                   "type: 'get'," \
+                   "success: function(){ $('div.banner_area.global_banner').fadeOut(500, function(){ $(this).remove(); }); }" \
+                   "}); return false;"
+        ) if User.current.logged? %>
+  </div>
+
+  <% if (safe_url = banner_safe_external_url(setting['related_link'])) %>
   <div class="banner_more_info">
-    <%= link_to l(:more_info), setting['related_link'],
+    <%= link_to l(:more_info), safe_url,
            { class: 'icon external', title: l(:label_more_info)} %>
   </div>
   <% end %>

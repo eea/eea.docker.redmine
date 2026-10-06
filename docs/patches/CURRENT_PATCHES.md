@@ -414,3 +414,15 @@ customer_count = HelpdeskTicket.joins(:issue).where(issues: { project_id: @proje
 **Problem:** When `redmine_banner` partials render inside another engine's scope (e.g. `ai_helper`), `link_to` resolves routes relative to the engine, producing URLs like `ai_helper/global_banner/zope` which don't exist.
 
 **Solution:** Route banner actions through `main_app` to force resolution against the main application's routes.
+
+
+**Seraph3000 v0.5.3 review:** The two overrides now use the upstream v0.5.3
+templates, with only four URL expressions changed to named `main_app` helpers.
+The fork still uses relative controller hashes / `url_for` in these partials,
+so the engine routing fix remains necessary. Global edit uses
+`main_app.global_banner_index_path` (no synthetic banner ID); global hide uses
+`main_app.off_banner_index_path`. Project edit/hide preserve `role_id`.
+Upstream macros, popup markup, role labels, SVG icons, external URL filtering
+and session-based hiding are retained. Docker copies these templates into
+the Banner plugin as before. See the
+[upgrade notes](../patch-notes/2026-10-banner-0.5.3-upgrade.md).

@@ -196,7 +196,7 @@ COPY plugins/zzzz_eea_patches ${REDMINE_PATH}/plugins/zzzz_eea_patches
 COPY plugins/zzzz_eea_patches/app/views/projects/_helpdesk_tickets.html.erb \
     ${REDMINE_PATH}/plugins/redmine_contacts_helpdesk/app/views/projects/_helpdesk_tickets.html.erb
 
-# Banner route fixes — copied to original plugin path so Rails finds them first
+# Banner v0.5.3 templates with main_app route fixes; preserve upstream features
 COPY plugins/zzzz_eea_patches/app/views/banner/_body_bottom.html.erb \
     ${REDMINE_PATH}/plugins/redmine_banner/app/views/banner/_body_bottom.html.erb
 COPY plugins/zzzz_eea_patches/app/views/banner/_project_body_bottom.html.erb \

@@ -72,4 +72,4 @@ All patches are in `config/initializers/runtime_compat.rb`, deployed via ConfigM
 | Fix | Location | What it fixes |
 |---|---|---|
 | Helpdesk sidebar count | `plugins/zzzz_eea_patches/` view override | `includes(...).count` loading full relations → `JOIN + COUNT(*)` |
-| Banner engine routes | `plugins/zzzz_eea_patches/` view override | Banner URLs failing inside engine scope (AI helper) |
+| Banner engine routes | `plugins/zzzz_eea_patches/` view override | Banner URLs failing inside engine scope (AI helper); templates rebased on Seraph3000 v0.5.3 |

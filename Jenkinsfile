@@ -130,7 +130,9 @@ abort "Expected Ruby 3.4.x, got #{RUBY_VERSION}" unless RUBY_VERSION.start_with?
 abort "Missing advisory-lock implementation" unless ActiveRecord::Base.respond_to?(:with_advisory_lock!)
 ai_helper = Redmine::Plugin.find(:redmine_ai_helper)
 abort "Expected AI Helper 3.9.0, got #{ai_helper.version}" unless ai_helper.version.to_s == "3.9.0"
-puts "Redmine=#{Redmine::VERSION} Rails=#{Rails.version} Ruby=#{RUBY_VERSION} AIHelper=#{ai_helper.version}"
+banner = Redmine::Plugin.find(:redmine_banner)
+abort "Expected Banner 0.5.3, got #{banner.version}" unless banner.version.to_s == "0.5.3"
+puts "Redmine=#{Redmine::VERSION} Rails=#{Rails.version} Ruby=#{RUBY_VERSION} AIHelper=#{ai_helper.version} Banner=#{banner.version}"
 '
 '''
       }
