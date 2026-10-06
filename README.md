@@ -133,6 +133,10 @@ The Dockerfile is intentionally split into clear stages:
 3. `runtime`: copies bundled gems and app config/scripts, wires SolidQueue integration, then sets entrypoint.
 4. `ci-runtime`: extends `runtime` with CI-only test dependencies for Jenkins.
 
+The image installs `redmine_ai_helper` from the upstream `3.9.0` tag.
+See [the AI Helper upgrade notes](docs/patch-notes/2026-10-ai-helper-3.9.0-upgrade.md)
+for dependency changes, plugin migrations and validation steps.
+
 Addon source-of-truth is `addons.cfg` (`type:name:location:archive`).
 Paid plugins/themes are not embedded by default (`EMBED_PRO_ASSETS=0`) and are expected via runtime sync/PVC.
 Share-based runtime sync supports `ADDONS_SYNC_MODE=full` (default replacement) and `ADDONS_SYNC_MODE=additive` (preserve non-manifest plugins while refreshing manifest plugins).
