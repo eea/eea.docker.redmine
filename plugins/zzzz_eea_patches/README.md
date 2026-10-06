@@ -44,6 +44,50 @@ volumes:
 
 ## Testing
 
+### Automatic tracker colors (#309004)
+
+`lib/tracker_colors.rb` resolves a tracker color in this order:
+
+1. Valid explicit Agile color (named colors or HEX).
+2. Existing Taskman ID/name palette for the original trackers 1–13.
+3. A saturated, deterministic color derived from the tracker ID.
+
+Defaults apply to existing unconfigured trackers and newly created trackers,
+without database writes or migrations. Renaming a new tracker keeps its color.
+Explicit gray colors remain supported; automatic colors never use gray/white.
+The generated spectrum is finite: very large tracker sets can have similar hues.
+
+Issue badges/list indicators, HTML Gantt bars, Agile cards in tracker mode,
+cycle-time charts and tracker cumulative-flow charts share this resolver.
+Card backgrounds use a pale tint and a solid tracker stripe. Gantt done/late
+fills retain their existing meaning, with a tracker-colored stripe.
+Other Agile coloring modes and the synthetic mixed-tracker chart series keep
+their existing behavior. Gantt PDF/PNG exports retain Redmine's export colors.
+
+The head hook emits CSS variables and loads plugin assets. The JS observer
+adds rules for trackers introduced through AJAX/ActionCable after page load.
+All patches are idempotently installed through Rails `to_prepare`.
+
+Local checks without Rails:
+
+```bash
+ruby plugins/zzzz_eea_patches/test/unit/tracker_colors_test.rb
+node --test plugins/zzzz_eea_patches/test/tracker_colors_assets_test.js
+```
+
+In a Redmine test instance with Agile enabled:
+
+```bash
+RAILS_ENV=test bundle exec rake redmine:plugins:test PLUGIN=zzzz_eea_patches
+```
+
+Deployment requires rebuilding the image for the plugin code/assets, refreshing
+the A1 override (`ADDONS_SYNC_SKIP_IF_PRESENT=0` during addon sync), and asset
+precompilation. No tracker color backfill is needed. Verify Stream and a new
+tracker in lists, Gantt, Kanban and charts, including a card update without
+reloading the board. Configured Agile colors take priority over old A1 colors
+when those two sources previously disagreed.
+
 After deployment:
 
 1. Access `/projects/nanyt` as user with limited permissions

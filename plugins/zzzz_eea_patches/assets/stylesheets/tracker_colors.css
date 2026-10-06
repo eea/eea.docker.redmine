@@ -1,0 +1,57 @@
+/* Tracker identity is shared by badges, lists, Gantt and Agile charts.
+   The head hook supplies validated colors as CSS variables per tracker. */
+a.issue[class*="taskman-tracker-color-"] {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background-color: var(--taskman-tracker-color, #0065ff);
+  color: var(--taskman-tracker-text, #fff) !important;
+  font-size: 0.85em;
+  font-weight: 600;
+  text-decoration: none;
+  line-height: 1.4;
+}
+
+a.issue[class*="taskman-tracker-color-"]:hover {
+  background-color: var(--taskman-tracker-hover, #0051cc);
+  color: var(--taskman-tracker-hover-text, #fff) !important;
+}
+
+/* Replace Agile's independently colored dot with the badge's own foreground. */
+a.issue[class*="taskman-tracker-color-"]::before {
+  color: inherit;
+}
+
+table.list.issues tr.issue[class*="taskman-tracker-color-"] td.tracker,
+div.issue.details[class*="taskman-tracker-color-"] .tracker.attribute .value,
+div.issue.details[class*="taskman-tracker-color-"] .subject {
+  border-inline-start: 4px solid var(--taskman-tracker-color, #0065ff);
+  padding-inline-start: 6px;
+}
+
+/* Redmine's list ID links do not carry Issue#css_classes themselves. */
+table.list.issues tr.issue[class*="taskman-tracker-color-"]:not(.context-menu-selection) td.id a {
+  background-color: var(--taskman-tracker-color, #0065ff);
+  color: var(--taskman-tracker-text, #fff) !important;
+  border-radius: 10px;
+  padding: 2px 6px;
+}
+
+/* A pale card keeps text readable; the solid stripe carries tracker identity.
+   Closed/minimized cards retain the stripe and existing closed-state behavior. */
+.issue-card.taskman-tracker-card {
+  background-color: var(--taskman-tracker-tint, #dce7ff);
+  border-inline-start: 5px solid var(--taskman-tracker-color, #0065ff);
+}
+
+.task.task_todo[class*="taskman-tracker-color-"] {
+  background-color: var(--taskman-tracker-color, #0065ff);
+  background-image: none;
+  border-color: var(--taskman-tracker-color, #0065ff);
+}
+
+/* Preserve Redmine's done/late fills even when they cover the entire bar. */
+.task.task_done[class*="taskman-tracker-color-"],
+.task.task_late[class*="taskman-tracker-color-"] {
+  box-shadow: 0 2px 0 var(--taskman-tracker-color, #0065ff);
+}
