@@ -58,8 +58,8 @@ AgileQuery.prepend(TaskmanAgileQueryPerfPatch) unless AgileQuery.ancestors.inclu
 end
 
 # redmine_agile issues_ids - pluck IDs instead of loading full AR objects
-# Original: issue_scope.map(&:id)
-# Fixed: issue_scope.pluck(:id)
+# Original: scope.map(&:id)
+# Fixed: scope.pluck(:id), preserving the supplied scope and loaded rows
 # Toggle: TASKMAN_PATCH_AGILE_ISSUES_IDS
 agile_issues_ids_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('AGILE_ISSUES_IDS')
 TaskmanRuntimeCompat.log_patch('AGILE_ISSUES_IDS', agile_issues_ids_patch_enabled)
@@ -69,11 +69,15 @@ Rails.application.config.to_prepare do
 
   unless defined?(TaskmanAgileIssuesIdsPatch)
     module TaskmanAgileIssuesIdsPatch
-      def issues_ids(*args)
-        issue_scope.unscope(:select, :order).pluck(:id)
+      def issues_ids(scope)
+        # The caller passes the filtered/paginated board scope; preserve it.
+        # Loaded relations and arrays avoid an extra query and retain row order.
+        return scope.map(&:id) unless scope.respond_to?(:loaded?) && !scope.loaded?
+
+        scope.pluck(:id)
       rescue ActiveRecord::StatementInvalid => e
         Rails.logger.warn("[AgileIssuesIdsPatch] issues_ids fallback: #{e.class}: #{e.message}")
-        super(*args)
+        super(scope)
       end
     end
   end
@@ -384,32 +388,8 @@ Rails.application.config.to_prepare do
   ContactsController.prepend(TaskmanContactsControllerCanPatch) unless ContactsController.ancestors.include?(TaskmanContactsControllerCanPatch)
 end
 
-# CONTACT_GROUPS_IDS
-contact_groups_ids_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('CONTACT_GROUPS_IDS')
-TaskmanRuntimeCompat.log_patch('CONTACT_GROUPS_IDS', contact_groups_ids_patch_enabled)
-Rails.application.config.to_prepare do
-  next unless contact_groups_ids_patch_enabled
-  next unless defined?(Contact)
-
-  unless defined?(TaskmanContactGroupsIdsPatch)
-    module TaskmanContactGroupsIdsPatch
-      def visible?(usr = nil)
-        usr ||= User.current
-        return true if usr.admin?
-        return false unless usr.logged?
-        projects_with_contacts = Project.joins(:enabled_modules)
-                                        .where(enabled_modules: { name: 'contacts' })
-                                        .where(id: ContactsProject.where(contact_id: id).select(:project_id))
-        projects_with_contacts.any? { |project| usr.allowed_to?(:view_contacts, project) }
-      rescue StandardError => e
-        Rails.logger.warn("[ContactGroupsIdsPatch] visible? fallback: #{e.class}: #{e.message}")
-        super
-      end
-    end
-  end
-
-  Contact.prepend(TaskmanContactGroupsIdsPatch) unless Contact.ancestors.include?(TaskmanContactGroupsIdsPatch)
-end
+# CONTACT_GROUPS_IDS removed: CRM 4.5.0 visibility must retain upstream
+# public/private and author/assignee permission checks.
 
 # AGILE_VERSIONS_QUERY
 agile_versions_query_patch_enabled = TaskmanRuntimeCompat.patch_enabled?('AGILE_VERSIONS_QUERY')

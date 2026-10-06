@@ -35,7 +35,6 @@ All patches are in `config/initializers/runtime_compat.rb`, deployed via ConfigM
 | RESOURCE_BOOKING_BLANK_ISSUE | `TASKMAN_PATCH_RESOURCE_BOOKING_BLANK_ISSUE` | **on** | where(issue_id: nil).pluck vs Ruby select |
 | DEAL_LINES_SUM | `TASKMAN_PATCH_DEAL_LINES_SUM` | **on** | SQL SUM vs loading all lines |
 | CONTACT_NOTES_ATTACHMENTS | `TASKMAN_PATCH_CONTACT_NOTES_ATTACHMENTS` | **on** | notes.pluck(:id) vs notes.map(&:id) |
-| CONTACT_GROUPS_IDS | `TASKMAN_PATCH_CONTACT_GROUPS_IDS` | **on** | Contact visibility — scoped AR query |
 | AGILE_VERSIONS_QUERY | `TASKMAN_PATCH_AGILE_VERSIONS_QUERY` | **on** | Roadmap tracker IDs — pluck vs map |
 | AGILE_SPRINTS_QUERY | `TASKMAN_PATCH_AGILE_SPRINTS_QUERY` | **on** | Sprint project descendants — pluck vs map |
 | TIME_ENTRY_CUSTOM_VALUES | `TASKMAN_PATCH_TIME_ENTRY_CUSTOM_VALUES` | **on** | Preload custom_values to avoid N+1 |
@@ -62,6 +61,7 @@ All patches are in `config/initializers/runtime_compat.rb`, deployed via ConfigM
 
 | Patch | Reason |
 |---|---|
+| CONTACT_GROUPS_IDS | Removed for CRM 4.5.0: replacement visibility ignored upstream public/private and author/assignee rules. |
 | CONTACTS_IDS | Dead code — `def index; super; end` did nothing. Removed. |
 | PROJECT_MEMBERS_COUNT | Dead code — `respond_to?(:member_roles_count_cache)` always false. Removed. |
 

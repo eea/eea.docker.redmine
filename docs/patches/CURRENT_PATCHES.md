@@ -263,8 +263,10 @@ Attachment.where(container_type: 'Note', container_id: notes.pluck(:id))
 
 ---
 
-### CONTACT_GROUPS_IDS
-**Toggle:** `TASKMAN_PATCH_CONTACT_GROUPS_IDS=1`
+### CONTACT_GROUPS_IDS (removed)
+**Status:** Removed in the CRM 4.5.0 upgrade: use upstream public/private and author/assignee visibility rules. The old toggle is ignored.
+
+**Historical toggle:** `TASKMAN_PATCH_CONTACT_GROUPS_IDS=1`
 **Target:** `Contact#visible?`
 
 **Solution:** Narrow project set through SQL JOIN/subquery before checking permissions.
@@ -426,3 +428,10 @@ Upstream macros, popup markup, role labels, SVG icons, external URL filtering
 and session-based hiding are retained. Docker copies these templates into
 the Banner plugin as before. See the
 [upgrade notes](../patch-notes/2026-10-banner-0.5.3-upgrade.md).
+
+
+## RedmineUP September 2026 plugin review
+
+See [the upgrade review](../patch-notes/2026-10-redmineup-upgrade.md) for the
+removed Contacts visibility patch and route guard, corrected Agile IDs scope,
+rebased Helpdesk 4.3.1 sidebar and existing optimizations without upstream call sites.

@@ -132,6 +132,15 @@ ai_helper = Redmine::Plugin.find(:redmine_ai_helper)
 abort "Expected AI Helper 3.9.0, got #{ai_helper.version}" unless ai_helper.version.to_s == "3.9.0"
 banner = Redmine::Plugin.find(:redmine_banner)
 abort "Expected Banner 0.5.3, got #{banner.version}" unless banner.version.to_s == "0.5.3"
+{
+  redmine_agile: "1.7.0", redmine_checklists: "4.1.0",
+  redmine_contacts_helpdesk: "4.3.1", redmine_contacts: "4.5.0",
+  redmine_reporter: "2.1.0", redmine_zenedit: "3.1.0", redmine_resources: "2.1.0"
+}.each do |id, expected|
+  actual = Redmine::Plugin.find(id).version.to_s
+  abort "Expected #{id} #{expected}, got #{actual}" unless actual == expected
+end
+abort "RedmineUP gem >= 1.1.12 required" unless Gem.loaded_specs.fetch("redmineup").version >= Gem::Version.new("1.1.12")
 puts "Redmine=#{Redmine::VERSION} Rails=#{Rails.version} Ruby=#{RUBY_VERSION} AIHelper=#{ai_helper.version} Banner=#{banner.version}"
 '
 '''

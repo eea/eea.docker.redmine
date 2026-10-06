@@ -62,11 +62,9 @@ class HelpdeskPerformancePatchTest < ActiveSupport::TestCase
     skip 'HelpdeskTicket not available' unless klass && klass.table_exists?
 
     time = Benchmark.measure do
-      count = klass.joins(:issue)
-                   .where(issues: { project_id: @project.id })
-                   .where.not(contact_id: nil)
-                   .distinct
-                   .count(:contact_id)
+      count = Contact.joins(:tickets)
+                     .where(issues: { project_id: @project.id })
+                     .distinct.count(:id)
       assert count >= 0, 'Count should be non-negative'
     end
 

@@ -158,6 +158,7 @@ services:
       MEMCACHE_EXPIRES_IN: "3600"
       RAILS_SERVE_STATIC_FILES: "1"
       TASKMAN_PATCH_AGILE_QUERY: "1"
+      TASKMAN_PATCH_AGILE_ISSUES_IDS: "1"
       TZ: UTC
     volumes:
     - addons_data:/addons:ro
@@ -214,6 +215,7 @@ services:
       MEMCACHE_EXPIRES_IN: "3600"
       RAILS_SERVE_STATIC_FILES: "1"
       TASKMAN_PATCH_AGILE_QUERY: "1"
+      TASKMAN_PATCH_AGILE_ISSUES_IDS: "1"
       TZ: UTC
     volumes:
     - addons_data:/addons:ro

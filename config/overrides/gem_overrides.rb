@@ -14,12 +14,13 @@ gem 'with_advisory_lock'
 
 # RedmineUP/pro-plugin runtime dependencies must be present in image
 # even when addons are synced at runtime from PVC/share.
-# Track latest 1.1.x line; runtime route conflict is handled by a build-time
-# compatibility patch in Dockerfile.
-gem 'redmineup', '~> 1.1.5'
+# New RedmineUP plugin releases require at least 1.1.12; stay on the 1.1.x line.
+gem 'redmineup', '~> 1.1.12'
 gem 'redmine_plugin_kit'
 gem 'vcard'
 gem 'wicked_pdf', '~> 1.1.0'
+# Reporter Gemfile requires the PDF binary even when plugin Gemfiles are removed at sync.
+gem 'wkhtmltopdf-binary'
 gem 'liquid', '~> 4.0'
 gem 'acts-as-taggable-on', '~> 5.0'
 gem 'tanuki_emoji'
