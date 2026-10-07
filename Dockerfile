@@ -45,6 +45,7 @@ COPY config/lib/ ${REDMINE_PATH}/config/lib/
 COPY config/build/install_pro_assets.sh /usr/local/bin/install_pro_assets.sh
 COPY config/build/compose_gemfile_from_plugins.rb /usr/local/bin/compose_gemfile_from_plugins.rb
 COPY config/build/install_core_plugins.sh /usr/local/bin/install_core_plugins.sh
+COPY config/build/additionals_query_prepend.patch ${REDMINE_PATH}/config/build/additionals_query_prepend.patch
 COPY config/build/install_engine_integrations.rb /usr/local/bin/install_engine_integrations.rb
 
 # Stage 1: OS packages + open-source plugin checkout.

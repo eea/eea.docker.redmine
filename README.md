@@ -144,6 +144,10 @@ for dependency changes, plugin migrations and validation steps.
 See [the RedmineUP upgrade notes](docs/patch-notes/2026-10-redmineup-upgrade.md)
 for the updated plugin versions, patch review and forced addon refresh before deployment.
 
+The image patches Additionals 4.5.0 to prevent query filter recursion with
+Redmine Contacts 4.5.0. See [the compatibility fix](docs/patch-notes/2026-10-additionals-query-compatibility.md)
+for validation and deployment requirements.
+
 Addon source-of-truth is `addons.cfg` (`type:name:location:archive`).
 Paid plugins/themes are not embedded by default (`EMBED_PRO_ASSETS=0`) and are expected via runtime sync/PVC.
 Share-based runtime sync supports `ADDONS_SYNC_MODE=full` (default replacement) and `ADDONS_SYNC_MODE=additive` (preserve non-manifest plugins while refreshing manifest plugins).
