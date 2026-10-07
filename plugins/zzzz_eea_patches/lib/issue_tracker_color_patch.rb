@@ -8,7 +8,11 @@ module IssueTrackerColorPatch
     require_dependency 'issue'
     require_dependency 'tracker'
     require_dependency 'redmine/helpers/gantt'
-    require_dependency 'agile_boards_helper' if Redmine::Plugin.installed?(:redmine_agile)
+    if Redmine::Plugin.installed?(:redmine_agile) && !defined?(AgileBoardsHelper)
+      # Plugin helper directories need not be present on Ruby's $LOAD_PATH.
+      agile_directory = Redmine::Plugin.find(:redmine_agile).directory
+      require_dependency File.join(agile_directory, 'app', 'helpers', 'agile_boards_helper.rb')
+    end
     EeaPatches::TrackerColorPatches.apply!
   end
 

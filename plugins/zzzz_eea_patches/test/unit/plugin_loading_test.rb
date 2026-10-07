@@ -4,6 +4,8 @@
 require 'minitest/autorun'
 require 'open3'
 require 'rbconfig'
+require 'tmpdir'
+require 'fileutils'
 
 class PluginLoadingTest < Minitest::Test
   LIB_PATH = File.expand_path('../../lib', __dir__)
@@ -30,7 +32,8 @@ class PluginLoadingTest < Minitest::Test
         class ViewListener; end
       end
       module Plugin
-        def self.installed?(_name); false; end
+        def self.installed?(_name); ARGV.fetch(1).start_with?('plugin_init_agile'); end
+        def self.find(_name); Struct.new(:directory).new(ARGV.fetch(2)); end
         def self.register(*); end
       end
       module Helpers
@@ -41,10 +44,17 @@ class PluginLoadingTest < Minitest::Test
     class Tracker
       def self.reflect_on_association(_name); nil; end
     end
-    def require_dependency(_name); end
+    def require_dependency(name)
+      # Plugin app/helpers can be autoloadable without being on $LOAD_PATH.
+      raise LoadError, "cannot load such file -- #{name}" if name == 'agile_boards_helper'
+      require name if name.start_with?('/')
+    end
 
     lib = ARGV.fetch(0)
-    if ARGV.fetch(1) == 'plugin_init'
+    if ARGV.fetch(1) == 'plugin_init_agile_preloaded'
+      module AgileBoardsHelper; end
+    end
+    if ARGV.fetch(1).start_with?('plugin_init')
       # Redmine loads init.rb inside its own to_prepare callback. Newly added
       # callbacks do not run in the already compiled callback chain.
       $LOADED_FEATURES << 'redmine.rb'
@@ -52,6 +62,11 @@ class PluginLoadingTest < Minitest::Test
       Rails.application.config.callbacks.dup.each { |callback| Rails.application.config.instance_exec(&callback) }
       raise 'Issue colors missing on first boot' unless Issue.ancestors.include?(EeaPatches::TrackerColorPatches::IssueColors)
       raise 'Gantt colors missing on first boot' unless Redmine::Helpers::Gantt.ancestors.include?(EeaPatches::TrackerColorPatches::GanttColors)
+      if Redmine::Plugin.installed?(:redmine_agile)
+        raise 'Agile colors missing on first boot' unless AgileBoardsHelper.ancestors.include?(EeaPatches::TrackerColorPatches::BoardColors)
+        2.times { IssueTrackerColorPatch.apply! }
+        raise 'Agile patch duplicated' unless AgileBoardsHelper.ancestors.count(EeaPatches::TrackerColorPatches::BoardColors) == 1
+      end
       puts 'Plugin constants and prepare callbacks loaded successfully'
       exit
     end
@@ -97,10 +112,23 @@ class PluginLoadingTest < Minitest::Test
     check_loading('plugin_init')
   end
 
+  def test_first_boot_with_agile_helper_already_loaded
+    check_loading('plugin_init_agile_preloaded')
+  end
+
+  def test_first_boot_with_agile_helpers_outside_load_path
+    Dir.mktmpdir('taskman-agile-helper') do |directory|
+      helpers = File.join(directory, 'app', 'helpers')
+      FileUtils.mkdir_p(helpers)
+      File.write(File.join(helpers, 'agile_boards_helper.rb'), "module AgileBoardsHelper; end\n")
+      check_loading('plugin_init_agile_absolute', directory)
+    end
+  end
+
   private
 
-  def check_loading(order)
-    output, status = Open3.capture2e(RbConfig.ruby, '-e', BOOT_CHECK, LIB_PATH, order)
+  def check_loading(order, plugin_directory = '')
+    output, status = Open3.capture2e(RbConfig.ruby, '-e', BOOT_CHECK, LIB_PATH, order, plugin_directory)
     assert status.success?, output
     assert_includes output, 'Plugin constants and prepare callbacks loaded successfully'
   end

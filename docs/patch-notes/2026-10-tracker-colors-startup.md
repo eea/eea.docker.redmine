@@ -33,8 +33,8 @@ in isolated subprocesses with Rails/Redmine dependencies stubbed. It covers
 explicit loading before autoload registration and autoload before explicit
 loading. Both cases reproduced the original failure and pass after correction.
 The prepare callback runs twice to check that Issue and Gantt wrappers are not
-duplicated. The first-boot regression described below brings this check to
-3 tests, 9 assertions.
+duplicated. First-boot regressions, including Agile helper loading, bring this
+check to 5 tests, 15 assertions.
 
 The standalone tracker color suite passes: 11 tests, 2,520 assertions. Rails
 integration coverage now explicitly calls `Zeitwerk::Loader.eager_load_all`.
@@ -82,6 +82,28 @@ served. Verify reference badges on an issue page, a wiki and Gantt, including
 closed references, hover/visited states and a new tracker. Browser DOM output
 is still needed to confirm that a particular deployed page has the class,
 stylesheet and generated palette; screenshots alone do not expose those values.
+
+## Migration startup with Agile installed
+
+The `6.1.5-1.7` migration hook failed while loading the Rails environment, before
+database migrations executed, with `LoadError: cannot load such file --
+agile_boards_helper`. Immediate badge installation exposed an unconditional
+short-name require: plugin helper directories need not be on Ruby's `$LOAD_PATH`,
+even when the helper constant has already been loaded by Agile.
+
+The bootstrap now reuses `AgileBoardsHelper` when defined. Otherwise, it loads
+`app/helpers/agile_boards_helper.rb` by absolute path from the registered Agile
+plugin directory. Core issue/Gantt patches still install without Agile. Missing
+files in an installed plugin continue to raise an error rather than silently
+disabling board colors.
+
+Two isolated first-boot regressions reproduce the original LoadError, then
+verify successful, idempotent installation with a preloaded helper and with a
+helper file outside `$LOAD_PATH`. These checks stub framework dependencies;
+the full Rails migration/container checks remain required before release.
+
+Rebuild the image and rerun the migration hook with the corrected plugin code.
+Increasing Helm's timeout does not address this startup LoadError.
 
 ## Deployment configuration review
 

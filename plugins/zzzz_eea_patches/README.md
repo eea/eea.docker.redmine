@@ -70,6 +70,9 @@ Patches are installed immediately during plugin initialization and idempotently
 reapplied through Rails `to_prepare`. Redmine itself loads plugin initializers
 inside a prepare callback; deferring installation to a newly registered callback
 can leave the first production boot without the issue color classes.
+When Agile is installed, initialization reuses its loaded board helper or loads
+it from the registered plugin directory by absolute path. This also supports
+migration jobs where plugin helper directories are outside Ruby's `$LOAD_PATH`.
 
 Badge selectors apply to issue reference links throughout Redmine (including
 wikis, checklists, related issues and Gantt labels). Visited/hovered links retain
