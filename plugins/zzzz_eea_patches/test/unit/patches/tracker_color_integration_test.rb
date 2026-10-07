@@ -5,6 +5,10 @@ require File.expand_path('../../test_helper', __dir__)
 class TrackerColorIntegrationTest < ActiveSupport::TestCase
   fixtures :trackers, :issues
 
+  def test_all_plugin_loaders_support_eager_loading
+    assert_nothing_raised { Zeitwerk::Loader.eager_load_all }
+  end
+
   def setup
     @tracker = Tracker.create!(name: 'Automatic tracker color test', default_status: IssueStatus.first)
   end

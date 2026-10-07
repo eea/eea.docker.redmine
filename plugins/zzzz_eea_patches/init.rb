@@ -14,10 +14,10 @@ end
 # Wire Rack::MiniProfiler authorization at plugin load time.
 # Runs after Rails initialization but before first request,
 # taking precedence over config/initializers/rack_mini_profiler.rb.
-require_relative 'lib/mini_profiler_patch'
+require_relative 'lib/eea_patches/mini_profiler_patch'
 EeaPatches::MiniProfilerPatch.configure!
 
-require_relative 'lib/mini_profiler_authorization_patch'
+require_relative 'lib/eea_patches/mini_profiler_authorization_patch'
 EeaPatches::MiniProfilerAuthorizationPatch.apply!
 
 # Shared automatic tracker colors for A1, Gantt, lists and Agile.

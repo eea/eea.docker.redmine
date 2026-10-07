@@ -32,6 +32,3 @@ module EeaPatches
     end
   end
 end
-
-# Zeitwerk expects top-level MiniProfilerAuthorizationPatch for this file path.
-MiniProfilerAuthorizationPatch = EeaPatches::MiniProfilerAuthorizationPatch unless defined?(::MiniProfilerAuthorizationPatch)

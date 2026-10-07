@@ -11,6 +11,7 @@ This repository documentation is intentionally small and task-oriented.
 - `patch-notes/2026-10-banner-0.5.3-upgrade.md` — Seraph3000 fork, routing overrides and migration checks
 - `patch-notes/2026-10-redmineup-upgrade.md` — RedmineUP versions, patch/dependency review and release rollout
 - `patch-notes/2026-10-additionals-query-compatibility.md` — filter and column compatibility fixes for Additionals, Contacts and Checklists
+- `patch-notes/2026-10-tracker-colors-startup.md` — production loader correction and stale runtime ConfigMap checks
 - `patches/PATCHES.md` — canonical runtime patch inventory and changelog
 - `patch-notes/2026-05-runtime-and-plugin-developer-notes.md` — detailed patch notes for maintainers/plugin developers
 

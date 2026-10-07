@@ -1,7 +1,7 @@
 # config/initializers/rack_mini_profiler.rb
 #
 # FALLBACK initializer for Rack::MiniProfiler authorization.
-# PRIMARY configuration is done by plugins/zzzz_eea_patches/lib/mini_profiler_patch.rb.
+# PRIMARY configuration is done by plugins/zzzz_eea_patches/lib/eea_patches/mini_profiler_patch.rb.
 # This file only activates when the plugin's MiniProfilerPatch module is NOT present.
 #
 # If the plugin is present, this file exits early (line 12 below) to avoid

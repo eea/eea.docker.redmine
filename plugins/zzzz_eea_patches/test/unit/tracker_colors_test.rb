@@ -2,8 +2,8 @@
 
 # Runs without Rails: ruby plugins/zzzz_eea_patches/test/unit/tracker_colors_test.rb
 require 'minitest/autorun'
-require_relative '../../lib/tracker_colors'
-require_relative '../../lib/tracker_color_patches'
+require_relative '../../lib/eea_patches/tracker_colors'
+require_relative '../../lib/eea_patches/tracker_color_patches'
 
 class TrackerColorsTest < Minitest::Test
   Colors = EeaPatches::TrackerColors

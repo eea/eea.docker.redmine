@@ -1,4 +1,4 @@
-# plugins/zzzz_eea_patches/lib/mini_profiler_patch.rb
+# plugins/zzzz_eea_patches/lib/eea_patches/mini_profiler_patch.rb
 #
 # Per-request authorization for Rack::MiniProfiler.
 # Only admin users (and optionally specific users/groups) see the profiler overlay.
@@ -97,7 +97,3 @@ module EeaPatches
     end
   end
 end
-
-# Zeitwerk expects top-level MiniProfilerPatch for this file path.
-# Alias to namespaced implementation to avoid eager-load NameError.
-MiniProfilerPatch = EeaPatches::MiniProfilerPatch unless defined?(::MiniProfilerPatch)

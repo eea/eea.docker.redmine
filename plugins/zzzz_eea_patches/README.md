@@ -46,7 +46,7 @@ volumes:
 
 ### Automatic tracker colors (#309004)
 
-`lib/tracker_colors.rb` resolves a tracker color in this order:
+`lib/eea_patches/tracker_colors.rb` resolves a tracker color in this order:
 
 1. Valid explicit Agile color (named colors or HEX).
 2. Existing Taskman ID/name palette for the original trackers 1–13.
