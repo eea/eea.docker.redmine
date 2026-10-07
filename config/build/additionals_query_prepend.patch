@@ -41,3 +41,31 @@
            values = filters&.dig(field, :values) || []
            initialize_user_values_for_select2 field, values
  
+--- a/lib/additionals/patches/queries_helper_patch.rb
++++ b/lib/additionals/patches/queries_helper_patch.rb
+@@ -6,10 +6,7 @@
+       extend ActiveSupport::Concern
+ 
+       included do
+-        include InstanceMethods
+-
+-        alias_method :column_value_without_category_link, :column_value
+-        alias_method :column_value, :column_value_with_category_link
++        prepend InstanceMethods
+       end
+ 
+       module InstanceMethods
+@@ -18,11 +15,11 @@
+         # rendering when link_to_issue_category is not available in the current
+         # helper context. The helper itself returns the plain category name when
+         # the issue_link_category setting is disabled.
+-        def column_value_with_category_link(column, item, value)
++        def column_value(column, item, value)
+           if column.name == :category && item.is_a?(Issue) && respond_to?(:link_to_issue_category)
+             link_to_issue_category item, category: value
+           else
+-            column_value_without_category_link column, item, value
++            super(column, item, value)
+           end
+         end
+       end

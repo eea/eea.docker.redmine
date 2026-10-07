@@ -5,8 +5,9 @@ All runtime patches are in `config/initializers/runtime_compat.rb`, deployed via
 For the patch inventory/status table see `docs/patches/PATCHES.md`.
 
 Build-time source patches are separate from the runtime toggles above.
-`config/build/additionals_query_prepend.patch` fixes query recursion between
-Additionals 4.5.0 and Redmine Contacts 4.5.0 and requires rebuilding the image.
+`config/build/additionals_query_prepend.patch` fixes query filter recursion and
+column rendering between Additionals 4.5.0, Redmine Contacts 4.5.0 and Checklists
+4.1.0 and requires rebuilding the image.
 See [the compatibility notes](../patch-notes/2026-10-additionals-query-compatibility.md).
 
 ---

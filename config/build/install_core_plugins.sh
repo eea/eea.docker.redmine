@@ -21,7 +21,7 @@ cd ..
 git clone -b v0.5.3 https://github.com/seraph3000/redmine_banner.git "${REDMINE_PATH}/plugins/redmine_banner"
 git clone https://github.com/alecghica/redmine_mermaid.git "${REDMINE_PATH}/plugins/redmine_mermaid"
 git clone -b 4.5.0 https://github.com/alphanodes/additionals.git "${REDMINE_PATH}/plugins/additionals"
-# Additionals alias wrappers recurse with the RedmineUP prepend patches.
+# Use prepend for Additionals filters and columns alongside RedmineUP patches.
 git -C "${REDMINE_PATH}/plugins/additionals" apply "${REDMINE_PATH}/config/build/additionals_query_prepend.patch"
 # Backward-compatible patch for releases that still use absolute require.
 if [ -f "${REDMINE_PATH}/plugins/additionals/init.rb" ]; then

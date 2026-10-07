@@ -144,8 +144,9 @@ for dependency changes, plugin migrations and validation steps.
 See [the RedmineUP upgrade notes](docs/patch-notes/2026-10-redmineup-upgrade.md)
 for the updated plugin versions, patch review and forced addon refresh before deployment.
 
-The image patches Additionals 4.5.0 to prevent query filter recursion with
-Redmine Contacts 4.5.0. See [the compatibility fix](docs/patch-notes/2026-10-additionals-query-compatibility.md)
+The image patches Additionals 4.5.0 to prevent query filter recursion and column
+rendering errors with Redmine Contacts 4.5.0 and Checklists 4.1.0.
+See [the compatibility fix](docs/patch-notes/2026-10-additionals-query-compatibility.md)
 for validation and deployment requirements.
 
 Addon source-of-truth is `addons.cfg` (`type:name:location:archive`).
