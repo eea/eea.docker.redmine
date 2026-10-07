@@ -36,7 +36,7 @@ The prepare callback runs twice to check that Issue and Gantt wrappers are not
 duplicated. First-boot regressions, including Agile helper loading, bring this
 check to 5 tests, 15 assertions.
 
-The standalone tracker color suite passes: 11 tests, 2,520 assertions. Rails
+The standalone tracker color suite passes: 13 tests, 6,659 assertions. Rails
 integration coverage now explicitly calls `Zeitwerk::Loader.eager_load_all`.
 Full Rails/container tests have not run locally because Docker socket access is
 unavailable. The standalone check does not replace a real production boot check.
@@ -71,8 +71,9 @@ coverage includes references with and without the tracker label. Shared CSS
 selectors now cover link states explicitly and preserve closed-issue
 strikethrough regardless of stylesheet ordering.
 
-The palette generator is unchanged: new unconfigured trackers receive saturated,
-stable colors, while valid explicit Agile colors retain priority. No separate
+At this stage the palette generator was unchanged: new unconfigured trackers
+received saturated, stable colors, while valid explicit Agile colors retained
+priority. The palette correction below supersedes that behavior. No separate
 per-tracker badge palette or database backfill is introduced. The five existing
 JavaScript checks pass against the Ruby palette; their Ruby require path is
 updated for the namespace directory.
@@ -104,6 +105,36 @@ the full Rails migration/container checks remain required before release.
 
 Rebuild the image and rerun the migration hook with the corrected plugin code.
 Increasing Helm's timeout does not address this startup LoadError.
+
+## Restore the original badge palette and white text
+
+The working `6.1.5-1.7` badge patch revealed a visual regression compared with
+the original Taskman theme. Agile's stored named colors took precedence over
+the legacy palette: Bug became pure red, Feature pure blue, Task light green,
+and Support yellow. Automatic foreground selection also switched several
+badges to black text.
+
+The shared resolver now prioritizes the known original tracker ID/name palette:
+Bug `#e5123d`, Feature `#0065ff`, Task `#614ba6`, Support `#e67e22`, and the
+other existing ID overrides. Explicit Agile colors remain supported for other
+trackers. No database color records are changed.
+
+Generated colors retain deterministic hue spacing but use a more tempered
+range. Backgrounds are darkened when necessary to provide at least 4.5:1
+contrast against white text, with no automatic gray/white fallback. Original
+palette colors and explicit user colors remain exact; their contrast is not
+covered by the generated-color guarantee.
+
+Server-rendered CSS variables and the AJAX/ActionCable observer now always
+use white foregrounds for badges and hover states. The shared palette still
+drives issue links, list indicators, HTML Gantt, Agile tracker-mode cards and
+tracker charts. Pale card backgrounds and Gantt progress/late overlays remain.
+
+Standalone regressions cover conflicting stored Agile colors for the original
+trackers, stable tempered defaults, white badge/hover text, and contrast across
+1,000 generated tracker IDs. All five JavaScript checks also verify agreement
+with server-rendered rules. Rebuild the image and refresh compiled assets;
+verify the deployed badge appearance against the reference screenshot.
 
 ## Deployment configuration review
 

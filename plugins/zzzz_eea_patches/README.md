@@ -48,13 +48,19 @@ volumes:
 
 `lib/eea_patches/tracker_colors.rb` resolves a tracker color in this order:
 
-1. Valid explicit Agile color (named colors or HEX).
-2. Existing Taskman ID/name palette for the original trackers 1–13.
-3. A saturated, deterministic color derived from the tracker ID.
+1. Existing Taskman ID/name palette for known original trackers 1–13.
+2. Valid explicit Agile color (named colors or HEX) for other trackers.
+3. A tempered, deterministic color derived from the tracker ID.
 
 Defaults apply to existing unconfigured trackers and newly created trackers,
 without database writes or migrations. Renaming a new tracker keeps its color.
 Explicit gray colors remain supported; automatic colors never use gray/white.
+The original Bug/Feature/Task/Support palette takes precedence over Agile's
+stored colors without changing those records. Badge text is always white,
+including hover/visited states and list ID links. Generated backgrounds are
+darkened as needed for at least 4.5:1 contrast with white. Original colors and
+explicit user colors are preserved exactly, so that guarantee applies only to
+generated colors.
 The generated spectrum is finite: very large tracker sets can have similar hues.
 
 Issue badges/list indicators, HTML Gantt bars, Agile cards in tracker mode,

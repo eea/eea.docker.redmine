@@ -18,14 +18,6 @@
       return rgb(hex).map(channel => Math.round(channel * (1 - weight) + target * weight).toString(16).padStart(2, "0")).join("");
     }
 
-    function foreground(hex) {
-      const linear = rgb(hex).map(channel => {
-        const value = channel / 255;
-        return value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
-      });
-      return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722 > 0.179 ? "#000000" : "#ffffff";
-    }
-
     function addRules(element) {
       if (element.nodeType !== 1) return;
       for (const token of element.classList) {
@@ -35,9 +27,9 @@
         const hover = mix(hex, 0, 0.2);
         style.sheet.insertRule("." + prefix + hex + " {" +
           "--taskman-tracker-color:#" + hex + ";" +
-          "--taskman-tracker-text:" + foreground(hex) + ";" +
+          "--taskman-tracker-text:#ffffff;" +
           "--taskman-tracker-hover:#" + hover + ";" +
-          "--taskman-tracker-hover-text:" + foreground(hover) + ";" +
+          "--taskman-tracker-hover-text:#ffffff;" +
           "--taskman-tracker-tint:#" + mix(hex, 255, 0.85) + ";}", style.sheet.cssRules.length);
         known.add(hex);
       }

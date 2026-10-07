@@ -32,14 +32,19 @@ module EeaPatches
     end
 
     def for_tracker(tracker)
+      # Preserve the original Taskman palette across all views, even when Agile
+      # stores a different named color for these existing trackers.
+      name = tracker.name.to_s.downcase.gsub(/[^a-z0-9]+/, '-').gsub(/\A-|-\z/, '')
+      legacy_name = LEGACY_NAMES[name] if tracker.id && tracker.id <= 13
+      legacy_color = LEGACY_IDS[tracker.id] || legacy_name
+      return legacy_color if legacy_color
+
       record = tracker.agile_color if tracker.respond_to?(:agile_color)
       explicit = record.color if record
       configured = normalize(explicit)
       return configured if configured
 
-      name = tracker.name.to_s.downcase.gsub(/[^a-z0-9]+/, '-').gsub(/\A-|-\z/, '')
-      legacy_name = LEGACY_NAMES[name] if tracker.id && tracker.id <= 13
-      LEGACY_IDS[tracker.id] || legacy_name || generated(tracker.id || "name:#{tracker.name}")
+      generated(tracker.id || "name:#{tracker.name}")
     end
 
     def generated(identity)
@@ -47,7 +52,7 @@ module EeaPatches
       # trackers without Ruby's process-dependent String#hash.
       number = identity.is_a?(Integer) ? identity : Digest::SHA256.hexdigest(identity.to_s)[0, 12].to_i(16)
       hue = (number * 137.50776405003785) % 360 / 60.0
-      chroma = 0.50
+      chroma = 0.34
       secondary = chroma * (1 - (hue % 2 - 1).abs)
       channels = case hue.floor
                  when 0 then [chroma, secondary, 0]
@@ -57,7 +62,10 @@ module EeaPatches
                  when 4 then [secondary, 0, chroma]
                  else [chroma, 0, secondary]
                  end
-      '#%02x%02x%02x' % channels.map { |channel| ((channel + 0.14) * 255).round }
+      color = '#%02x%02x%02x' % channels.map { |channel| ((channel + 0.18) * 255).round }
+      # Temper the palette and keep white badge text readable on every hue.
+      color = mix(color, 0, 0.04) while luminance(color) > 0.18
+      color
     end
 
     def rgb(color)
@@ -76,10 +84,6 @@ module EeaPatches
       channels.zip([0.2126, 0.7152, 0.0722]).sum { |channel, weight| channel * weight }
     end
 
-    def foreground(color)
-      luminance(color) > 0.179 ? '#000000' : '#ffffff'
-    end
-
     def css_class(tracker)
       "taskman-tracker-color-#{for_tracker(tracker).delete_prefix('#')}"
     end
@@ -88,9 +92,9 @@ module EeaPatches
       hover = mix(color, 0, 0.2)
       ".taskman-tracker-color-#{color.delete_prefix('#')} {" \
         "--taskman-tracker-color:#{color};" \
-        "--taskman-tracker-text:#{foreground(color)};" \
+        "--taskman-tracker-text:#ffffff;" \
         "--taskman-tracker-hover:#{hover};" \
-        "--taskman-tracker-hover-text:#{foreground(hover)};" \
+        "--taskman-tracker-hover-text:#ffffff;" \
         "--taskman-tracker-tint:#{mix(color, 255, 0.85)};}"
     end
   end

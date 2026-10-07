@@ -19,7 +19,8 @@ class TrackerColorsTest < Minitest::Test
       record = tracker(id, "Tracker #{id}")
       color = Colors.for_tracker(record)
       assert_match(/\A#[0-9a-f]{6}\z/, color)
-      assert_operator Colors.rgb(color).max - Colors.rgb(color).min, :>, 100
+      assert_operator Colors.rgb(color).max - Colors.rgb(color).min, :>=, 60
+      assert_operator Colors.rgb(color).max, :<=, 133
       assert_equal color, Colors.for_tracker(tracker(id, 'Renamed'))
       assert_equal color, Colors.for_tracker(tracker(id, 'Task'))
       color
@@ -27,11 +28,21 @@ class TrackerColorsTest < Minitest::Test
     assert_equal colors.size, colors.uniq.size
   end
 
-  def test_configured_named_and_hex_colors_override_legacy_colors
-    assert_equal '#0000ff', Colors.for_tracker(tracker(7, 'Bug', 'blue'))
-    assert_equal '#abcdef', Colors.for_tracker(tracker(7, 'Bug', '#ABCDEF'))
-    assert_equal '#aabbcc', Colors.for_tracker(tracker(7, 'Bug', '#abc'))
+  def test_configured_colors_remain_supported_for_nonlegacy_trackers
+    assert_equal '#0000ff', Colors.for_tracker(tracker(14, 'Stream', 'blue'))
+    assert_equal '#abcdef', Colors.for_tracker(tracker(14, 'Stream', '#ABCDEF'))
+    assert_equal '#aabbcc', Colors.for_tracker(tracker(14, 'Stream', '#abc'))
     assert_equal '#808080', Colors.for_tracker(tracker(14, 'Stream', 'gray'))
+  end
+
+  def test_existing_palette_wins_over_agile_colors
+    { 'Bug' => [1, 'red', '#e5123d'], 'Feature' => [2, 'blue', '#0065ff'],
+      'Task' => [4, 'lightgreen', '#614ba6'], 'Support' => [3, 'yellow', '#e67e22'] }.each do |name, (id, configured, expected)|
+      assert_equal expected, Colors.for_tracker(tracker(id, name, configured))
+      assert_equal expected, Colors.for_tracker(tracker(id, name, '#abcdef'))
+    end
+    assert_equal '#008000', Colors.for_tracker(tracker(7, 'Other name', 'blue'))
+    assert_equal '#d35400', Colors.for_tracker(tracker(13, 'Other name', '#fff'))
   end
 
   def test_missing_colors_keep_existing_taskman_palette
@@ -61,13 +72,20 @@ class TrackerColorsTest < Minitest::Test
     end
   end
 
-  def test_badges_and_hover_have_accessible_text_contrast
+  def test_badges_and_hover_always_have_white_text
     colors = Colors::NAMED_COLORS.values + Colors::LEGACY_NAMES.values +
              Colors::LEGACY_IDS.values + (1..1000).map { |id| Colors.generated(id) }
     colors.each do |color|
+      assert_includes Colors.css_rule(color), '--taskman-tracker-text:#ffffff;'
+      assert_includes Colors.css_rule(color), '--taskman-tracker-hover-text:#ffffff;'
+    end
+  end
+
+  def test_generated_colors_and_hover_have_contrast_for_white_text
+    (1..1000).each do |id|
+      color = Colors.generated(id)
       [color, Colors.mix(color, 0, 0.2)].each do |background|
-        light, dark = [Colors.luminance(background), Colors.luminance(Colors.foreground(background))].sort.reverse
-        assert_operator (light + 0.05) / (dark + 0.05), :>=, 4.5, background
+        assert_operator 1.05 / (Colors.luminance(background) + 0.05), :>=, 4.5, background
       end
     end
   end

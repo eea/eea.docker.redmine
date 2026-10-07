@@ -48,6 +48,8 @@ test("late AJAX colors match the server palette, including text and hover contra
     const node = element(["issue-card", "taskman-tracker-color-" + hex]);
     audit.mutate([{ type: "childList", addedNodes: [element([], [node])] }]);
     assert.equal(audit.rules.at(-1), rule);
+    assert.match(rule, /--taskman-tracker-text:#ffffff;/);
+    assert.match(rule, /--taskman-tracker-hover-text:#ffffff;/);
   }
   assert.equal(audit.rules.length, Object.keys(samples).length);
 });
