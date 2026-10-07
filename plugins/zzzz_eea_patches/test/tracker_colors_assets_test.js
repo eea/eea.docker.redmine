@@ -11,7 +11,7 @@ const { execFileSync } = require("node:child_process");
 const source = fs.readFileSync(path.join(__dirname, "../assets/javascripts/tracker_colors.js"), "utf8");
 const samples = process.env.TASKMAN_COLOR_RULES_FILE ?
   JSON.parse(fs.readFileSync(process.env.TASKMAN_COLOR_RULES_FILE, "utf8")) : JSON.parse(execFileSync("ruby", [
-  "-rjson", "-r" + path.join(__dirname, "../lib/tracker_colors.rb"), "-e",
+  "-rjson", "-r" + path.join(__dirname, "../lib/eea_patches/tracker_colors.rb"), "-e",
   "c = EeaPatches::TrackerColors; colors = c::NAMED_COLORS.values + c::LEGACY_NAMES.values + (14..100).map { |id| c.generated(id) }; puts JSON.generate(colors.to_h { |color| [color.delete_prefix('#'), c.css_rule(color)] })"
 ], { encoding: "utf8" }));
 

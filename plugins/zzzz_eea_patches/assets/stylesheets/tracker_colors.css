@@ -1,6 +1,10 @@
 /* Tracker identity is shared by badges, lists, Gantt and Agile charts.
    The head hook supplies validated colors as CSS variables per tracker. */
-a.issue[class*="taskman-tracker-color-"] {
+a.issue[class*="taskman-tracker-color-"],
+a.issue[class*="taskman-tracker-color-"]:link,
+a.issue[class*="taskman-tracker-color-"]:visited,
+a.issue[class*="taskman-tracker-color-"]:hover,
+a.issue[class*="taskman-tracker-color-"]:active {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 10px;
@@ -15,6 +19,17 @@ a.issue[class*="taskman-tracker-color-"] {
 a.issue[class*="taskman-tracker-color-"]:hover {
   background-color: var(--taskman-tracker-hover, #0051cc);
   color: var(--taskman-tracker-hover-text, #fff) !important;
+}
+
+/* Keep closed references struck through even when the plugin stylesheet is
+   loaded after the theme's closed-issue rules. */
+a.issue[class*="taskman-tracker-color-"].closed,
+a.issue[class*="taskman-tracker-color-"].closed:link,
+a.issue[class*="taskman-tracker-color-"].closed:visited,
+a.issue[class*="taskman-tracker-color-"].closed:hover,
+a.issue[class*="taskman-tracker-color-"].closed:active {
+  text-decoration: line-through;
+  text-decoration-color: currentColor;
 }
 
 /* Replace Agile's independently colored dot with the badge's own foreground. */

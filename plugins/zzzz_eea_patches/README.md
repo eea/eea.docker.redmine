@@ -66,12 +66,21 @@ their existing behavior. Gantt PDF/PNG exports retain Redmine's export colors.
 
 The head hook emits CSS variables and loads plugin assets. The JS observer
 adds rules for trackers introduced through AJAX/ActionCable after page load.
-All patches are idempotently installed through Rails `to_prepare`.
+Patches are installed immediately during plugin initialization and idempotently
+reapplied through Rails `to_prepare`. Redmine itself loads plugin initializers
+inside a prepare callback; deferring installation to a newly registered callback
+can leave the first production boot without the issue color classes.
+
+Badge selectors apply to issue reference links throughout Redmine (including
+wikis, checklists, related issues and Gantt labels). Visited/hovered links retain
+the badge, and closed links retain their strikethrough. They all use the shared
+generic palette rather than a separate set of per-name colors.
 
 Local checks without Rails:
 
 ```bash
 ruby plugins/zzzz_eea_patches/test/unit/tracker_colors_test.rb
+ruby plugins/zzzz_eea_patches/test/unit/plugin_loading_test.rb
 node --test plugins/zzzz_eea_patches/test/tracker_colors_assets_test.js
 ```
 

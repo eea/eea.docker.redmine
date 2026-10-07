@@ -33,7 +33,8 @@ in isolated subprocesses with Rails/Redmine dependencies stubbed. It covers
 explicit loading before autoload registration and autoload before explicit
 loading. Both cases reproduced the original failure and pass after correction.
 The prepare callback runs twice to check that Issue and Gantt wrappers are not
-duplicated: 2 tests, 6 assertions.
+duplicated. The first-boot regression described below brings this check to
+3 tests, 9 assertions.
 
 The standalone tracker color suite passes: 11 tests, 2,520 assertions. Rails
 integration coverage now explicitly calls `Zeitwerk::Loader.eager_load_all`.
@@ -49,6 +50,38 @@ RAILS_ENV=production bundle exec rake zeitwerk:check
 
 The tag-release pipeline skips regular branch test stages; creating a release
 tag alone does not establish that these checks passed.
+
+## First-boot badge correction
+
+After resolving the constant paths, another initialization issue can leave
+issue references as plain links. Redmine's plugin loader runs `init.rb` inside
+its own `to_prepare` callback. Registering a new prepare callback there does not
+ensure that the already compiled callback chain runs it on that first boot.
+Production normally has no subsequent reload to install the patch.
+
+`IssueTrackerColorPatch.apply!` now loads the dependencies and installs the color
+wrappers immediately from plugin initialization. The prepare callback remains
+for later reloads; its application is idempotent. A subprocess regression models
+plugin initialization within the first prepare cycle, reproduces the missing
+Issue/Gantt wrappers before correction, and passes afterward.
+
+The same `Issue#css_classes` wrapper supplies generic color classes to reference
+links in related issues, checklists, wikis and Gantt labels. Rails integration
+coverage includes references with and without the tracker label. Shared CSS
+selectors now cover link states explicitly and preserve closed-issue
+strikethrough regardless of stylesheet ordering.
+
+The palette generator is unchanged: new unconfigured trackers receive saturated,
+stable colors, while valid explicit Agile colors retain priority. No separate
+per-tracker badge palette or database backfill is introduced. The five existing
+JavaScript checks pass against the Ruby palette; their Ruby require path is
+updated for the namespace directory.
+
+Deploy a new image and refresh the compiled assets so the updated stylesheet is
+served. Verify reference badges on an issue page, a wiki and Gantt, including
+closed references, hover/visited states and a new tracker. Browser DOM output
+is still needed to confirm that a particular deployed page has the class,
+stylesheet and generated palette; screenshots alone do not expose those values.
 
 ## Deployment configuration review
 

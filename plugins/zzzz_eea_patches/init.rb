@@ -22,5 +22,8 @@ EeaPatches::MiniProfilerAuthorizationPatch.apply!
 
 # Shared automatic tracker colors for A1, Gantt, lists and Agile.
 require_relative 'lib/issue_tracker_color_patch'
+# Plugin init itself runs inside Redmine's to_prepare callback. Install now,
+# since a callback registered here may only run on a subsequent prepare cycle.
+IssueTrackerColorPatch.apply!
 
 Rails.logger.info '[zzzz_eea_patches] Plugin registered (view overrides + MiniProfiler authorization)'

@@ -31,6 +31,23 @@ class TrackerColorIntegrationTest < ActiveSupport::TestCase
     assert_includes issue.css_classes, 'tracker-name-automatic-tracker-color-test'
   end
 
+  def test_issue_reference_links_share_generic_color_classes
+    issue = Issue.first
+    issue.tracker = @tracker
+    helper = ActionView::Base.empty
+    helper.extend(ApplicationHelper)
+    helper.extend(Rails.application.routes.url_helpers)
+
+    # Related issues/Gantt labels use tracker + ID; inline references can use
+    # just the ID. Both must carry the same generated color class.
+    [true, false].each do |show_tracker|
+      html = helper.link_to_issue(issue, subject: false, tracker: show_tracker)
+      link = Nokogiri::HTML.fragment(html).at_css('a.issue')
+      assert_not_nil link
+      assert_includes link['class'].split, EeaPatches::TrackerColors.css_class(@tracker)
+    end
+  end
+
   def test_agile_helper_supports_tracker_colors_and_preserves_other_modes
     skip 'Agile is not installed' unless defined?(AgileBoardsHelper)
     helper = Object.new.extend(AgileBoardsHelper)

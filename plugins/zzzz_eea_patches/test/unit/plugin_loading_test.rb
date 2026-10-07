@@ -21,6 +21,9 @@ class PluginLoadingTest < Minitest::Test
       def self.application
         @application ||= Struct.new(:config).new(Configuration.new)
       end
+      def self.logger
+        @logger ||= Object.new.tap { |logger| logger.define_singleton_method(:info) { |_message| } }
+      end
     end
     module Redmine
       module Hook
@@ -28,6 +31,7 @@ class PluginLoadingTest < Minitest::Test
       end
       module Plugin
         def self.installed?(_name); false; end
+        def self.register(*); end
       end
       module Helpers
         class Gantt; end
@@ -40,6 +44,17 @@ class PluginLoadingTest < Minitest::Test
     def require_dependency(_name); end
 
     lib = ARGV.fetch(0)
+    if ARGV.fetch(1) == 'plugin_init'
+      # Redmine loads init.rb inside its own to_prepare callback. Newly added
+      # callbacks do not run in the already compiled callback chain.
+      $LOADED_FEATURES << 'redmine.rb'
+      Rails.application.config.to_prepare { load File.expand_path('../init.rb', lib) }
+      Rails.application.config.callbacks.dup.each { |callback| Rails.application.config.instance_exec(&callback) }
+      raise 'Issue colors missing on first boot' unless Issue.ancestors.include?(EeaPatches::TrackerColorPatches::IssueColors)
+      raise 'Gantt colors missing on first boot' unless Redmine::Helpers::Gantt.ancestors.include?(EeaPatches::TrackerColorPatches::GanttColors)
+      puts 'Plugin constants and prepare callbacks loaded successfully'
+      exit
+    end
     # Check both plugin-init requires before autoload registration and autoload
     # registration before any plugin library has been required.
     if ARGV.fetch(1) == 'require_first'
@@ -62,7 +77,9 @@ class PluginLoadingTest < Minitest::Test
     register.call(lib, Object)
     expected.each { |namespace, name| namespace.const_get(name, false) }
     raise 'Missing prepare callback' unless Rails.application.config.callbacks.size == 1
-    2.times { Rails.application.config.callbacks.each(&:call) }
+    2.times do
+      Rails.application.config.callbacks.each { |callback| Rails.application.config.instance_exec(&callback) }
+    end
     raise 'Issue patch duplicated' unless Issue.ancestors.count(EeaPatches::TrackerColorPatches::IssueColors) == 1
     raise 'Gantt patch duplicated' unless Redmine::Helpers::Gantt.ancestors.count(EeaPatches::TrackerColorPatches::GanttColors) == 1
     puts 'Plugin constants and prepare callbacks loaded successfully'
@@ -74,6 +91,10 @@ class PluginLoadingTest < Minitest::Test
 
   def test_plugin_requires_before_autoload
     check_loading('require_first')
+  end
+
+  def test_first_boot_installs_colors_during_plugin_initialization
+    check_loading('plugin_init')
   end
 
   private
