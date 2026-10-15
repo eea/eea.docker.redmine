@@ -55,7 +55,7 @@ COPY config/build/install_engine_integrations.rb /usr/local/bin/install_engine_i
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
   --mount=type=cache,target=/var/lib/apt,sharing=locked \
   apt-get update -q \
-  && apt-get install -y --no-install-recommends build-essential unzip graphviz vim python3-pip cron rsyslog python3-setuptools systemctl default-libmysqlclient-dev libyaml-dev \
+  && apt-get install -y --no-install-recommends build-essential curl unzip graphviz vim python3-pip cron rsyslog python3-setuptools systemctl default-libmysqlclient-dev libyaml-dev \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/* \
   && chmod 0755 /usr/local/bin/install_core_plugins.sh \
@@ -141,6 +141,7 @@ COPY config/runtime/prepare_addons_assets.sh /usr/local/bin/prepare_addons_asset
 COPY config/runtime/sync_addons_bundle.sh /usr/local/bin/sync_addons_bundle.sh
 COPY config/runtime/sync_addons_from_dir.sh /usr/local/bin/sync_addons_from_dir.sh
 COPY config/runtime/sync_addons_from_share.sh /usr/local/bin/sync_addons_from_share.sh
+COPY config/runtime/share_meta_probe.rb /usr/local/bin/share_meta_probe.rb
 COPY config/runtime/migration_runner.rb ${REDMINE_PATH}/config/runtime/migration_runner.rb
 COPY config/runtime/common.sh /usr/local/bin/common.sh
 COPY config/runtime/kconv.rb ${REDMINE_PATH}/lib/kconv.rb
@@ -159,6 +160,7 @@ RUN set -euo pipefail \
   && chmod 0755 /usr/local/bin/sync_addons_bundle.sh \
   && chmod 0755 /usr/local/bin/sync_addons_from_dir.sh \
   && chmod 0755 /usr/local/bin/sync_addons_from_share.sh \
+  && chmod 0755 /usr/local/bin/share_meta_probe.rb \
   && chmod 0755 /usr/local/bin/common.sh \
   && chmod 0755 ${REDMINE_PATH}/config/runtime/migration_runner.rb \
   && chmod 0755 ${REDMINE_PATH}/config/lib/addons_manifest.rb \
