@@ -40,6 +40,16 @@ form label.block {
   max-width: 100%;
 }
 
+/* Let attachment images fit the available width without a preview height cap.
+   Keep small images at their natural size and leave repository previews alone. */
+.controller-attachments.action-show .filecontent-container > img.filecontent.image {
+  position: static;
+  display: block;
+  width: auto;
+  height: auto;
+  max-height: none;
+}
+
 /* issue contacts delete icon alignment */
 #issue_contacts a.delete {
   float: right;
