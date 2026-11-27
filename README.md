@@ -22,8 +22,8 @@ Dockerfile to build a [Redmine](http://www.redmine.org/) container image based o
 
 #### Version
 
-The default base image is `redmine:6.1.5@sha256:f3e8567ccd59703c92f95e6da2e85c72b764cfa0f08b622e6b0a367b4da64b62` (Ruby 3.4.x, Rails 7.2.4).
-See [the 6.1.5 upgrade review](docs/patch-notes/2026-10-redmine-6.1.5-upgrade.md)
+The default base image is `redmine:6.1.6@sha256:5f5ceb01f68aa45e3bd66606af7a07ec1919b6ff47ad387815f29ee29e2ce1ab` (Ruby 3.4.13, Rails 7.2.4).
+See [the 6.1.6 upgrade review](docs/patch-notes/2026-11-redmine-6.1.6-upgrade.md)
 for patch decisions, validation commands and remaining checks.
 
 ### Installation
@@ -137,8 +137,8 @@ The image installs `redmine_banner` from the Seraph3000 `v0.5.3` tag.
 See [the Banner upgrade notes](docs/patch-notes/2026-10-banner-0.5.3-upgrade.md)
 for the adapted routing overrides, migrations and validation steps.
 
-The image installs `redmine_ai_helper` from the upstream `3.9.0` tag.
-See [the AI Helper upgrade notes](docs/patch-notes/2026-10-ai-helper-3.9.0-upgrade.md)
+The image installs `redmine_ai_helper` from the upstream `3.13.1` tag.
+See [the AI Helper upgrade notes](docs/patch-notes/2026-11-ai-helper-3.13.1-upgrade.md)
 for dependency changes, plugin migrations and validation steps.
 
 See [the RedmineUP upgrade notes](docs/patch-notes/2026-10-redmineup-upgrade.md)
@@ -172,7 +172,7 @@ docker compose -f test/docker-compose.yml -f test/docker-compose.amd64.yml up -d
 
 Ruby4 + plugins mode (on):
 
-This is an experimental custom image. Official Redmine 6.1.5 requires Ruby
+This is an experimental custom image. Official Redmine 6.1.6 requires Ruby
 `>= 3.2, < 3.5`; adding stdlib gems alone does not make Ruby 4 supported.
 
 ```bash
@@ -186,14 +186,14 @@ automatically by `compose_gemfile_from_plugins.rb` in this mode.
 Switch back off:
 
 ```bash
-REDMINE_BASE_IMAGE=redmine:6.1.5@sha256:f3e8567ccd59703c92f95e6da2e85c72b764cfa0f08b622e6b0a367b4da64b62 MT_NO_PLUGINS=1 \
+REDMINE_BASE_IMAGE=redmine:6.1.6@sha256:5f5ceb01f68aa45e3bd66606af7a07ec1919b6ff47ad387815f29ee29e2ce1ab MT_NO_PLUGINS=1 \
 docker compose -f test/docker-compose.yml -f test/docker-compose.amd64.yml up -d --build
 ```
 
 If needed explicitly:
 
 ```bash
-RUBY_REQUIRED_PREFIX=3.4.
+RUBY_REQUIRED_PREFIX=3.4.13
 ```
 
 Gem overrides are documented in:
@@ -224,8 +224,8 @@ on concurrent migration lock errors, reducing rollout race failures.
 
 ### Upgrading
 
-For the 6.1.3 → 6.1.5 upgrade, follow the
-[upgrade review and validation checklist](docs/patch-notes/2026-10-redmine-6.1.5-upgrade.md).
+For the 6.1.5 → 6.1.6 upgrade, follow the
+[upgrade review and validation checklist](docs/patch-notes/2026-11-redmine-6.1.6-upgrade.md).
 Back up the database, attachments and addon data before stopping the running stack.
 Run DB and plugin migrations with the new image before starting web/jobs services.
 
