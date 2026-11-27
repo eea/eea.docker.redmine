@@ -42,3 +42,6 @@ todo/
 
 # Local regression/debug captures
 issue1/
+
+# Local convenience symlink to the helm-charts checkout (dev leftover, machine-specific)
+helm
