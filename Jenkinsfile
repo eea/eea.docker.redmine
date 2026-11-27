@@ -124,12 +124,12 @@ SCRIPT
       steps {
         sh '''
 docker-compose -f test/docker-compose.yml exec -T redmine bundle exec rails runner -e test '
-abort "Expected Redmine 6.1.5, got #{Redmine::VERSION}" unless Redmine::VERSION.to_s == "6.1.5"
+abort "Expected Redmine 6.1.6, got #{Redmine::VERSION}" unless Redmine::VERSION.to_s == "6.1.6"
 abort "Expected Rails 7.2.4, got #{Rails.version}" unless Rails.version == "7.2.4"
-abort "Expected Ruby 3.4.x, got #{RUBY_VERSION}" unless RUBY_VERSION.start_with?("3.4.")
+abort "Expected Ruby 3.4.13.x, got #{RUBY_VERSION}" unless RUBY_VERSION.start_with?("3.4.13")
 abort "Missing advisory-lock implementation" unless ActiveRecord::Base.respond_to?(:with_advisory_lock!)
 ai_helper = Redmine::Plugin.find(:redmine_ai_helper)
-abort "Expected AI Helper 3.9.0, got #{ai_helper.version}" unless ai_helper.version.to_s == "3.9.0"
+abort "Expected AI Helper 3.13.1, got #{ai_helper.version}" unless ai_helper.version.to_s == "3.13.1"
 banner = Redmine::Plugin.find(:redmine_banner)
 abort "Expected Banner 0.5.3, got #{banner.version}" unless banner.version.to_s == "0.5.3"
 {

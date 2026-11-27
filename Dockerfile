@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
-ARG REDMINE_BASE=redmine:6.1.5@sha256:f3e8567ccd59703c92f95e6da2e85c72b764cfa0f08b622e6b0a367b4da64b62
-ARG RUBY_REQUIRED_PREFIX=3.4.
+ARG REDMINE_BASE=redmine:6.1.6@sha256:5f5ceb01f68aa45e3bd66606af7a07ec1919b6ff47ad387815f29ee29e2ce1ab
+ARG RUBY_REQUIRED_PREFIX=3.4.13
 
 FROM ${REDMINE_BASE} AS base
 
@@ -21,7 +21,7 @@ ENV REDMINE_PATH=/usr/src/redmine \
   RUNTIME_PLUGIN_SYNC=0 \
   RUNTIME_THEME_SYNC=0
 
-# Fail build if upstream base drifts away from Ruby 3.4.x.
+# Fail build if upstream base drifts away from the patched Ruby 3.4.13 line.
 ARG RUBY_REQUIRED_PREFIX
 RUN ruby -e 'req = "'"${RUBY_REQUIRED_PREFIX}"'"; abort("Ruby #{req}x is required, got #{RUBY_VERSION}") unless RUBY_VERSION.start_with?(req)'
 

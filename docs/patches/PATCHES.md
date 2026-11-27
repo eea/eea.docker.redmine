@@ -9,6 +9,12 @@ Canonical inventory for runtime patches.
 
 ---
 
+## Redmine 6.1.6 review
+
+See [the upgrade review](../patch-notes/2026-11-redmine-6.1.6-upgrade.md).
+No runtime patches have been removed for this upgrade. The review section
+below still describes the 6.1.5 baseline decisions that remain in force.
+
 ## Redmine 6.1.5 review
 
 See [the upgrade review](../patch-notes/2026-10-redmine-6.1.5-upgrade.md).
